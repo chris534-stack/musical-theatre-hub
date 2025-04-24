@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages\\\\calendar.tsx -> ../components/CalendarView\":{\"id\":\"pages\\\\calendar.tsx -> ../components/CalendarView\",\"files\":[\"static/chunks/components_CalendarView_tsx.js\"]}}"
