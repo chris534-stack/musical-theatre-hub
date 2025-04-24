@@ -1,10 +1,13 @@
 # Eugene Musical Theatre Community Hub
 
+**Next.js + TypeScript app for managing musical-theatre events**
+
 ## Project Overview
-A centralized, user-friendly website for the Eugene musical theatre community. Built on WordPress.org, it consolidates events, auditions, resources, and community features for all stakeholders.
+A centralized, user-friendly website for the Eugene musical theatre community. Built with Next.js (React + TypeScript), it consolidates events, auditions, resources, and community features for all stakeholders.
 
 ## Key Features
-- Event Calendar (auditions, performances, workshops)
+- Multi-step event creation form (with matinee/main time support)
+- Interactive event calendar (auditions, performances, workshops)
 - Event detail pages
 - Community features (forums, member directory)
 - Resource sharing
@@ -14,17 +17,21 @@ A centralized, user-friendly website for the Eugene musical theatre community. B
 - Security, backups, and performance optimizations
 
 ## Setup Instructions
-1. Acquire managed WordPress hosting and register a domain name.
-2. Install WordPress.org (self-hosted).
-3. Install a recommended theme (see `requirements.md`).
-4. Install and configure recommended plugins.
-5. Import sample content or use provided templates.
-6. Customize branding, navigation, and content.
-7. Test across devices and browsers.
-8. Launch and promote the site.
+1. Clone this repository and install dependencies:
+   ```
+   git clone https://github.com/chris534-stack/musical-theatre-hub.git
+   cd musical-theatre-hub
+   npm install
+   ```
+2. Copy `.env.local.example` to `.env.local` and configure your environment variables.
+3. Run the development server:
+   ```
+   npm run dev
+   ```
+4. Access the site at `http://localhost:3000`.
 
 ## Maintenance Plan
-- Weekly: Update WordPress core, themes, and plugins. Backup site.
+- Weekly: Update dependencies. Backup site.
 - Monthly: Review analytics, update content, check performance.
 - As needed: Security scans, user feedback, add new features.
 
