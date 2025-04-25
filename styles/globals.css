@@ -6,6 +6,43 @@ body {
   color: #222;
 }
 
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
+
 main {
   max-width: 900px;
   margin: 2rem auto;
@@ -14,18 +51,166 @@ main {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
 h1, h2, h3 {
   color: #2e3a59;
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
 nav ul {
   display: flex;
   gap: 1rem;
   list-style: none;
   padding: 0;
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
 nav ul li {
   display: inline;
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
 button {
   margin: 0.5rem 0.5rem 1rem 0;
   padding: 0.5rem 1rem;
@@ -35,13 +220,161 @@ button {
   border-radius: 4px;
   cursor: pointer;
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
 button:hover {
   background: #4b5d8c;
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
 a {
   color: #2e3a59;
   text-decoration: none;
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
 a:hover {
   text-decoration: underline;
 }
+
+@media (max-width: 700px) {
+  /* Shrink event bars in react-big-calendar month view for mobile */
+  .rbc-month-view .rbc-event {
+    min-height: 8px !important;
+    height: 8px !important;
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .rbc-month-view .rbc-event-content {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0 !important;
+  }
+  .rbc-month-view .rbc-row-segment {
+    margin: 0 0 3px 0 !important;
+    padding: 4px 8px !important;
+    min-height: 8px !important;
+    height: 8px !important;
+  }
+  .rbc-month-row {
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+  }
+  .rbc-date-cell {
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+

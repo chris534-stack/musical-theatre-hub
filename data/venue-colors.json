@@ -1,0 +1,21 @@
+{
+  "Pegasus Playhouse": {
+    "bg": "#fff",
+    "border": "#ffe082",
+    "text": "#222"
+  },
+  "Actor's Cabaret": {
+    "border": "#222",
+    "bg": "#ffe082",
+    "text": "#222"
+  },
+  "LCC Ragazino Theater": {
+    "bg": "#b2ebf2",
+    "border": "#fff",
+    "text": "#ffe082"
+  },
+  "Oregon Contemporary Theatre": {
+    "bg": "#fff",
+    "text": "#b2ebf2"
+  }
+}

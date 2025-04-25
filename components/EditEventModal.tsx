@@ -2,6 +2,19 @@
 import MultiStepAddEventForm from './MultiStepAddEventForm';
 import React from 'react';
 
+function useIsMobileModal() {
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    function check() {
+      setIsMobile(window.innerWidth < 600 || window.innerWidth / window.innerHeight < 0.75);
+    }
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 export default function EditEventModal({ event, showEvents, onClose, onUpdated }: any) {
   // Convert event data to form initial values
   // Group showEvents by date and extract main/matinee times
@@ -33,19 +46,80 @@ export default function EditEventModal({ event, showEvents, onClose, onUpdated }
     ticketLink: event.ticketLink || '',
   };
 
+  const isMobile = useIsMobileModal();
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowY: 'auto' }}>
-      <div style={{ background: 'white', padding: 32, borderRadius: 8, minWidth: 350, minHeight: 400, maxWidth: 600, maxHeight: '80vh', position: 'relative', overflowY: 'auto', boxSizing: 'border-box' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', fontSize: 18, cursor: 'pointer' }}>×</button>
-        <h2>Edit Event</h2>
-        <MultiStepAddEventForm
-          editMode
-          initialValues={initialValues}
-          onSuccess={() => {
-            onClose();
-            if (onUpdated) onUpdated();
-          }}
-        />
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0,0,0,0.3)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        justifyContent: 'center',
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        style={{
+          background: 'white',
+          padding: isMobile ? '1.1rem 0.6rem 2.2rem 0.6rem' : 32,
+          borderRadius: isMobile ? 0 : 8,
+          minWidth: isMobile ? '100vw' : 350,
+          minHeight: isMobile ? '100vh' : 400,
+          maxWidth: isMobile ? '100vw' : 600,
+          maxHeight: isMobile ? '100vh' : '80vh',
+          width: isMobile ? '100vw' : undefined,
+          height: isMobile ? '100vh' : undefined,
+          position: 'relative',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          background: 'white',
+          zIndex: 11,
+          paddingBottom: 8,
+          paddingTop: isMobile ? 8 : 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <h2 style={{ margin: 0, fontSize: isMobile ? '1.22rem' : '1.4rem' }}>Edit Event</h2>
+          <button
+            onClick={onClose}
+            style={{
+              position: 'relative',
+              top: 0,
+              right: 0,
+              background: 'none',
+              border: 'none',
+              fontSize: 22,
+              cursor: 'pointer',
+              marginLeft: 8,
+            }}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <MultiStepAddEventForm
+            editMode
+            initialValues={initialValues}
+            onSuccess={() => {
+              onClose();
+              if (onUpdated) onUpdated();
+            }}
+          />
+        </div>
       </div>
     </div>
   );

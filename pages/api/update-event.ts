@@ -21,12 +21,14 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     let found = false;
     events = events.map((e: any) => {
       if (
-        e.slug === updatedEvent.slug &&
-        e.date === updatedEvent.date &&
-        e.time === updatedEvent.time // Require exact match
+        e.slug === updatedEvent.originalSlug &&
+        e.date === updatedEvent.originalDate &&
+        e.time === updatedEvent.originalTime
       ) {
         found = true;
-        return { ...e, ...updatedEvent };
+        // Remove original* keys from updatedEvent before merging
+        const { originalSlug, originalDate, originalTime, ...rest } = updatedEvent;
+        return { ...e, ...rest };
       }
       return e;
     });

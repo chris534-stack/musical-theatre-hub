@@ -8,7 +8,7 @@
   background: radial-gradient(circle at 60% 40%, rgba(255,215,0,0.18) 0%, rgba(46,58,89,0.85) 55%, #2e3a59 100%),
               linear-gradient(120deg, #2e3a59 60%, #4b5d8c 100%);
   color: #fff;
-  padding: 4.5rem 2rem 3.5rem 2rem;
+  padding: 1.5rem 2rem 3.5rem 2rem;
   border-radius: 0 0 40px 40px;
   box-shadow: 0 6px 32px 0 rgba(46,58,89,0.10);
   text-align: center;
@@ -137,6 +137,12 @@
   gap: 1.5rem;
   margin-top: 1.2rem;
   flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .linksRow {
+    padding-bottom: 80px;
+  }
 }
 .linkCard {
   background: #f5f7fb;

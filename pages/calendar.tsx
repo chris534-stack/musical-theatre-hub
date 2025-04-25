@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import AdminModal from '../components/AdminModal';
 import useIsAdmin from '../components/useIsAdmin';
@@ -78,9 +78,24 @@ function AddEventForm({ onSuccess }: { onSuccess: () => void }) {
 // Dynamically import react-big-calendar to avoid SSR issues
 const Calendar = dynamic(() => import('../components/CalendarView'), { ssr: false });
 
+function useMobileOrAdjacent(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    function check() {
+      setIsMobile(window.matchMedia('(max-width: 600px)').matches);
+    }
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 export default function CalendarPage() {
   const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const isMobile = useMobileOrAdjacent();
   const { data: events, error, isLoading } = useSWR('/api/events', fetcher);
 
   // Multi-select filter state
@@ -136,50 +151,122 @@ export default function CalendarPage() {
       <Head>
         <title>Events Calendar | Our Stage, Eugene</title>
       </Head>
-      <main style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginTop: 24 }}>
-        <div style={{ minWidth: 240, maxWidth: 260, width: 100, height: '100%' }}>
-          <EventFilterSidebar
-            eventTypes={eventTypes}
-            venues={venues}
-            selectedTypes={selectedTypes}
-            selectedVenues={selectedVenues}
-            onTypeChange={handleTypeChange}
-            onVenueChange={handleVenueChange}
-            onTypeSelectAll={() => setSelectedTypes(eventTypes)}
-            onTypeDeselectAll={() => setSelectedTypes([])}
-            onVenueSelectAll={() => setSelectedVenues(getCanonicalVenues(venues))}
-            onVenueDeselectAll={() => setSelectedVenues([])}
-          />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1>Events Calendar</h1>
-          {isAdmin && (
-            <button
-              style={{
-                background: '#ffd700',
-                color: '#2e3a59',
-                border: 'none',
-                borderRadius: 8,
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontSize: '1rem',
-                marginBottom: 16,
-                transition: 'background 0.2s, color 0.2s',
-              }}
-              onClick={() => setModalOpen(true)}
-            >
-              + Add Event
-            </button>
+      <main style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginTop: 24, position: 'relative' }}>
+        {/* Sticky sidebar on desktop */}
+        {!isMobile && (
+          <div
+            style={{
+              minWidth: 240,
+              maxWidth: 260,
+              width: 100,
+              alignSelf: 'flex-start',
+              position: 'sticky',
+              top: 78, // below header
+              zIndex: 10,
+              height: 'fit-content',
+            }}
+          >
+            <EventFilterSidebar
+              eventTypes={eventTypes}
+              venues={venues}
+              selectedTypes={selectedTypes}
+              selectedVenues={selectedVenues}
+              onTypeChange={handleTypeChange}
+              onVenueChange={handleVenueChange}
+              onTypeSelectAll={() => setSelectedTypes(eventTypes)}
+              onTypeDeselectAll={() => setSelectedTypes([])}
+              onVenueSelectAll={() => setSelectedVenues(getCanonicalVenues(venues))}
+              onVenueDeselectAll={() => setSelectedVenues([])}
+            />
+          </div>
+        )}
+        {isMobile && (
+          <AdminModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Events">
+            <EventFilterSidebar
+              eventTypes={eventTypes}
+              venues={venues}
+              selectedTypes={selectedTypes}
+              selectedVenues={selectedVenues}
+              onTypeChange={handleTypeChange}
+              onVenueChange={handleVenueChange}
+              onTypeSelectAll={() => setSelectedTypes(eventTypes)}
+              onTypeDeselectAll={() => setSelectedTypes([])}
+              onVenueSelectAll={() => setSelectedVenues(getCanonicalVenues(venues))}
+              onVenueDeselectAll={() => setSelectedVenues([])}
+            />
+          </AdminModal>
+        )}
+        {/* Main calendar pane: allow this to scroll vertically if needed */}
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+          {isMobile ? (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              zIndex: 1100,
+              background: '#fff',
+              boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.6rem 1.1rem 0.6rem 1.1rem',
+            }}>
+              <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#2e3a59' }}>Events Calendar</h1>
+              <button
+                aria-label="Show filters"
+                style={{
+                  background: '#ffd700',
+                  color: '#2e3a59',
+                  border: 'none',
+                  borderRadius: 16,
+                  padding: '0.55rem 0.85rem',
+                  fontSize: '1.3rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
+                  cursor: 'pointer',
+                  marginLeft: 0,
+                  marginRight: 18,
+                  marginTop: 8,
+                }}
+                onClick={() => setFilterModalOpen(true)}
+              >
+                <span style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
+              </button>
+            </div>
+          ) : (
+            <h1>Events Calendar</h1>
           )}
-          <Calendar events={filteredEvents} />
-          {isAdmin && (
-            <AdminModal open={modalOpen} onClose={() => setModalOpen(false)} title="Add Event">
-              <MultiStepAddEventForm onSuccess={() => {
-                setModalOpen(false);
-                mutate('/api/events');
-              }} />
-            </AdminModal>
-          )}
+          <div style={isMobile ? { marginTop: 68 } : {}}>
+            {isAdmin && (
+              <button
+                style={{
+                  background: '#ffd700',
+                  color: '#2e3a59',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  marginBottom: 16,
+                  transition: 'background 0.2s, color 0.2s',
+                }}
+                onClick={() => setModalOpen(true)}
+              >
+                + Add Event
+              </button>
+            )}
+            <Calendar events={filteredEvents} />
+            {isAdmin && (
+              <AdminModal open={modalOpen} onClose={() => setModalOpen(false)} title="Add Event">
+                <MultiStepAddEventForm onSuccess={() => {
+                  setModalOpen(false);
+                  mutate('/api/events');
+                }} />
+              </AdminModal>
+            )}
+          </div>
         </div>
       </main>
     </>

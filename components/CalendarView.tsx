@@ -1,7 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { FaPalette } from 'react-icons/fa';
+import useIsAdmin from './useIsAdmin';
+import AdminModal from './AdminModal';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import DayEventsModal from './DayEventsModal';
 
 export interface EventType {
   slug: string;
@@ -59,12 +63,25 @@ function generateVibrantShades(hex: string, count: number): string[] {
   return shades;
 }
 
+
 // Generate a larger, more vibrant palette of theme-based colors
 const NAVY = '#23395d';
 const GOLD = '#ffd600';
-const navyShades = generateVibrantShades(NAVY, 10);
-const goldShades = generateVibrantShades(GOLD, 10);
-const VENUE_COLORS = [...navyShades, ...goldShades];
+const TEAL = '#20bfa9';
+const CORAL = '#ff6f61';
+const PURPLE = '#7c4dff';
+const navyShades = generateVibrantShades(NAVY, 12);
+const goldShades = generateVibrantShades(GOLD, 12);
+const tealShades = generateVibrantShades(TEAL, 8);
+const coralShades = generateVibrantShades(CORAL, 8);
+const purpleShades = generateVibrantShades(PURPLE, 8);
+const VENUE_COLORS = [
+  ...navyShades,
+  ...goldShades,
+  ...tealShades,
+  ...coralShades,
+  ...purpleShades,
+];
 
 
 
@@ -93,28 +110,53 @@ const marqueeInnerStyle: React.CSSProperties = {
 };
 
 // Custom event token with marquee on hover
-const EventTitleMarquee: React.FC<{ title: string }> = ({ title }) => {
+// Utility hook for mobile detection
+function useMobileOrAdjacent(): boolean {
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    function check() {
+      setIsMobile(window.matchMedia('(max-width: 600px)').matches);
+    }
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
+const EventTitleMarquee: React.FC<{ title: string; hideText?: boolean; small?: boolean }> = ({ title, hideText = false, small = false }) => {
   const [hovered, setHovered] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   const [scroll, setScroll] = React.useState(0);
+  const [duration, setDuration] = React.useState(0);
 
   React.useEffect(() => {
     if (hovered && ref.current) {
       const containerWidth = ref.current.offsetWidth;
       const textWidth = ref.current.scrollWidth;
       if (textWidth > containerWidth) {
-        setScroll(textWidth - containerWidth);
+        const distance = textWidth - containerWidth;
+        setScroll(distance);
+        // Fixed speed: 80px/sec
+        setDuration(distance / 80);
       } else {
         setScroll(0);
+        setDuration(0);
       }
     } else {
       setScroll(0);
+      setDuration(0);
     }
   }, [hovered, title]);
 
   return (
     <div
-      style={marqueeStyle}
+      style={{
+        ...marqueeStyle,
+        height: small ? 15 : undefined,
+        minHeight: small ? 15 : undefined,
+        margin: small ? '2px 0' : undefined,
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       ref={ref}
@@ -123,16 +165,20 @@ const EventTitleMarquee: React.FC<{ title: string }> = ({ title }) => {
         style={{
           ...marqueeInnerStyle,
           transform: hovered && scroll > 0 ? `translateX(-${scroll}px)` : 'translateX(0)',
-          transition: hovered && scroll > 0 ? 'transform 2.5s linear' : 'transform 0.4s',
+          transition: hovered && scroll > 0 ? `transform ${duration.toFixed(2)}s linear` : 'transform 0.4s',
         }}
       >
-        {title}
+        {hideText ? '' : title}
       </div>
     </div>
   );
 };
 
 const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalDate, setModalDate] = useState<Date | null>(null);
+  const [modalEvents, setModalEvents] = useState<EventType[]>([]);
+
   const calendarEvents = useMemo(
     () =>
       events.map((e) => ({
@@ -144,30 +190,114 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
     [events]
   );
 
+  const isMobile = useMobileOrAdjacent();
+
+  const handleSelectSlot = (slotInfo: any) => {
+    if (!isMobile) return;
+    if (!document.querySelector('.rbc-month-view')) return;
+    const date = slotInfo.start;
+    // Use moment for robust date comparison
+    const eventsForDay = events.filter(ev =>
+      moment(ev.date).isSame(moment(date), 'day')
+    );
+    setModalDate(date);
+    setModalEvents(eventsForDay);
+    setModalOpen(true);
+  };
+
+  const isAdmin = useIsAdmin();
+  // Procedurally assign visually distinct and legible colors to venues
+  // Palette of visually distinct background, border, and text color sets
+  // Allowed brand colors
+  const BRAND_COLORS = [
+    { name: 'navy', hex: '#23395d' },
+    { name: 'yellow', hex: '#ffd600' },
+    { name: 'white', hex: '#fff' },
+    { name: 'black', hex: '#222' },
+    { name: 'grey', hex: '#b0b4ba' },
+  ];
+
+  // Utility: check if text is readable on bg (simple contrast check)
+  function isReadable(bg: string, text: string) {
+    // Use luminance difference for quick check
+    function luminance(hex: string) {
+      const c = hex.replace('#', '');
+      const rgb = [0, 1, 2].map(i => parseInt(c.substr(i * 2, 2), 16) / 255);
+      return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+    }
+    return Math.abs(luminance(bg) - luminance(text)) > 0.45;
+  }
+
+  // Generate all valid (bg, border, text) combos
+  const COLOR_PAIRS = [];
+  for (const bg of BRAND_COLORS) {
+    for (const border of BRAND_COLORS) {
+      if (border.hex === bg.hex) continue;
+      for (const text of BRAND_COLORS) {
+        if (text.hex === bg.hex || text.hex === border.hex) continue;
+        if (!isReadable(bg.hex, text.hex)) continue;
+        COLOR_PAIRS.push({ bg: bg.hex, border: border.hex, text: text.hex });
+      }
+    }
+  }
+
+  function getVenueColorSet(venue: string) {
+    let hash = 0;
+    for (let i = 0; i < venue.length; i++) {
+      hash = venue.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % COLOR_PAIRS.length;
+    return COLOR_PAIRS[idx];
+  }
+
+
   return (
-    <Calendar
-      localizer={localizer}
-      events={calendarEvents}
-      startAccessor="start"
-      endAccessor="end"
-      style={{ height: 600, margin: '2rem 0' }}
-      components={{
-        event: (props: any) => (
-          <EventTitleMarquee title={props.title} />
-        ),
+    <>
+
+      <Calendar
+        localizer={localizer}
+        events={calendarEvents}
+        startAccessor="start"
+        endAccessor="end"
+        style={{ height: 600, margin: '2rem 0' }}
+        selectable={isMobile}
+        onSelectSlot={handleSelectSlot}
+        components={{
+        event: (props: any) => {
+          // Detect if we're in month view and on mobile
+          const isMobile = useMobileOrAdjacent();
+          const calendarView = document.querySelector('.rbc-month-view');
+          const inMonthView = !!calendarView;
+          // If in month view and mobile, show only colored bars (no text, short height)
+          if (isMobile && inMonthView) {
+            return <EventTitleMarquee title={props.title} hideText small />;
+          }
+          return <EventTitleMarquee title={props.title} />;
+        },
+        month: {
+          event: (props: any) => {
+            // Always render the event, never show "+N more" button
+            const isMobile = useMobileOrAdjacent();
+            if (isMobile) {
+              return <EventTitleMarquee title={props.title} hideText small />;
+            }
+            // fallback to default
+            return <EventTitleMarquee title={props.title} />;
+          },
+          eventWrapper: (props: any) => <div>{props.children}</div>,
+          showMore: () => null, // disables the '+N more' button
+        },
       }}
       eventPropGetter={(event: any) => {
-        // Assign a distinct color to each venue
+        // Procedurally assign visually distinct and legible colors to each venue
         const venue = event.resource?.venue || '';
-        const bgColor = getVenueColor(venue);
-        // Use white text for dark backgrounds, navy for gold/light backgrounds
-        const useDarkText = bgColor === '#ffd600' || bgColor === '#ffd700' || bgColor === '#f7f7f7' || bgColor === '#bfae48';
+        const { bg, border, text } = getVenueColorSet(venue);
         return {
           style: {
-            backgroundColor: bgColor,
-            color: useDarkText ? '#2e3a59' : '#fff',
+            backgroundColor: bg,
+            color: text,
             borderRadius: 16,
-            border: useDarkText ? '1.5px solid #bfae48' : 'none',
+            border: `2px solid ${border}`,
             fontWeight: 700,
             fontSize: 15,
             opacity: 1,
@@ -179,14 +309,31 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
         };
       }}
       onSelectEvent={(event: any) => {
-        if (event.resource && event.resource.slug && event.resource.venue) {
+        if (isMobile) {
+          // On mobile, open modal for the event's date
+          const date = event.start;
+          const eventsForDay = events.filter(ev =>
+            moment(ev.date).isSame(moment(date), 'day')
+          );
+          setModalDate(date);
+          setModalEvents(eventsForDay);
+          setModalOpen(true);
+        } else if (event.resource && event.resource.slug && event.resource.venue) {
           const venueParam = encodeURIComponent(event.resource.venue);
           // Never add date to the URL
           window.location.href = `/events/${event.resource.slug}?venue=${venueParam}`;
         }
       }}
     />
-  );
+    {isMobile && (
+      <DayEventsModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        events={modalEvents}
+        date={modalDate || new Date()}
+      />
+    )}
+  </>);
 };
 
 export default CalendarView;

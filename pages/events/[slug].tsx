@@ -3,6 +3,8 @@ import Head from 'next/head';
 import useSWR from 'swr';
 import useIsAdmin from '../../components/useIsAdmin';
 import React, { useState } from 'react';
+import moment from 'moment';
+import { FaEdit } from 'react-icons/fa';
 import EditEventModal from '../../components/EditEventModal';
 import EditPerformanceModal from '../../components/EditPerformanceModal';
 
@@ -84,18 +86,61 @@ export default function EventDetail() {
             })
             .map((show: any) => (
               <li key={show.date + show.time}>
-                <strong>{show.date}</strong> @ {show.time}
+                <strong>{moment(show.date).format('MMMM Do, YYYY')}</strong>
+                {' @ '}
+                {show.time ? moment(show.time, ["HH:mm","h:mmA","h:mma"]).format("h:mm a") : 'TBA'}
                 {show.isMatinee && (
                   <span style={{ color: '#b36b00', marginLeft: 8, fontWeight: 600 }} title="Matinee">(Matinee)</span>
                 )}
                 {isAdmin && (
-                  <button
-                    style={{ marginLeft: 10, fontSize: 13, padding: '2px 10px', borderRadius: 4, border: '1px solid #1976d2', background: '#e3f0fc', color: '#1976d2', cursor: 'pointer' }}
-                    onClick={() => setEditingPerformance(show)}
-                  >
-                    Edit
-                  </button>
-                )}
+  editingPerformance && editingPerformance.date === show.date && editingPerformance.time === show.time ? (
+    <span style={{ marginLeft: 10 }}>
+      <input
+        type="time"
+        value={editingPerformance.time || ''}
+        onChange={e => setEditingPerformance({ ...editingPerformance, time: e.target.value })}
+        style={{ fontSize: 13, marginRight: 6 }}
+      />
+      <label style={{ fontSize: 13, marginRight: 6 }}>
+        <input
+          type="checkbox"
+          checked={!!editingPerformance.isMatinee}
+          onChange={e => setEditingPerformance({ ...editingPerformance, isMatinee: e.target.checked })}
+          style={{ marginRight: 2 }}
+        />
+        Matinee
+      </label>
+      <button
+        style={{ fontSize: 13, padding: '2px 8px', borderRadius: 4, border: '1px solid #1976d2', background: '#1976d2', color: 'white', cursor: 'pointer', marginRight: 4 }}
+        onClick={async () => {
+          await fetch('/api/update-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...editingPerformance, slug: event.slug }),
+          });
+          setEditingPerformance(null);
+          window.location.reload();
+        }}
+      >
+        Save
+      </button>
+      <button
+        style={{ fontSize: 13, padding: '2px 8px', borderRadius: 4, border: '1px solid #aaa', background: '#eee', color: '#333', cursor: 'pointer' }}
+        onClick={() => setEditingPerformance(null)}
+      >
+        Cancel
+      </button>
+    </span>
+  ) : (
+    <button
+      style={{ marginLeft: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#1976d2', display: 'inline-flex', alignItems: 'center', fontSize: 18 }}
+      title="Edit time"
+      onClick={() => setEditingPerformance(show)}
+    >
+      <FaEdit />
+    </button>
+  )
+)}
               </li>
             ))}
         </ul>
@@ -107,37 +152,24 @@ export default function EventDetail() {
           />
         )}
         {isAdmin && (
-          <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-            <button
-              style={{ background: '#d32f2f', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer' }}
-              onClick={async () => {
-                if (!window.confirm('Are you sure you want to remove all performances for this event?')) return;
-                await fetch('/api/remove-event', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ slug: event.slug })
-                });
-                window.location.reload();
-              }}
-            >
-              Remove Event
-            </button>
-            <button
-              style={{ background: '#1976d2', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer' }}
-              onClick={() => setShowEditModal(true)}
-            >
-              Edit Event
-            </button>
-          </div>
-        )}
-        {showEditModal && (
-          <EditEventModal
-            event={event}
-            showEvents={showEvents}
-            onClose={() => setShowEditModal(false)}
-            onUpdated={() => window.location.reload()}
-          />
-        )}
+  <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+    <button
+      style={{ background: '#d32f2f', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer' }}
+      onClick={async () => {
+        if (!window.confirm('Are you sure you want to remove all performances for this event?')) return;
+        await fetch('/api/remove-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: event.slug })
+        });
+        window.location.reload();
+      }}
+    >
+      Remove Event
+    </button>
+  </div>
+)}
+        
 
 
         <h2 style={{ marginTop: 30 }}>Production Photos</h2>
