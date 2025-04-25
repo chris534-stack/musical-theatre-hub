@@ -1,18 +1,65 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import styles from '../styles/Home.module.css';
+import useSWR from 'swr';
+import { useMemo } from 'react';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+function getUpcomingUniqueEvents(events: any[], now: Date, days: number) {
+  // Only events within the next X days
+  const soon = new Date(now);
+  soon.setDate(now.getDate() + days);
+  // Deduplicate by lowercased title+venue
+  const seen = new Set();
+  // Event type priority
+  const typePriority: Record<string, number> = {
+    performance: 0,
+    audition: 1,
+    workshop: 2
+  };
+  return events
+    .filter(e => {
+      if (!e.date) return false;
+      const eventDate = new Date(e.date);
+      return eventDate >= now && eventDate <= soon;
+    })
+    .sort((a, b) => {
+      // Soonest date first
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      // Then by event type priority
+      const pa = typePriority[a.category?.toLowerCase() || 'other'] ?? 99;
+      const pb = typePriority[b.category?.toLowerCase() || 'other'] ?? 99;
+      return pa - pb;
+    })
+    .filter(e => {
+      const key = `${e.title}`.toLowerCase().trim() + '|' + `${e.venue}`.toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 3); // Only top 3
+}
 
 export default function Home() {
+  const { data: events, error, isLoading } = useSWR('/api/events', fetcher);
+  const now = useMemo(() => new Date(), []);
+  const featuredEvents = useMemo(() => {
+    if (!events) return [];
+    return getUpcomingUniqueEvents(events, now, 30);
+  }, [events, now]);
   return (
     <>
       <Head>
-        <title>Eugene Musical Theatre Community Hub</title>
+        <title>Our Stage, Eugene</title>
         <meta name="description" content="Centralized hub for Eugene musical theatre events, auditions, and community." />
       </Head>
       <main className={styles.main}>
         <section className={styles.hero}>
           <div className={styles.heroContent}>
-            <h1 className={styles.heroTitle}>Eugene Musical Theatre Community Hub</h1>
+            <h1 className={styles.heroTitle}>Our Stage, Eugene</h1>
             <p className={styles.heroSubtitle}>
               Your one-stop resource for performances, auditions, workshops, and community connections in Eugene, Oregon.
             </p>
@@ -24,21 +71,31 @@ export default function Home() {
         <section className={styles.features}>
           <h2>Featured This Month</h2>
           <div className={styles.featuredEvents}>
-            <div className={styles.eventCard}>
-              <h3>Into the Woods</h3>
-              <p>Performance · May 10-12 · Hult Center</p>
-              <Link href="/events/into-the-woods">Details</Link>
-            </div>
-            <div className={styles.eventCard}>
-              <h3>Chicago (Audition)</h3>
-              <p>Audition · May 20 · Actors Cabaret</p>
-              <Link href="/events/chicago-audition">Details</Link>
-            </div>
-            <div className={styles.eventCard}>
-              <h3>Stagecraft Basics Workshop</h3>
-              <p>Workshop · May 25 · OCT</p>
-              <Link href="/events/stagecraft-workshop">Details</Link>
-            </div>
+            {isLoading && <div>Loading featured events...</div>}
+            {error && <div>Could not load events.</div>}
+            {featuredEvents.length === 0 && !isLoading && !error && (
+              <div style={{ textAlign: 'center', width: '100%' }}>
+                <strong>No upcoming events in the next 30 days.</strong>
+                <br />
+                <span style={{ fontSize: 14, color: '#888' }}>
+                  {events && events.length === 0
+                    ? 'Admin: Please add events to the calendar.'
+                    : 'Check back soon!'}
+                </span>
+              </div>
+            )}
+            {featuredEvents.map(event => (
+              <div className={styles.eventCard} key={event.slug + event.venue}>
+                <h3>{event.title}</h3>
+                <p>
+                  {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
+                  {' · '}
+                  {event.date}
+                  {event.venue && ` · ${event.venue}`}
+                </p>
+                <Link href={`/events/${event.slug}`}>Details</Link>
+              </div>
+            ))}
           </div>
         </section>
         <section className={styles.quickLinks}>

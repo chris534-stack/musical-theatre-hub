@@ -4,7 +4,7 @@ export default function News() {
   return (
     <>
       <Head>
-        <title>News | Eugene Musical Theatre Hub</title>
+        <title>News | Our Stage, Eugene</title>
       </Head>
       <main>
         <h1>News</h1>

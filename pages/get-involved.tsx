@@ -4,7 +4,7 @@ export default function GetInvolved() {
   return (
     <>
       <Head>
-        <title>Get Involved | Eugene Musical Theatre Hub</title>
+        <title>Get Involved | Our Stage, Eugene</title>
       </Head>
       <main>
         <h1>Get Involved</h1>

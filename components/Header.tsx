@@ -6,7 +6,7 @@ const Header: React.FC = () => (
   <header className={styles.header}>
     <div className={styles.logoNav}>
       <Link href="/" className={styles.logo}>
-        Eugene Musical Theatre Hub
+        Our Stage, Eugene
       </Link>
       <nav className={styles.nav}>
         <Link href="/calendar" className={styles.navLink}>Calendar</Link>

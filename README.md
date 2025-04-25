@@ -1,4 +1,4 @@
-# Eugene Musical Theatre Community Hub
+# Our Stage, Eugene
 
 **Next.js + TypeScript app for managing musical-theatre events**
 

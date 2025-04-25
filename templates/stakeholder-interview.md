@@ -1,7 +1,7 @@
 # Stakeholder Interview Template
 
 ## Introduction
-- Purpose: Gather detailed requirements for the Eugene Musical Theatre Community Hub website.
+- Purpose: Gather detailed requirements for the Our Stage, Eugene website.
 
 ## Questions
 1. What are your primary goals for using the website?

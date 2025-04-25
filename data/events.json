@@ -165,40 +165,6 @@
     "ticketLink": "#"
   },
   {
-    "slug": "into-the-woods",
-    "title": "Into the Woods",
-    "category": "performance",
-    "date": "2025-05-10",
-    "time": "7:30pm",
-    "venue": "Hult Center",
-    "description": "A magical journey through familiar fairy tales, reimagined with wit and heart.",
-    "director": "Jane Smith",
-    "cast": "Optional list here",
-    "ticketLink": "#"
-  },
-  {
-    "slug": "chicago-audition",
-    "title": "Chicago (Audition)",
-    "category": "audition",
-    "date": "2025-05-20",
-    "time": "6:00pm",
-    "venue": "Actors Cabaret",
-    "description": "Auditions for the musical 'Chicago'. Prepare a 32-bar song, bring headshot and resume.",
-    "director": "John Doe",
-    "ticketLink": "mailto:auditions@aceugene.org"
-  },
-  {
-    "slug": "stagecraft-workshop",
-    "title": "Stagecraft Basics Workshop",
-    "category": "workshop",
-    "date": "2025-05-25",
-    "time": "1:00pm",
-    "venue": "Oregon Contemporary Theatre",
-    "description": "Hands-on introduction to stagecraft for all experience levels.",
-    "director": "Alex Lee",
-    "ticketLink": "#"
-  },
-  {
     "title": "Pegasus Playhouse Season Auditions",
     "date": "2025-05-03",
     "time": "12:00",

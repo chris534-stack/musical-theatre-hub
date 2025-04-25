@@ -1,6 +1,6 @@
 # About Us
 
-The Eugene Musical Theatre Community Hub brings together performers, directors, crew, educators, and fans to celebrate and support musical theatre in Eugene, Oregon.
+Our Stage, Eugene brings together performers, directors, crew, educators, and fans to celebrate and support musical theatre in Eugene, Oregon.
 
 ## Our Mission
 To foster a vibrant, inclusive, and collaborative musical theatre community by providing a centralized platform for events, opportunities, and resources.

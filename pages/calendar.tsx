@@ -134,7 +134,7 @@ export default function CalendarPage() {
   return (
     <>
       <Head>
-        <title>Events Calendar | Eugene Musical Theatre Hub</title>
+        <title>Events Calendar | Our Stage, Eugene</title>
       </Head>
       <main style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginTop: 24 }}>
         <div style={{ minWidth: 240, maxWidth: 260, width: 100, height: '100%' }}>

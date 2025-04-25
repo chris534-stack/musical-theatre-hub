@@ -4,7 +4,7 @@ export default function Community() {
   return (
     <>
       <Head>
-        <title>Community | Eugene Musical Theatre Hub</title>
+        <title>Community | Our Stage, Eugene</title>
       </Head>
       <main>
         <h1>Community</h1>

@@ -1,4 +1,4 @@
-# Eugene Musical Theatre Community Hub
+# Our Stage, Eugene
 
 Welcome to your one-stop resource for all things musical theatre in Eugene! Discover auditions, performances, workshops, and connect with the vibrant theatre community.
 

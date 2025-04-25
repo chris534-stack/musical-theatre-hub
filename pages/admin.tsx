@@ -12,7 +12,7 @@ export default function AdminPage() {
     return (
       <main style={{ minHeight: '100vh', background: '#f9f9f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Head>
-          <title>Admin Login | Eugene Musical Theatre Hub</title>
+          <title>Admin Login | Our Stage, Eugene</title>
         </Head>
         <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 6px 32px 0 rgba(46,58,89,0.10)', padding: '2.5rem 2.5rem 2rem 2.5rem', maxWidth: 380, width: '100%', textAlign: 'center' }}>
           <h1 style={{ color: '#2e3a59', fontWeight: 800, marginBottom: 8, fontSize: '2rem', letterSpacing: '0.5px' }}>Admin Login</h1>
@@ -20,7 +20,7 @@ export default function AdminPage() {
             Please sign in with your authorized Google account to access the admin dashboard.
           </p>
           <button
-            onClick={() => signIn('google', { callbackUrl: '/admin' })}
+            onClick={() => signIn('google')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -47,14 +47,14 @@ export default function AdminPage() {
             }}
           >
             <span style={{ display: 'flex', alignItems: 'center', height: 22 }}>
-              <svg width="22" height="22" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <g>
-                  <path fill="#4285F4" d="M43.611 20.083H42V20H24v8h11.303C34.728 32.091 29.728 35 24 35c-6.627 0-12-5.373-12-12s5.373-12 12-12c2.761 0 5.287.99 7.274 2.617l6.849-6.849C34.346 5.14 29.396 3 24 3 12.954 3 4 11.954 4 23s8.954 20 20 20c11.046 0 19.87-7.954 19.87-20 0-1.341-.138-2.359-.259-3.333z"/>
-                  <path fill="#34A853" d="M6.306 14.691l6.571 4.819C14.655 16.12 18.961 13 24 13c2.761 0 5.287.99 7.274 2.617l6.849-6.849C34.346 5.14 29.396 3 24 3c-6.627 0-12 5.373-12 12 0 2.042.516 3.97 1.416 5.691z"/>
-                  <path fill="#FBBC05" d="M24 44c5.356 0 10.243-1.797 13.993-4.889l-6.481-5.303C29.726 35.001 27.037 36 24 36c-5.709 0-10.572-3.872-12.303-9.093l-6.535 5.034C7.743 39.625 15.308 44 24 44z"/>
-                  <path fill="#EA4335" d="M43.611 20.083H42V20H24v8h11.303c-1.635 4.091-6.635 7-11.303 7-2.761 0-5.287-.99-7.274-2.617l-6.849 6.849C13.654 42.86 18.604 45 24 45c8.692 0 16.257-4.375 19.838-11.059l-6.535-5.034C34.572 40.128 29.709 44 24 44z"/>
-                </g>
-              </svg>
+              <svg width="22" height="22" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path fill="#4285F4" d="M533.5 278.4c0-17.6-1.6-35-4.8-51.7H272v97.8h146.9c-6.3 34.1-25.2 62.9-53.7 82.2v68.2h86.9c51.1-47.1 80.4-116.4 80.4-196.5z"/>
+    <path fill="#34A853" d="M272 544.3c72.6 0 133.6-24.1 178.1-65.5l-86.9-68.2c-24.1 16.2-54.8 25.8-91.2 25.8-70.2 0-129.7-47.5-151-111.4H31.1v69.8C75.2 486.1 167.2 544.3 272 544.3z"/>
+    <path fill="#FBBC05" d="M121 324.9c-10.1-29.9-10.1-62.1 0-92l-69.9-69.8C7.1 207.8 0 239.7 0 272.2c0 32.5 7.1 64.4 21.1 94.1l69.9-69.8z"/>
+    <path fill="#EA4335" d="M272 107.7c39.6 0 75.1 13.6 103.1 40.3l77.4-77.4C405.6 24.1 344.6 0 272 0 167.2 0 75.2 58.2 31.1 153.3l69.9 69.8c21.3-63.9 80.8-111.4 151-111.4z"/>
+  </g>
+</svg>
             </span>
             Sign in with Google
           </button>
@@ -66,7 +66,7 @@ export default function AdminPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#f9f9f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Head>
-        <title>Admin Panel | Eugene Musical Theatre Hub</title>
+        <title>Admin Panel | Our Stage, Eugene</title>
       </Head>
       <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 6px 32px 0 rgba(46,58,89,0.10)', padding: '2.5rem 2.5rem 2rem 2.5rem', maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <h1 style={{ color: '#2e3a59', fontWeight: 800, marginBottom: 8, fontSize: '2rem', letterSpacing: '0.5px' }}>Admin Panel</h1>
