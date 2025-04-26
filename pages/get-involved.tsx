@@ -123,8 +123,10 @@ export default function GetInvolved({ auditions }: { auditions: Event[] }) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/events`);
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  // Prefer NEXTAUTH_URL, then VERCEL_URL, then localhost
+  const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  const res = await fetch(`${baseUrl}/api/events`);
   const events: Event[] = await res.json();
   const now = new Date();
   const auditions = events.filter(e =>
