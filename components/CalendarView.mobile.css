@@ -1,0 +1,10 @@
+.rbc-day-bg {
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rbc-day-bg:hover {
+    background: #f5f7fb !important;
+    transition: background 0.15s;
+  }
+}

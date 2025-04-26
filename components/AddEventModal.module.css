@@ -1,0 +1,98 @@
+/* AddEventModal.module.css - Mobile-first, modern modal styling */
+
+.customModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  transition: background 0.2s;
+}
+
+.customModalContainer {
+  background: #fff;
+  width: 100vw;
+  min-height: 60vh;
+  max-height: 100vh;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  padding: 0;
+  overflow-y: auto;
+  position: relative;
+  animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.customModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem 0.6rem 1.5rem;
+  border-bottom: 1px solid #f1f1f1;
+  background: #fff;
+  border-radius: 18px 18px 0 0;
+}
+
+.customModalClose {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #444;
+  cursor: pointer;
+  padding: 0 0.5rem;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.customModalClose:hover {
+  color: #e53e3e;
+}
+
+.customModalBody {
+  padding: 1.2rem 1.5rem 1.5rem 1.5rem;
+  flex: 1 1 auto;
+  background: #fff;
+  overflow-y: auto;
+}
+
+.customModalFooter {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f1f1f1;
+  background: #fff;
+  border-radius: 0 0 18px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+  .customModalOverlay {
+    align-items: center;
+  }
+  .customModalContainer {
+    width: 420px;
+    min-height: 0;
+    max-height: 90vh;
+    border-radius: 16px;
+  }
+  .customModalBody {
+    padding: 1.5rem 2rem 1.5rem 2rem;
+  }
+  .customModalHeader, .customModalFooter {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Accessibility: Prevent background scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
+}

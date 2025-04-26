@@ -2,6 +2,7 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
+import DatePicker from 'react-multi-date-picker';
 import AdminModal from '../components/AdminModal';
 import useIsAdmin from '../components/useIsAdmin';
 import EventFilterSidebar from '../components/EventFilterSidebar';
@@ -9,8 +10,7 @@ import { getCanonicalVenues, getVenuesForCanonical } from '../components/venueFu
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-import DatePicker from "react-multi-date-picker";
-import MultiStepAddEventForm from '../components/MultiStepAddEventForm';
+import AddEventModal from '../components/AddEventModal';
 
 function AddEventForm({ onSuccess }: { onSuccess: () => void }) {
   const [title, setTitle] = useState('');
@@ -259,12 +259,14 @@ export default function CalendarPage() {
             )}
             <Calendar events={filteredEvents} />
             {isAdmin && (
-              <AdminModal open={modalOpen} onClose={() => setModalOpen(false)} title="Add Event">
-                <MultiStepAddEventForm onSuccess={() => {
+              <AddEventModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSubmit={() => {
                   setModalOpen(false);
                   mutate('/api/events');
-                }} />
-              </AdminModal>
+                }}
+              />
             )}
           </div>
         </div>

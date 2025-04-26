@@ -1,11 +1,14 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { FaPalette } from 'react-icons/fa';
 import useIsAdmin from './useIsAdmin';
 import AdminModal from './AdminModal';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+
 import DayEventsModal from './DayEventsModal';
+import { useSwipeable } from 'react-swipeable';
+
 
 export interface EventType {
   slug: string;
@@ -168,16 +171,69 @@ const EventTitleMarquee: React.FC<{ title: string; hideText?: boolean; small?: b
           transition: hovered && scroll > 0 ? `transform ${duration.toFixed(2)}s linear` : 'transform 0.4s',
         }}
       >
-        {hideText ? '' : title}
+        {!hideText ? title : null}
       </div>
     </div>
   );
 };
 
 const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
+  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
+  const [date, setDate] = useState(new Date());
+  const calendarRef = useRef<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDate, setModalDate] = useState<Date | null>(null);
   const [modalEvents, setModalEvents] = useState<EventType[]>([]);
+
+  // --- Mobile tap injection for month view ---
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 600px)').matches;
+    if (!isMobile || view !== 'month') return;
+    // Wait for calendar to render
+    setTimeout(() => {
+      const dayCells = document.querySelectorAll('.rbc-month-view .rbc-day-bg');
+      if (!dayCells.length) return;
+      // Find the first visible date in the grid
+      const start = moment(date).startOf('month').startOf('week');
+      dayCells.forEach((cell, idx) => {
+        // Remove any previous injected button
+        const prev = cell.querySelector('.tap-inject-btn');
+        if (prev) prev.remove();
+        // Compute date for this cell
+        const cellDate = start.clone().add(idx, 'days').toDate();
+        // Create transparent button
+        const btn = document.createElement('button');
+        btn.className = 'tap-inject-btn';
+        btn.style.position = 'absolute';
+        btn.style.top = '0';
+        btn.style.left = '0';
+        btn.style.width = '100%';
+        btn.style.height = '100%';
+        btn.style.background = 'transparent';
+        btn.style.border = 'none';
+        btn.style.padding = '0';
+        btn.style.margin = '0';
+        btn.style.zIndex = '10';
+        btn.style.cursor = 'pointer';
+        btn.setAttribute('aria-label', `Open events for ${moment(cellDate).format('MMMM D, YYYY')}`);
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const eventsForDay = events.filter(ev => moment(ev.date).isSame(moment(cellDate), 'day'));
+          setModalDate(cellDate);
+          setModalEvents(eventsForDay);
+          setModalOpen(true);
+        };
+        (cell as HTMLElement).style.position = 'relative';
+        cell.appendChild(btn);
+      });
+    }, 20);
+    // Cleanup on unmount/view change
+    return () => {
+      const dayCells = document.querySelectorAll('.rbc-month-view .rbc-day-bg .tap-inject-btn');
+      dayCells.forEach(btn => btn.remove());
+    };
+  }, [date, view, events]);
+
 
   const calendarEvents = useMemo(
     () =>
@@ -229,7 +285,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
   }
 
   // Generate all valid (bg, border, text) combos
-  const COLOR_PAIRS = [];
+  const COLOR_PAIRS: { bg: string; border: string; text: string }[] = [];
   for (const bg of BRAND_COLORS) {
     for (const border of BRAND_COLORS) {
       if (border.hex === bg.hex) continue;
@@ -251,80 +307,171 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
   }
 
 
-  return (
-    <>
+  // Swipe detection ref to block accidental modal on swipe
+  const swipeInProgress = useRef(false);
 
-      <Calendar
-        localizer={localizer}
-        events={calendarEvents}
-        startAccessor="start"
-        endAccessor="end"
-        style={{ height: 600, margin: '2rem 0' }}
-        selectable={isMobile}
-        onSelectSlot={handleSelectSlot}
-        components={{
-        event: (props: any) => {
-          // Detect if we're in month view and on mobile
-          const isMobile = useMobileOrAdjacent();
-          const calendarView = document.querySelector('.rbc-month-view');
-          const inMonthView = !!calendarView;
-          // If in month view and mobile, show only colored bars (no text, short height)
-          if (isMobile && inMonthView) {
-            return <EventTitleMarquee title={props.title} hideText small />;
-          }
-          return <EventTitleMarquee title={props.title} />;
-        },
-        month: {
-          event: (props: any) => {
-            // Always render the event, never show "+N more" button
-            const isMobile = useMobileOrAdjacent();
-            if (isMobile) {
-              return <EventTitleMarquee title={props.title} hideText small />;
+  // Swipe gesture handlers (only on mobile)
+  // Utility: check if date is in the current month
+  const isCurrentMonth = moment(date).isSame(moment(), 'month');
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      swipeInProgress.current = true;
+      if (!isMobile) return;
+      if (view === 'month') setDate(prev => moment(prev).add(1, 'month').toDate());
+      else if (view === 'week') setDate(prev => moment(prev).add(1, 'week').toDate());
+      else if (view === 'day') setDate(prev => moment(prev).add(1, 'day').toDate());
+      setTimeout(() => { swipeInProgress.current = false; }, 200);
+    },
+    onSwipedRight: () => {
+      swipeInProgress.current = true;
+      if (!isMobile) return;
+      if (view === 'month') {
+        // Only allow swiping right if not in current month
+        if (!isCurrentMonth) setDate(prev => {
+          const prevMonth = moment(prev).subtract(1, 'month');
+          // Prevent navigating before current month
+          if (prevMonth.isBefore(moment(), 'month')) return prev;
+          return prevMonth.toDate();
+        });
+      } else if (view === 'week') setDate(prev => moment(prev).subtract(1, 'week').toDate());
+      else if (view === 'day') setDate(prev => moment(prev).subtract(1, 'day').toDate());
+      setTimeout(() => { swipeInProgress.current = false; }, 200);
+    },
+    trackMouse: false,
+    trackTouch: true,
+    delta: 30,
+    onSwipeStart: () => { swipeInProgress.current = true; },
+    // onSwiped will always fire after a swipe gesture
+    onSwiped: () => { setTimeout(() => { swipeInProgress.current = false; }, 200); },
+  });
+
+  return (
+    <div {...(isMobile ? swipeHandlers : {})}>
+      {/* Custom navigation buttons for month view */}
+      {view === 'month' && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <button
+            onClick={() => {
+              if (!isCurrentMonth) setDate(prev => {
+                const prevMonth = moment(prev).subtract(1, 'month');
+                if (prevMonth.isBefore(moment(), 'month')) return prev;
+                return prevMonth.toDate();
+              });
+            }}
+            disabled={isCurrentMonth}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: isCurrentMonth ? '#b0b4ba' : '#23395d',
+              fontSize: 28,
+              cursor: isCurrentMonth ? 'not-allowed' : 'pointer',
+              opacity: isCurrentMonth ? 0.5 : 1,
+              transition: 'color 0.2s, opacity 0.2s',
+              marginRight: 6,
+              padding: '2px 10px',
+              borderRadius: 8,
+              fontWeight: 700,
+            }}
+            aria-label="Previous Month"
+          >
+            &#8592;
+          </button>
+          <div style={{ fontWeight: 700, fontSize: 18, color: '#23395d', minWidth: 120, textAlign: 'center' }}>
+            {moment(date).format('MMMM YYYY')}
+          </div>
+          <button
+            onClick={() => setDate(prev => moment(prev).add(1, 'month').toDate())}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#23395d',
+              fontSize: 28,
+              cursor: 'pointer',
+              marginLeft: 6,
+              padding: '2px 10px',
+              borderRadius: 8,
+              fontWeight: 700,
+              transition: 'color 0.2s',
+            }}
+            aria-label="Next Month"
+          >
+            &#8594;
+          </button>
+        </div>
+      )}
+      <div style={{ position: 'relative' }}>
+        <Calendar
+          localizer={localizer}
+          events={calendarEvents}
+          startAccessor="start"
+          endAccessor="end"
+          style={{ height: 600, margin: '2rem 0' }}
+          selectable={false}
+          longPressThreshold={isMobile ? 1 : 250}
+          view={view}
+          onView={(v: string) => setView(v as 'month' | 'week' | 'day')}
+          date={date}
+          onNavigate={(d: Date) => {
+            // Prevent navigating to a past month
+            if (view === 'month' && moment(d).isBefore(moment(), 'month')) return;
+            setDate(d);
+          }}
+          components={{
+            toolbar: () => null,
+            event: (props: any) => {
+              // On mobile month view, render the marquee with NO tap handler
+              const isMobile = useMobileOrAdjacent();
+              const calendarView = document.querySelector('.rbc-month-view');
+              const inMonthView = !!calendarView;
+              if (isMobile && inMonthView) {
+                return <EventTitleMarquee title={props.title} hideText small />;
+              }
+              return <EventTitleMarquee title={props.title} />;
+            },
+            month: {
+              event: (props: any) => {
+                const isMobile = useMobileOrAdjacent();
+                if (isMobile) {
+                  return <EventTitleMarquee title={props.title} hideText small />;
+                }
+                return <EventTitleMarquee title={props.title} />;
+              },
+              eventWrapper: (props: any) => <div>{props.children}</div>,
+              showMore: () => null,
+            },
+          }}
+          eventPropGetter={(event: any) => {
+            const venue = event.resource?.venue || '';
+            const { bg, border, text } = getVenueColorSet(venue);
+            return {
+              style: {
+                backgroundColor: bg,
+                color: text,
+                borderRadius: 16,
+                border: `2px solid ${border}`,
+                fontWeight: 700,
+                fontSize: 15,
+                opacity: 1,
+                boxShadow: '0 4px 16px rgba(35,57,93,0.13)',
+                padding: '2px 12px',
+                transition: 'box-shadow 0.18s, background 0.18s',
+                cursor: 'pointer',
+              },
+            };
+          }}
+          // Remove onSelectEvent for mobile, tap handled by overlay below
+          onSelectEvent={!isMobile ? (event: any) => {
+            if (event.resource && event.resource.slug && event.resource.venue) {
+              const venueParam = encodeURIComponent(event.resource.venue);
+              window.location.href = `/events/${event.resource.slug}?venue=${venueParam}`;
             }
-            // fallback to default
-            return <EventTitleMarquee title={props.title} />;
-          },
-          eventWrapper: (props: any) => <div>{props.children}</div>,
-          showMore: () => null, // disables the '+N more' button
-        },
-      }}
-      eventPropGetter={(event: any) => {
-        // Procedurally assign visually distinct and legible colors to each venue
-        const venue = event.resource?.venue || '';
-        const { bg, border, text } = getVenueColorSet(venue);
-        return {
-          style: {
-            backgroundColor: bg,
-            color: text,
-            borderRadius: 16,
-            border: `2px solid ${border}`,
-            fontWeight: 700,
-            fontSize: 15,
-            opacity: 1,
-            boxShadow: '0 4px 16px rgba(35,57,93,0.13)',
-            padding: '2px 12px',
-            transition: 'box-shadow 0.18s, background 0.18s',
-            cursor: 'pointer',
-          },
-        };
-      }}
-      onSelectEvent={(event: any) => {
-        if (isMobile) {
-          // On mobile, open modal for the event's date
-          const date = event.start;
-          const eventsForDay = events.filter(ev =>
-            moment(ev.date).isSame(moment(date), 'day')
-          );
-          setModalDate(date);
-          setModalEvents(eventsForDay);
-          setModalOpen(true);
-        } else if (event.resource && event.resource.slug && event.resource.venue) {
-          const venueParam = encodeURIComponent(event.resource.venue);
-          // Never add date to the URL
-          window.location.href = `/events/${event.resource.slug}?venue=${venueParam}`;
-        }
-      }}
-    />
+          } : undefined}
+        />
+        {/* Overlay tap listeners for mobile month view */}
+
+      </div>
+    {/* end calendar container */}
     {isMobile && (
       <DayEventsModal
         open={modalOpen}
@@ -333,7 +480,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
         date={modalDate || new Date()}
       />
     )}
-  </>);
+  </div>
+  );
 };
 
 export default CalendarView;

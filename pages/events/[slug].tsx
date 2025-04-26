@@ -84,65 +84,68 @@ export default function EventDetail() {
               const dateB = new Date(b.date + 'T' + (b.time ? b.time : '00:00'));
               return dateA.getTime() - dateB.getTime();
             })
-            .map((show: any) => (
-              <li key={show.date + show.time}>
-                <strong>{moment(show.date).format('MMMM Do, YYYY')}</strong>
-                {' @ '}
-                {show.time ? moment(show.time, ["HH:mm","h:mmA","h:mma"]).format("h:mm a") : 'TBA'}
-                {show.isMatinee && (
-                  <span style={{ color: '#b36b00', marginLeft: 8, fontWeight: 600 }} title="Matinee">(Matinee)</span>
-                )}
-                {isAdmin && (
-  editingPerformance && editingPerformance.date === show.date && editingPerformance.time === show.time ? (
-    <span style={{ marginLeft: 10 }}>
-      <input
-        type="time"
-        value={editingPerformance.time || ''}
-        onChange={e => setEditingPerformance({ ...editingPerformance, time: e.target.value })}
-        style={{ fontSize: 13, marginRight: 6 }}
-      />
-      <label style={{ fontSize: 13, marginRight: 6 }}>
-        <input
-          type="checkbox"
-          checked={!!editingPerformance.isMatinee}
-          onChange={e => setEditingPerformance({ ...editingPerformance, isMatinee: e.target.checked })}
-          style={{ marginRight: 2 }}
-        />
-        Matinee
-      </label>
-      <button
-        style={{ fontSize: 13, padding: '2px 8px', borderRadius: 4, border: '1px solid #1976d2', background: '#1976d2', color: 'white', cursor: 'pointer', marginRight: 4 }}
-        onClick={async () => {
-          await fetch('/api/update-event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...editingPerformance, slug: event.slug }),
-          });
-          setEditingPerformance(null);
-          window.location.reload();
-        }}
-      >
-        Save
-      </button>
-      <button
-        style={{ fontSize: 13, padding: '2px 8px', borderRadius: 4, border: '1px solid #aaa', background: '#eee', color: '#333', cursor: 'pointer' }}
-        onClick={() => setEditingPerformance(null)}
-      >
-        Cancel
-      </button>
-    </span>
-  ) : (
-    <button
-      style={{ marginLeft: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#1976d2', display: 'inline-flex', alignItems: 'center', fontSize: 18 }}
-      title="Edit time"
-      onClick={() => setEditingPerformance(show)}
-    >
-      <FaEdit />
-    </button>
-  )
-)}
-              </li>
-            ))}
+            .map((show: any) => {
+              return (
+                <li key={show.date + show.time}>
+                  <span>
+                    <strong>{moment(show.date + (show.time ? 'T' + show.time : '')).format('MMMM Do, YYYY')}</strong>
+                    {show.time ? ` @ ${moment(show.date + (show.time ? 'T' + show.time : '')).format('h:mm a')}` : ''}
+                    {show.isMatinee && (
+                      <span style={{ color: '#b36b00', marginLeft: 8, fontWeight: 600 }} title="Matinee">(Matinee)</span>
+                    )}
+                  </span>
+                  {isAdmin && (
+                    editingPerformance && editingPerformance.date === show.date && editingPerformance.time === show.time ? (
+                      <span style={{ marginLeft: 10 }}>
+                        <input
+                          type="time"
+                          value={editingPerformance.time || ''}
+                          onChange={e => setEditingPerformance({ ...editingPerformance, time: e.target.value })}
+                          style={{ fontSize: 13, marginRight: 6 }}
+                        />
+                        <label style={{ fontSize: 13, marginRight: 6 }}>
+                          <input
+                            type="checkbox"
+                            checked={!!editingPerformance.isMatinee}
+                            onChange={e => setEditingPerformance({ ...editingPerformance, isMatinee: e.target.checked })}
+                            style={{ marginRight: 2 }}
+                          />
+                          Matinee
+                        </label>
+                        <button
+                          style={{ fontSize: 13, padding: '2px 8px', borderRadius: 4, border: '1px solid #1976d2', background: '#1976d2', color: 'white', cursor: 'pointer', marginRight: 4 }}
+                          onClick={async () => {
+                            await fetch('/api/update-event', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ ...editingPerformance, slug: event.slug }),
+                            });
+                            setEditingPerformance(null);
+                            window.location.reload();
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          style={{ fontSize: 13, padding: '2px 8px', borderRadius: 4, border: '1px solid #aaa', background: '#eee', color: '#333', cursor: 'pointer' }}
+                          onClick={() => setEditingPerformance(null)}
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        style={{ marginLeft: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#1976d2', display: 'inline-flex', alignItems: 'center', fontSize: 18 }}
+                        title="Edit time"
+                        onClick={() => setEditingPerformance(show)}
+                      >
+                        <FaEdit />
+                      </button>
+                    )
+                  )}
+                </li>
+              );
+            })}
         </ul>
         {editingPerformance && (
           <EditPerformanceModal

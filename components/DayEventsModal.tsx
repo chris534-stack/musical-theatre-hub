@@ -76,7 +76,13 @@ export default function DayEventsModal({ open, onClose, events, date }: DayEvent
               >
                 {ev.title}
               </a>
-              <div style={{ fontSize: '0.98rem', color: '#4b5d8c' }}>{ev.venue} &mdash; {ev.time || 'TBA'}</div>
+              <div style={{ fontSize: '0.98rem', color: '#4b5d8c' }}>{ev.venue} &mdash; {(() => {
+                if (!ev.date) return ev.time || 'TBA';
+                const d = new Date(ev.date + (ev.time ? 'T' + ev.time : ''));
+                const dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                const timeStr = ev.time ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+                return timeStr ? `${dateStr} at ${timeStr}` : dateStr;
+              })()}</div>
               <div style={{ fontSize: '0.97rem', margin: '6px 0 0 0', color: '#555' }}>{ev.description}</div>
               {ev.ticketLink && <a href={ev.ticketLink} target="_blank" rel="noopener noreferrer" style={{ color: '#2e3a59', fontWeight: 600, textDecoration: 'underline', display: 'block', marginTop: 6 }}>Tickets</a>}
             </div>

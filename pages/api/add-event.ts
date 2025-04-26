@@ -18,7 +18,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       event.slug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
     // Prevent duplicate for same date/slug
-    const exists = events.some(e => e.slug === event.slug && e.date === event.date);
+    const exists = events.some((e: any) => e.slug === event.slug && e.date === event.date);
     if (!exists) {
       events.push(event);
     }

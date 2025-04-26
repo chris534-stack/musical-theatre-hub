@@ -36,16 +36,35 @@ const About: React.FC = () => {
         </section>
         <section style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 16px 0 rgba(46,58,89,0.08)', padding: '2rem 2.2rem' }}>
           <h2 style={{ color: '#ffd700', fontWeight: 700, fontSize: '1.4rem', marginBottom: '1rem' }}>Participating Organizations</h2>
-          <ul style={{ color: '#2e3a59', fontSize: '1.08rem', columns: 2, listStyle: 'square inside', margin: 0, padding: 0 }}>
-            <li>Actors Cabaret of Eugene</li>
+          <ul
+            style={{
+              color: '#2e3a59',
+              fontSize: '1.08rem',
+              columns: 2,
+              listStyle: 'square inside',
+              margin: 0,
+              padding: 0,
+              width: '100%',
+              maxWidth: 600,
+            }}
+            className="participating-orgs-list"
+          >
+            <li>Actors Cabaret of Eugene (ACE)</li>
             <li>Oregon Contemporary Theatre (OCT)</li>
             <li>Very Little Theatre (VLT)</li>
             <li>Pegasus Playhouse</li>
             <li>LCC Ragazino Theater</li>
-            <li>Rose Children's Theatre</li>
+            <li>Rose Children's Theatre (RCT)</li>
             <li>Upstart Crow Youth Theatre</li>
             <li>And more—suggest your group!</li>
           </ul>
+          <style>{`
+            @media (max-width: 600px) {
+              .participating-orgs-list {
+                columns: 1 !important;
+              }
+            }
+          `}</style>
           <div style={{ marginTop: '1.2rem', textAlign: 'center' }}>
             <strong style={{ color: '#888', fontSize: '0.98em' }}>Want your organization listed?</strong>
             <br />

@@ -85,14 +85,15 @@ export default function Home() {
               </div>
             )}
             {featuredEvents.map(event => (
-              <div className={styles.eventCard} key={event.slug + event.venue}>
+              <div className={styles.eventCard} key={event.slug}>
                 <h3>{event.title}</h3>
-                <p>
-                  {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
-                  {' · '}
-                  {event.date}
-                  {event.venue && ` · ${event.venue}`}
-                </p>
+                <div style={{ color: '#4b5d8c', fontSize: 16, marginBottom: 2 }}>{event.venue}</div>
+                <div style={{ color: '#666', fontSize: 15, marginBottom: 6 }}>{(() => {
+                  const d = new Date(event.date + (event.time ? 'T' + event.time : ''));
+                  const dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                  const timeStr = event.time ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+                  return timeStr ? `${dateStr} at ${timeStr}` : dateStr;
+                })()}</div>
                 <Link href={`/events/${event.slug}`}>Details</Link>
               </div>
             ))}
@@ -104,6 +105,7 @@ export default function Home() {
             <Link href="/get-involved" className={styles.linkCard}>Auditions & Volunteering</Link>
             <Link href="/community" className={styles.linkCard}>Join the Community</Link>
             <Link href="/news" className={styles.linkCard}>Read the Latest News</Link>
+            <Link href="/about" className={styles.linkCard}>About Us</Link>
           </div>
         </section>
       </main>

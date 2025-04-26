@@ -39,6 +39,9 @@ interface MultiStepAddEventFormProps {
 }
 
 const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: MultiStepAddEventFormProps) => {
+  // --- Date Picker open state for dismiss-on-blur UX ---
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+
   // Handle per-date matinee changes
   const handleDateMatineeChange = (idx: number, field: 'isMatinee' | 'matineeTime', value: any) => {
     setValues(v => {
@@ -139,8 +142,8 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
             body: JSON.stringify({ slug, date: dateStr, time: d.matineeTime }),
           });
         }
-      } else {
-        // Single event (audition or workshop)
+      } else if (values.category === 'workshop' || values.category === 'audition') {
+        // Single event (workshop or audition)
         const event: any = {
           title: values.title,
           slug,
@@ -150,9 +153,12 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
           date: dateStr,
           time: d.mainTime,
         };
-        if (values.category === 'performance') event.director = values.director;
-        if (values.category === 'workshop') event.instructor = values.instructor;
-        if (values.category === 'audition') event.requirements = values.requirements;
+        if (values.category === 'workshop') {
+          event.instructor = values.instructor;
+        }
+        if (values.category === 'audition') {
+          event.requirements = values.requirements;
+        }
         const endpoint = editMode ? '/api/update-event' : '/api/add-event';
         const res = await fetch(endpoint, {
           method: 'POST',
@@ -207,10 +213,17 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
     <label style={{ fontWeight: 600, marginRight: 8 }}>Default Matinee Time:</label>
     <input type="time" value={defaultMatineeTime} onChange={e => setDefaultMatineeTime(e.target.value)} />
   </div>
+  {/* DatePicker with controlled open state and onClose for outside click */}
+  {/*
+    react-multi-date-picker (DatePicker) does not support open/onClose in all versions. If not supported, fallback to default behavior.
+    TODO: If your version does not support 'open', consider updating or use a wrapper for dismiss-on-blur.
+  */}
   <DatePicker
     multiple
     value={values.dates.map(d => d.date)}
+
     onChange={dates => {
+      setDatePickerOpen(false); // close after change as well
       // Ensure dates is always an array of EventDate objects
       const newDates = Array.isArray(dates)
         ? dates.map(date => {
@@ -233,6 +246,8 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
     }}
     format="YYYY-MM-DD"
     placeholder="Select dates"
+
+    inputClass="date-picker-input"
   />
   {values.dates.length > 0 && values.dates.map((d, idx) => (
     <div key={idx} style={{ border: '1px solid #ccc', borderRadius: 4, padding: 8, marginBottom: 8 }}>
