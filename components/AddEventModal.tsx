@@ -4,6 +4,7 @@ import DatePicker from 'react-multi-date-picker';
 import { mutate } from 'swr';
 
 import styles from './AddEventModal.module.css';
+import formatDate from './formatDate';
 
 
 // Steps for the stepper
@@ -329,18 +330,31 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
           )}
           {/* Step 3: Review & Submit */}
           {step === 2 && (
-            <div>
-              <span style={{ fontWeight: 'bold', marginBottom: 8, display: 'block' }}>Review Event Details</span>
-              <hr style={{ marginBottom: '8px', borderColor: '#E2E8F0' }} />
-              <span><b>Title:</b> {title}</span>
-              <span><b>Venue:</b> {venue}</span>
-              <span><b>Category:</b> {categoryOptions.find(opt => opt.value === category)?.label}</span>
-              <span style={{ marginTop: 8, fontWeight: 'bold', display: 'block' }}>Dates & Times:</span>
-              {dates.map((d, i) => (
-                <div key={i} style={{ paddingLeft: 16, marginBottom: 4 }}>
-                  <span>- {d.date}: Main {d.mainTime || 'N/A'}{d.isMatinee ? `, Matinee ${d.matineeTime || 'N/A'}` : ''}</span>
+            <div className={styles.reviewSection}>
+              <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 18 }}>Review Event Details</div>
+              <hr style={{ marginBottom: '16px', borderColor: '#E2E8F0' }} />
+              <dl style={{ margin: 0, marginBottom: 16 }}>
+                <div style={{ marginBottom: 8 }}>
+                  <dt style={{ display: 'inline', fontWeight: 600 }}>Title:</dt>
+                  <dd style={{ display: 'inline', marginLeft: 6 }}>{title}</dd>
                 </div>
-              ))}
+                <div style={{ marginBottom: 8 }}>
+                  <dt style={{ display: 'inline', fontWeight: 600 }}>Venue:</dt>
+                  <dd style={{ display: 'inline', marginLeft: 6 }}>{venue}</dd>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <dt style={{ display: 'inline', fontWeight: 600 }}>Category:</dt>
+                  <dd style={{ display: 'inline', marginLeft: 6 }}>{categoryOptions.find(opt => opt.value === category)?.label}</dd>
+                </div>
+              </dl>
+              <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Dates & Times:</div>
+              <ul style={{ paddingLeft: 24, margin: 0 }}>
+                {dates.map((d, i) => (
+                  <li key={i} style={{ marginBottom: 4 }}>
+                    <span>{formatDate(d.date)}: Main {d.mainTime || 'N/A'}{d.isMatinee ? `, Matinee ${d.matineeTime || 'N/A'}` : ''}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           </div>

@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useState } from 'react';
 import useSWR from 'swr';
 import VolunteerRequestModal from '../components/VolunteerRequestModal';
+import formatDate from '../components/formatDate';
 import useIsAdmin from '../components/useIsAdmin';
 import { GetServerSideProps } from 'next';
 
@@ -109,7 +110,7 @@ export default function GetInvolved({ auditions }: { auditions: Event[] }) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <span><strong>{req.venue}</strong> - {req.description}</span>
                     <span><b>Expertise:</b> {req.expertise || 'Any'}</span>
-                    <span><b>Dates Needed:</b> {req.dates && req.dates.length ? req.dates.join(', ') : 'TBA'}</span>
+                    <span><b>Dates Needed:</b> {req.dates && req.dates.length ? req.dates.map((d: string) => formatDate(d)).join(', ') : 'TBA'}</span>
                     <span><b>Time Commitment:</b> {req.timeCommitment || 'TBA'}</span>
                   </div>
                 </li>
