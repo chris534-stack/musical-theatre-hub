@@ -3,9 +3,12 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-  const serviceAccount = require('../../scripts/our-stage-eugene-firebase-adminsdk-fbsvc-06c2558920.json');
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
   });
 }
 
