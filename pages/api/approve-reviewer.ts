@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!idToken) return res.status(401).json({ error: 'Unauthorized' });
 
     const decoded = await getAuth().verifyIdToken(idToken);
-    if (!ADMIN_EMAILS.includes(decoded.email)) {
+    if (!decoded.email || !ADMIN_EMAILS.includes(decoded.email)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

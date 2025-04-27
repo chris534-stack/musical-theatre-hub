@@ -1,13 +1,13 @@
 import React from 'react';
 import moment from 'moment';
-import { EventType } from './CalendarView';
+import type { CalendarEvent } from './CalendarView';
 
 interface OverlayTapListenersProps {
   date: Date;
   setModalDate: (d: Date) => void;
   setModalOpen: (open: boolean) => void;
-  events: EventType[];
-  setModalEvents: (evs: EventType[]) => void;
+  events: CalendarEvent[];
+  setModalEvents: (evs: CalendarEvent[]) => void;
 }
 
 // This overlay covers each day cell in the month view with a transparent tap area

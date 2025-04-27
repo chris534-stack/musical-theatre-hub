@@ -35,7 +35,7 @@ interface GroupedEvent {
 }
 
 // Type for a calendar event (flattened)
-interface CalendarEvent extends Omit<GroupedEvent, 'dates'>, EventDate {
+export interface CalendarEvent extends Omit<GroupedEvent, 'dates'>, EventDate {
   start: Date;
   end: Date;
   resource: GroupedEvent;

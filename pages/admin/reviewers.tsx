@@ -5,9 +5,21 @@ import { collection, getDocs, updateDoc, doc, deleteDoc } from 'firebase/firesto
 
 const ADMIN_EMAIL = 'christopher.ridgley@gmail.com';
 
+interface ReviewerApplicant {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  preferredName?: string;
+  pronouns?: string;
+  reviewerApplication?: boolean;
+  reviewerApproved?: boolean;
+  reviewerDeclined?: boolean;
+}
+
 export default function ReviewerAdminPage() {
   const [user, setUser] = useState<any>(null);
-  const [applicants, setApplicants] = useState<any[]>([]);
+  const [applicants, setApplicants] = useState<ReviewerApplicant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,7 +32,7 @@ export default function ReviewerAdminPage() {
     setLoading(true);
     getDocs(collection(db, 'users')).then((snap) => {
       const pending = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+        .map((d) => ({ id: d.id, ...d.data() } as ReviewerApplicant))
         .filter((u) => u.reviewerApplication && !u.reviewerApproved && !u.reviewerDeclined);
       setApplicants(pending);
       setLoading(false);
