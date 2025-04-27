@@ -1,15 +1,15 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-// import groupedEvents from '../data/events_grouped.json'; // Switched to Firestore via API
+import groupedEvents from '../data/events_grouped.json'; // TEMP: fallback to static events
 import { useState, useMemo, useEffect } from 'react';
-import useSWR, { mutate } from 'swr';
+// import useSWR, { mutate } from 'swr';
 import DatePicker from 'react-multi-date-picker';
 import AdminModal from '../components/AdminModal';
 import useIsAdmin from '../components/useIsAdmin';
 import EventFilterSidebar from '../components/EventFilterSidebar';
 import { getCanonicalVenues, getVenuesForCanonical } from '../components/venueFuzzyGroup';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+// const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 import AddEventModal from '../components/AddEventModal';
 
@@ -96,8 +96,8 @@ export default function CalendarPage() {
   const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const isMobile = useMobileOrAdjacent();
-  const { data: events, error, isLoading } = useSWR('/api/events', fetcher); // Now loads from Firestore
+  const isMobile = useMobileOrAdjacent(); // Use static events from JSON backup
+  const events = groupedEvents; // Now loads from static JSON
 
   // Multi-select filter state
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -143,8 +143,6 @@ export default function CalendarPage() {
     );
   };
 
-  if (isLoading) return <div>Loading events...</div>;
-  if (error) return <div>Failed to load events.</div>;
   if (!events) return null;
 
   return (
@@ -276,7 +274,6 @@ export default function CalendarPage() {
                 onClose={() => setModalOpen(false)}
                 onSubmit={() => {
                   setModalOpen(false);
-                  mutate('/api/events');
                 }}
               />
             )}
