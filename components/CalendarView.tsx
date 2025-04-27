@@ -5,28 +5,47 @@ import AdminModal from './AdminModal';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import styles from './CalendarView.module.css';
 
 import DayEventsModal from './DayEventsModal';
 import { useSwipeable } from 'react-swipeable';
 
+// Import grouped events JSON
+import groupedEvents from '../data/events_grouped.json';
+console.log('DEBUG: groupedEvents', groupedEvents);
 
-export interface EventType {
+// Type for a single date entry in the grouped format
+interface EventDate {
+  date: string;
+  time: string;
+  isMatinee?: boolean;
+}
+
+// Type for a grouped event
+interface GroupedEvent {
   slug: string;
   title: string;
   category: string;
-  date: string;
-  time: string;
   venue: string;
   description: string;
   director?: string;
   cast?: string;
   ticketLink?: string;
+  dates: EventDate[];
 }
+
+// Type for a calendar event (flattened)
+interface CalendarEvent extends Omit<GroupedEvent, 'dates'>, EventDate {
+  start: Date;
+  end: Date;
+  resource: GroupedEvent;
+}
+
 
 const localizer = momentLocalizer(moment);
 
 interface CalendarViewProps {
-  events: EventType[];
+  events?: GroupedEvent[]; // Optional, fallback to default import if not provided
 }
 
 // Helper to generate tints and shades (lighter and darker, more saturated)
@@ -177,13 +196,39 @@ const EventTitleMarquee: React.FC<{ title: string; hideText?: boolean; small?: b
   );
 };
 
+const flattenEvents = (grouped: GroupedEvent[]): CalendarEvent[] => {
+  console.log('DEBUG: flattenEvents input', grouped);
+  return grouped.flatMap(event =>
+    Array.isArray(event.dates)
+      ? event.dates.map(dateObj => {
+          console.log('DEBUG: flattening', event, dateObj);
+          return {
+            ...event,
+            ...dateObj,
+            // Explicitly set all shared fields for compatibility
+            title: event.title,
+            slug: event.slug,
+            category: event.category,
+            venue: event.venue,
+            description: event.description,
+            director: event.director,
+            ticketLink: event.ticketLink,
+            start: new Date(dateObj.time && dateObj.time.trim() ? `${dateObj.date}T${dateObj.time}` : dateObj.date),
+            end: new Date(dateObj.time && dateObj.time.trim() ? `${dateObj.date}T${dateObj.time}` : dateObj.date),
+            resource: event,
+          };
+        })
+      : []
+  );
+};
+
 const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [date, setDate] = useState(new Date());
   const calendarRef = useRef<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDate, setModalDate] = useState<Date | null>(null);
-  const [modalEvents, setModalEvents] = useState<EventType[]>([]);
+  const [modalEvents, setModalEvents] = useState<CalendarEvent[]>([]);
 
   // --- Mobile tap injection for month view ---
   useEffect(() => {
@@ -218,7 +263,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
         btn.setAttribute('aria-label', `Open events for ${moment(cellDate).format('MMMM D, YYYY')}`);
         btn.onclick = (e) => {
           e.stopPropagation();
-          const eventsForDay = events.filter(ev => moment(ev.date).isSame(moment(cellDate), 'day'));
+          const eventsForDay = flattenEvents(grouped).filter(ev => moment(ev.date).isSame(moment(cellDate), 'day'));
           setModalDate(cellDate);
           setModalEvents(eventsForDay);
           setModalOpen(true);
@@ -235,15 +280,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
   }, [date, view, events]);
 
 
+    // Use provided events or fallback to imported groupedEvents
+  const grouped = events ?? (groupedEvents as GroupedEvent[]);
+
   const calendarEvents = useMemo(
-    () =>
-      events.map((e) => ({
-        title: e.title,
-        start: new Date(e.date + 'T' + (e.time ? e.time : '19:00')),
-        end: new Date(e.date + 'T' + (e.time ? e.time : '21:00')),
-        resource: e,
-      })),
-    [events]
+    () => flattenEvents(grouped),
+    [grouped]
   );
 
   const isMobile = useMobileOrAdjacent();
@@ -253,7 +295,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
     if (!document.querySelector('.rbc-month-view')) return;
     const date = slotInfo.start;
     // Use moment for robust date comparison
-    const eventsForDay = events.filter(ev =>
+    const eventsForDay = flattenEvents(grouped).filter(ev =>
       moment(ev.date).isSame(moment(date), 'day')
     );
     setModalDate(date);
@@ -346,11 +388,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
     onSwiped: () => { setTimeout(() => { swipeInProgress.current = false; }, 200); },
   });
 
+  // Debug: log the events being passed to the calendar
+  console.log('DEBUG: calendarEvents', calendarEvents);
   return (
     <div {...(isMobile ? swipeHandlers : {})}>
       {/* Custom navigation buttons for month view */}
       {view === 'month' && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div className={styles.stickyMonthHeader} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginBottom: 12 }}>
           <button
             onClick={() => {
               if (!isCurrentMonth) setDate(prev => {

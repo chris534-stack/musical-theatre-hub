@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
+// import groupedEvents from '../data/events_grouped.json'; // Switched to Firestore via API
 import { useState, useMemo, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import DatePicker from 'react-multi-date-picker';
@@ -96,7 +97,7 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const isMobile = useMobileOrAdjacent();
-  const { data: events, error, isLoading } = useSWR('/api/events', fetcher);
+  const { data: events, error, isLoading } = useSWR('/api/events', fetcher); // Now loads from Firestore
 
   // Multi-select filter state
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -236,7 +237,18 @@ export default function CalendarPage() {
               </button>
             </div>
           ) : (
-            <h1>Events Calendar</h1>
+            <h1 style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 1000,
+              background: '#fff',
+              margin: 0,
+              fontSize: '2.1rem',
+              fontWeight: 900,
+              color: '#2e3a59',
+              padding: '1.1rem 0 0.7rem 0',
+              boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)'
+            }}>Events Calendar</h1>
           )}
           <div style={isMobile ? { marginTop: 68 } : {}}>
             {isAdmin && (
@@ -257,7 +269,7 @@ export default function CalendarPage() {
                 + Add Event
               </button>
             )}
-            <Calendar events={filteredEvents} />
+            <Calendar events={events || []} />
             {isAdmin && (
               <AddEventModal
                 isOpen={modalOpen}

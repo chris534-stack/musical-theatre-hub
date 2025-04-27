@@ -1,12 +1,14 @@
 {
   "name": "eugene-musical-theatre-hub",
+  "type": "commonjs",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate-events": "ts-node scripts/migrate-events-to-firestore.ts"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.16.1",
@@ -15,6 +17,7 @@
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "date-fns": "3.6.0",
+    "firebase": "^11.6.1",
     "firebase-admin": "^13.3.0",
     "framer-motion": "^12.9.2",
     "next": "14.2.3",
@@ -35,6 +38,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/react": "^18.2.62",
     "@types/react-dom": "^18.2.15",
-    "typescript": "5.4.5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }

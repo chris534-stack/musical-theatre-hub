@@ -1,5 +1,17 @@
 import React from 'react';
-import { EventType } from './CalendarView';
+// Define a compatible EventType here (since CalendarView does not export it)
+type EventType = {
+  slug: string;
+  title: string;
+  category: string;
+  venue: string;
+  description: string;
+  director?: string;
+  ticketLink?: string;
+  date: string;
+  time?: string;
+  isMatinee?: boolean;
+};
 
 interface DayEventsModalProps {
   open: boolean;
@@ -77,10 +89,10 @@ export default function DayEventsModal({ open, onClose, events, date }: DayEvent
                 {ev.title}
               </a>
               <div style={{ fontSize: '0.98rem', color: '#4b5d8c' }}>{ev.venue} &mdash; {(() => {
-                if (!ev.date) return ev.time || 'TBA';
-                const d = new Date(ev.date + (ev.time ? 'T' + ev.time : ''));
+                if (!ev.date) return ev.time || 'TBA'; // Defensive: if no date, just show time or TBA
+                const d = new Date(ev.time && ev.time.trim() ? `${ev.date}T${ev.time}` : ev.date);
                 const dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-                const timeStr = ev.time ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+                const timeStr = ev.time && ev.time.trim() ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
                 return timeStr ? `${dateStr} at ${timeStr}` : dateStr;
               })()}</div>
               <div style={{ fontSize: '0.97rem', margin: '6px 0 0 0', color: '#555' }}>{ev.description}</div>

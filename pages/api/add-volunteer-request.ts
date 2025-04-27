@@ -5,6 +5,7 @@ import path from 'path';
 const VOLUNTEER_FILE = path.join(process.cwd(), 'data', 'volunteer-requests.json');
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  const start = Date.now();
   if (req.method === 'POST') {
     try {
       const data = req.body;
@@ -39,6 +40,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         requests = JSON.parse(raw || '[]');
       }
       res.status(200).json(requests);
+      const duration = Date.now() - start;
+      // eslint-disable-next-line no-console
+      console.log(`[API] /api/add-volunteer-request (GET) responded in ${duration}ms`);
     } catch (err) {
       res.status(500).json({ error: 'Failed to load volunteer requests' });
     }

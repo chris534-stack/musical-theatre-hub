@@ -38,14 +38,25 @@ export default function AdminModal({ open, onClose, title, children }: AdminModa
   const isMobile = useIsMobileModal();
   if (!open) return null;
 
-  const modalStyle: React.CSSProperties = {
+  const modalStyle: React.CSSProperties = isMobile ? {
     position: 'fixed',
     top: 0,
-    right: 0,
-    left: 'unset',
-    width: 'auto',
-    height: 'auto',
-    background: 'rgba(46,58,89,0.18)',
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'transparent', // let the calendar show through
+    zIndex: 9999,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+    pointerEvents: 'auto',
+  } : {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(30, 34, 43, 0.36)',
     zIndex: 9999,
     display: 'flex',
     justifyContent: 'flex-end',
@@ -53,7 +64,7 @@ export default function AdminModal({ open, onClose, title, children }: AdminModa
     overflow: 'visible',
     padding: 0,
     margin: 0,
-    pointerEvents: 'none', // allow button underneath to be clickable except for modal
+    pointerEvents: 'auto',
   };
 
   // Handler for overlay click
@@ -97,20 +108,49 @@ export default function AdminModal({ open, onClose, title, children }: AdminModa
   };
   return (
     <div style={modalStyle} onClick={handleOverlayClick}>
-      <div style={{... (isMobile ? mobileCardStyle : desktopCardStyle), marginTop: 12, marginRight: 18, pointerEvents: 'auto'}} onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{
-          position: 'absolute',
-          top: 14,
-          right: 18,
-          background: 'none',
-          border: 'none',
-          fontSize: 22,
-          color: '#2e3a59',
-          cursor: 'pointer',
-          zIndex: 10,
-        }}>×</button>
-        <h2 style={{ color: '#2e3a59', fontWeight: 700, marginBottom: 10, textAlign: 'left', marginTop: 0, fontSize: '1.1rem' }}>{title}</h2>
-        <div style={{ textAlign: 'left' }}>{children}</div>
+      <div style={{
+        ...(isMobile ? {
+          background: '#fff',
+          borderRadius: '18px 0 0 18px',
+          boxShadow: '0 2px 18px 0 rgba(46,58,89,0.10)',
+          padding: 0,
+          maxWidth: 290,
+          width: '90vw',
+          minWidth: 180,
+          marginTop: 18,
+          marginRight: 8,
+          pointerEvents: 'auto',
+          height: 'auto',
+          maxHeight: 'calc(100vh - 36px)',
+          overflowY: 'auto',
+          position: 'relative',
+        } : desktopCardStyle),
+        marginTop: isMobile ? 18 : 12,
+        marginRight: isMobile ? 8 : 18,
+        pointerEvents: 'auto',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: isMobile ? '0.7rem 0.7rem 0.3rem 0.9rem' : '0.5rem 0.7rem 0.5rem 0.7rem',
+          borderBottom: '1px solid #f1f1f1',
+          background: '#fff',
+          borderRadius: isMobile ? '18px 0 0 0' : '10px 10px 0 0',
+        }}>
+          <h2 style={{ color: '#2e3a59', fontWeight: 700, margin: 0, textAlign: 'left', fontSize: '1.1rem', flex: 1 }}>{title}</h2>
+          <button onClick={onClose} aria-label="Close" style={{
+            background: 'none',
+            border: 'none',
+            fontSize: 28,
+            color: '#2e3a59',
+            cursor: 'pointer',
+            marginLeft: 8,
+            lineHeight: 1,
+            padding: 0,
+          }}>×</button>
+        </div>
+        <div style={{ textAlign: 'left', padding: isMobile ? '0.8rem 0.7rem 1.1rem 0.9rem' : '0.5rem 0.7rem' }}>{children}</div>
       </div>
     </div>
   );

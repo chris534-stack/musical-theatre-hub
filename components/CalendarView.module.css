@@ -1,0 +1,9 @@
+.stickyMonthHeader {
+  position: sticky;
+  top: 56px; /* Adjust this value to match the height of your Events Calendar header */
+  z-index: 10;
+  background: #fff;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  box-shadow: 0 2px 8px 0 rgba(46,58,89,0.07);
+}
