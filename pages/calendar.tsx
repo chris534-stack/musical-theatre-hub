@@ -323,7 +323,7 @@ export default function CalendarPage() {
               </div>
               {/* Render the calendar below the header on mobile */}
               <div style={{ marginTop: 64 }}>
-                <Calendar events={filteredEvents || events || []} />
+                <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />
               </div>
             </>
           ) : (
@@ -348,7 +348,7 @@ export default function CalendarPage() {
                 {/* No filter button on desktop */}
               </div>
               {/* Calendar for desktop */}
-              <Calendar events={filteredEvents || events || []} />
+              <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />
               {console.log('DEBUG: filters', filters, 'filteredEvents', filteredEvents, 'events', events)}
             </>
           )}
