@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-import groupedEvents from '../data/events_grouped.json'; // TEMP: fallback to static events
+import useSWR from 'swr';
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 import { useState, useMemo, useEffect } from 'react';
 // import useSWR, { mutate } from 'swr';
 import DatePicker from 'react-multi-date-picker';
@@ -96,52 +97,74 @@ export default function CalendarPage() {
   const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const isMobile = useMobileOrAdjacent(); // Use static events from JSON backup
-  const events = groupedEvents; // Now loads from static JSON
+  const isMobile = useMobileOrAdjacent();
 
-  // Multi-select filter state
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
+  // Fetch events from Firestore
+  const { data: events, error } = useSWR('/api/events', fetcher);
 
-  // Extract event types and venues
-  const eventTypes = useMemo(() => {
-    const types = Array.from(new Set((events || []).map((e: any) => e.category)));
-    return types as string[];
+  // Dynamic filter state (future-proof)
+  const [filters, setFilters] = useState<{ [key: string]: string[] }>({
+    category: [],
+    venue: [],
+    // tags: [], // Uncomment to support tags, etc.
+  });
+
+  // Extract filter options dynamically
+  const filterOptions = useMemo(() => {
+    if (!events) return {};
+    const options: { [key: string]: string[] } = {};
+    ['category', 'venue', 'tags'].forEach((key) => {
+      let values: string[] = [];
+      if (key === 'tags') {
+        // Flatten all tags arrays
+        values = Array.from(new Set(events.flatMap((e: any) => e.tags || [])));
+      } else {
+        values = Array.from(new Set(events.map((e: any) => e[key]).filter(Boolean)));
+      }
+      if (values.length > 0) options[key] = values;
+    });
+    return options;
   }, [events]);
-  const venues = useMemo(() => {
-    return Array.from(new Set((events || []).map((e: any) => e.venue))) as string[];
-  }, [events]);
 
-  // Filtering logic
+  // Dynamic filtering logic
   const filteredEvents = useMemo(() => {
     if (!events) return [];
-    let venuesToMatch: string[] = [];
-    if (selectedVenues.length > 0) {
-      // For each selected canonical venue, get all fuzzy-matching venues
-      selectedVenues.forEach((canonical) => {
-        venuesToMatch.push(...getVenuesForCanonical(venues, canonical));
-      });
-      // Remove duplicates
-      venuesToMatch = Array.from(new Set(venuesToMatch));
-    }
     return events.filter((event: any) => {
-      const typeMatch = selectedTypes.length === 0 || selectedTypes.includes(event.category);
-      const venueMatch = selectedVenues.length === 0 || venuesToMatch.includes(event.venue);
-      return typeMatch && venueMatch;
+      return Object.entries(filters).every(([key, selected]) => {
+        if (!selected.length) return true; // No filter set for this group
+        if (Array.isArray(event[key])) {
+          // e.g. tags: check for overlap
+          return event[key].some((val: string) => selected.includes(val));
+        }
+        // Fuzzy venue grouping support
+        if (key === 'venue' && selected.length > 0) {
+          // If you want fuzzy grouping, implement here
+          return selected.includes(event[key]);
+        }
+        return selected.includes(event[key]);
+      });
     });
-  }, [events, selectedTypes, selectedVenues, venues]);
+  }, [events, filters]);
 
-  // Sidebar handlers
-  const handleTypeChange = (type: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    );
+  // Generic sidebar handler
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => {
+      const prevArr = prev[key] || [];
+      return {
+        ...prev,
+        [key]: prevArr.includes(value)
+          ? prevArr.filter((v) => v !== value)
+          : [...prevArr, value],
+      };
+    });
   };
-  const handleVenueChange = (venue: string) => {
-    setSelectedVenues((prev) =>
-      prev.includes(venue) ? prev.filter((v) => v !== venue) : [...prev, venue]
-    );
+  const handleSelectAll = (key: string) => {
+    setFilters((prev) => ({ ...prev, [key]: filterOptions[key] || [] }));
   };
+  const handleDeselectAll = (key: string) => {
+    setFilters((prev) => ({ ...prev, [key]: [] }));
+  };
+
 
   if (!events) return null;
 
@@ -150,8 +173,17 @@ export default function CalendarPage() {
       <Head>
         <title>Events Calendar | Our Stage, Eugene</title>
       </Head>
-      <main style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginTop: 24, position: 'relative' }}>
+      <main
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 0,
+          marginTop: 24,
+          position: 'relative',
+        }}
+      >
         {/* Sticky sidebar on desktop */}
+        {/* Render filter groups dynamically for future extensibility */}
         {!isMobile && (
           <div
             style={{
@@ -165,119 +197,171 @@ export default function CalendarPage() {
               height: 'fit-content',
             }}
           >
-            <EventFilterSidebar
-              eventTypes={eventTypes}
-              venues={venues}
-              selectedTypes={selectedTypes}
-              selectedVenues={selectedVenues}
-              onTypeChange={handleTypeChange}
-              onVenueChange={handleVenueChange}
-              onTypeSelectAll={() => setSelectedTypes(eventTypes)}
-              onTypeDeselectAll={() => setSelectedTypes([])}
-              onVenueSelectAll={() => setSelectedVenues(getCanonicalVenues(venues))}
-              onVenueDeselectAll={() => setSelectedVenues([])}
-            />
+            {Object.keys(filterOptions).map((key) => (
+              <div key={key} style={{ marginBottom: 32 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#23395d', marginBottom: 10 }}>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </h3>
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    Select All
+                    <input
+                      type="checkbox"
+                      checked={filters[key]?.length === filterOptions[key].length && filterOptions[key].length > 0}
+                      ref={el => {
+                        if (el) el.indeterminate = filters[key]?.length > 0 && filters[key]?.length < filterOptions[key].length;
+                      }}
+                      onChange={() => {
+                        if (filters[key]?.length === filterOptions[key].length) {
+                          handleDeselectAll(key);
+                        } else {
+                          handleSelectAll(key);
+                        }
+                      }}
+                      style={{ marginLeft: 8 }}
+                    />
+                  </label>
+                </div>
+                {filterOptions[key].map((option: string) => (
+                  <label key={option} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                    <input
+                      type="checkbox"
+                      checked={filters[key]?.includes(option)}
+                      onChange={() => handleFilterChange(key, option)}
+                      style={{ marginLeft: 8 }}
+                    />
+                  </label>
+                ))}
+              </div>
+            ))}
           </div>
         )}
+        {/* Modal filter on mobile */}
         {isMobile && (
           <AdminModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Events">
-            <EventFilterSidebar
-              eventTypes={eventTypes}
-              venues={venues}
-              selectedTypes={selectedTypes}
-              selectedVenues={selectedVenues}
-              onTypeChange={handleTypeChange}
-              onVenueChange={handleVenueChange}
-              onTypeSelectAll={() => setSelectedTypes(eventTypes)}
-              onTypeDeselectAll={() => setSelectedTypes([])}
-              onVenueSelectAll={() => setSelectedVenues(getCanonicalVenues(venues))}
-              onVenueDeselectAll={() => setSelectedVenues([])}
-            />
+            {Object.keys(filterOptions).map((key) => (
+              <div key={key} style={{ marginBottom: 32 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#23395d', marginBottom: 10 }}>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </h3>
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    Select All
+                    <input
+                      type="checkbox"
+                      checked={filters[key]?.length === filterOptions[key].length && filterOptions[key].length > 0}
+                      ref={el => {
+                        if (el) el.indeterminate = filters[key]?.length > 0 && filters[key]?.length < filterOptions[key].length;
+                      }}
+                      onChange={() => {
+                        if (filters[key]?.length === filterOptions[key].length) {
+                          handleDeselectAll(key);
+                        } else {
+                          handleSelectAll(key);
+                        }
+                      }}
+                      style={{ marginLeft: 8 }}
+                    />
+                  </label>
+                </div>
+                {filterOptions[key].map((option: string) => (
+                  <label key={option} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                    <input
+                      type="checkbox"
+                      checked={filters[key]?.includes(option)}
+                      onChange={() => handleFilterChange(key, option)}
+                      style={{ marginLeft: 8 }}
+                    />
+                  </label>
+                ))}
+              </div>
+            ))}
           </AdminModal>
         )}
         {/* Main calendar pane: allow this to scroll vertically if needed */}
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+          {/* Header and filter button: mobile only */}
           {isMobile ? (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100%',
-              zIndex: 1100,
-              background: '#fff',
-              boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.6rem 1.1rem 0.6rem 1.1rem',
-            }}>
-              <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#2e3a59' }}>Events Calendar</h1>
-              <button
-                aria-label="Show filters"
-                style={{
-                  background: '#ffd700',
-                  color: '#2e3a59',
-                  border: 'none',
-                  borderRadius: 16,
-                  padding: '0.55rem 0.85rem',
-                  fontSize: '1.3rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
-                  cursor: 'pointer',
-                  marginLeft: 0,
-                  marginRight: 18,
-                  marginTop: 8,
-                }}
-                onClick={() => setFilterModalOpen(true)}
-              >
-                <span style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
-              </button>
-            </div>
+            <>
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                zIndex: 1100,
+                background: '#fff',
+                boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.6rem 1.1rem 0.6rem 1.1rem',
+              }}>
+                <h1 className="stickyCalendarHeader" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#2e3a59' }}>Events Calendar</h1>
+                <button
+                  aria-label="Show filters"
+                  style={{
+                    background: '#ffd700',
+                    color: '#2e3a59',
+                    border: 'none',
+                    borderRadius: 16,
+                    padding: '0.55rem 0.85rem',
+                    fontSize: '1.3rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
+                    cursor: 'pointer',
+                    marginLeft: 0,
+                    marginRight: 18,
+                    marginTop: 8,
+                  }}
+                  onClick={() => setFilterModalOpen(true)}
+                >
+                  <span style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
+                </button>
+              </div>
+              {/* Render the calendar below the header on mobile */}
+              <div style={{ marginTop: 64 }}>
+                <Calendar events={filteredEvents || events || []} />
+                {console.log('DEBUG: filters', filters, 'filteredEvents', filteredEvents, 'events', events)}
+              </div>
+            </>
           ) : (
-            <h1 style={{
-              position: 'sticky',
-              top: 0,
-              zIndex: 1000,
-              background: '#fff',
-              margin: 0,
-              fontSize: '2.1rem',
-              fontWeight: 900,
-              color: '#2e3a59',
-              padding: '1.1rem 0 0.7rem 0',
-              boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)'
-            }}>Events Calendar</h1>
-          )}
-          <div style={isMobile ? { marginTop: 68 } : {}}>
-            {isAdmin && (
-              <button
-                style={{
-                  background: '#ffd700',
+            <>
+              {/* Desktop sticky header */}
+              <div className="stickyCalendarHeader" style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#fff',
+                zIndex: 1000,
+                boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
+                padding: '1.1rem 0 0.7rem 0',
+                margin: 0
+              }}>
+                <h1 style={{
+                  margin: 0,
+                  fontSize: '2.1rem',
+                  fontWeight: 900,
                   color: '#2e3a59',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  marginBottom: 16,
-                  transition: 'background 0.2s, color 0.2s',
-                }}
-                onClick={() => setModalOpen(true)}
-              >
-                + Add Event
-              </button>
-            )}
-            <Calendar events={events || []} />
-            {isAdmin && (
-              <AddEventModal
-                isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
-                onSubmit={() => {
-                  setModalOpen(false);
-                }}
-              />
-            )}
-          </div>
+                }}>Events Calendar</h1>
+                {/* No filter button on desktop */}
+              </div>
+              {/* Calendar for desktop */}
+              <Calendar events={filteredEvents || events || []} />
+              {console.log('DEBUG: filters', filters, 'filteredEvents', filteredEvents, 'events', events)}
+            </>
+          )}
+          {isAdmin && (
+            <AddEventModal
+              isOpen={modalOpen}
+              onClose={() => setModalOpen(false)}
+              onSubmit={() => {
+                setModalOpen(false);
+              }}
+            />
+          )}
         </div>
       </main>
     </>

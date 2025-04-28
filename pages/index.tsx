@@ -6,41 +6,69 @@ import { useMemo } from 'react';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
+function parseEventDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  // Try ISO first
+  let d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  // Try US MM/DD/YYYY
+  const usMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (usMatch) {
+    d = new Date(`${usMatch[3]}-${usMatch[1].padStart(2, '0')}-${usMatch[2].padStart(2, '0')}`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Try DD/MM/YYYY
+  const euMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (euMatch) {
+    d = new Date(`${euMatch[3]}-${euMatch[2].padStart(2, '0')}-${euMatch[1].padStart(2, '0')}`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
 function getUpcomingUniqueEvents(events: any[], now: Date, days: number) {
-  // Only events within the next X days
   const soon = new Date(now);
   soon.setDate(now.getDate() + days);
-  // Deduplicate by lowercased title+venue
   const seen = new Set();
-  // Event type priority
   const typePriority: Record<string, number> = {
     performance: 0,
     audition: 1,
     workshop: 2
   };
-  return events
-    .filter(e => {
-      if (!e.date) return false;
-      const eventDate = new Date(e.date);
-      return eventDate >= now && eventDate <= soon;
-    })
-    .sort((a, b) => {
-      // Soonest date first
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      if (dateA !== dateB) return dateA - dateB;
-      // Then by event type priority
-      const pa = typePriority[a.category?.toLowerCase() || 'other'] ?? 99;
-      const pb = typePriority[b.category?.toLowerCase() || 'other'] ?? 99;
-      return pa - pb;
-    })
-    .filter(e => {
-      const key = `${e.title}`.toLowerCase().trim() + '|' + `${e.venue}`.toLowerCase().trim();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, 3); // Only top 3
+  const skipped: any[] = [];
+  const filtered = events.filter(e => {
+    if (!e.date) {
+      skipped.push({ reason: 'missing date', event: e });
+      return false;
+    }
+    const eventDate = parseEventDate(e.date);
+    if (!eventDate) {
+      skipped.push({ reason: 'invalid date', event: e });
+      return false;
+    }
+    if (!(eventDate >= now && eventDate <= soon)) {
+      skipped.push({ reason: 'out of range', event: e });
+      return false;
+    }
+    e._parsedDate = eventDate;
+    return true;
+  });
+  filtered.sort((a, b) => {
+    const dateA = a._parsedDate.getTime();
+    const dateB = b._parsedDate.getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    const pa = typePriority[a.category?.toLowerCase() || 'other'] ?? 99;
+    const pb = typePriority[b.category?.toLowerCase() || 'other'] ?? 99;
+    return pa - pb;
+  });
+  const unique = filtered.filter(e => {
+    const key = `${e.title}`.toLowerCase().trim() + '|' + `${e.venue}`.toLowerCase().trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  unique._skipped = skipped;
+  return unique.slice(0, 3);
 }
 
 export default function Home() {
@@ -50,6 +78,13 @@ export default function Home() {
     if (!events) return [];
     return getUpcomingUniqueEvents(events, now, 30);
   }, [events, now]);
+
+  // DEBUG: Show skipped events with reasons (only in dev)
+  let skippedEvents: any[] = [];
+  if (events && featuredEvents && (featuredEvents as any)._skipped) {
+    skippedEvents = (featuredEvents as any)._skipped;
+  }
+
   return (
     <>
       <Head>
@@ -98,6 +133,22 @@ export default function Home() {
               </div>
             ))}
           </div>
+          {/* DEBUG: Skipped Events */}
+          {skippedEvents.length > 0 && process.env.NODE_ENV !== 'production' && (
+            <div style={{ background: '#fffbe7', border: '1px solid #ffe082', borderRadius: 8, padding: 16, margin: '20px 0', color: '#b26a00', fontSize: 15 }}>
+              <b>Debug: Skipped Events</b>
+              <ul style={{ margin: '10px 0 0 0', padding: 0, listStyle: 'none' }}>
+                {skippedEvents.map((item, i) => (
+                  <li key={i} style={{ marginBottom: 8 }}>
+                    <span style={{ fontWeight: 600 }}>{item.reason}:</span> {item.event?.title || '(no title)'}
+                    {item.event?.date && (
+                      <span style={{ color: '#888', marginLeft: 8 }}>date: {item.event.date}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
         <section className={styles.quickLinks}>
           <h2>Get Involved</h2>

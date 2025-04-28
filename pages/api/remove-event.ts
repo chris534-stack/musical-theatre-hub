@@ -1,8 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
+import admin from 'firebase-admin';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+const db = admin.firestore();
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
@@ -13,28 +23,17 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: 'Missing slug.' });
   }
 
-  const eventsPath = path.join(process.cwd(), 'data', 'events.json');
   try {
-    const file = fs.readFileSync(eventsPath, 'utf8');
-    let events = JSON.parse(file);
-    const initialLength = events.length;
-    // Remove logic:
-    // If only slug: remove all events with that slug
-    // If slug+date: remove all events with that slug and date
-    // If slug+date+time: remove only that event
-    if (slug && !date && !time) {
-      events = events.filter((e: any) => e.slug !== slug);
-    } else if (slug && date && !time) {
-      events = events.filter((e: any) => !(e.slug === slug && e.date === date));
-    } else if (slug && date && time) {
-      events = events.filter((e: any) => !(e.slug === slug && e.date === date && e.time === time));
-    } else {
-      return res.status(400).json({ error: 'Invalid parameters.' });
-    }
-    if (events.length === initialLength) {
+    let queryRef = db.collection('events').where('slug', '==', slug);
+    if (date) queryRef = queryRef.where('date', '==', date);
+    if (time) queryRef = queryRef.where('time', '==', time);
+    const snapshot = await queryRef.get();
+    if (snapshot.empty) {
       return res.status(404).json({ error: 'Event(s) not found.' });
     }
-    fs.writeFileSync(eventsPath, JSON.stringify(events, null, 2), 'utf8');
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
     res.status(200).json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Could not remove event.' });

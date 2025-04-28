@@ -22,7 +22,9 @@ export default function EventDetail() {
 
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error loading event data.</p>;
-  if (!events) return null;
+  if (!Array.isArray(events)) {
+    return <div style={{color: 'red', padding: 24}}>Error: Could not load events. Please try again later.</div>;
+  }
 
   let showEvents = events.filter((e: any) => e.slug === slug);
   let venueName = venue ? decodeURIComponent(venue as string) : undefined;

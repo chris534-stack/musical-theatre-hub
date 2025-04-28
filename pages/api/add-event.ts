@@ -1,28 +1,38 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
+import admin from 'firebase-admin';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+const db = admin.firestore();
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  const eventsPath = path.join(process.cwd(), 'data', 'events.json');
   try {
-    const file = fs.readFileSync(eventsPath, 'utf8');
-    const events = JSON.parse(file);
     const event = req.body;
-    // Add a slug if not present (slugified title, no date)
+    // Add a slug if not present
     if (!event.slug) {
       event.slug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
     // Prevent duplicate for same date/slug
-    const exists = events.some((e: any) => e.slug === event.slug && e.date === event.date);
-    if (!exists) {
-      events.push(event);
+    const snapshot = await db.collection('events')
+      .where('slug', '==', event.slug)
+      .where('date', '==', event.date)
+      .get();
+    if (!snapshot.empty) {
+      return res.status(409).json({ error: 'Duplicate event for this date.' });
     }
-    fs.writeFileSync(eventsPath, JSON.stringify(events, null, 2), 'utf8');
+    await db.collection('events').add(event);
     res.status(201).json({ success: true, event });
   } catch (err) {
     res.status(500).json({ error: 'Could not add event.' });

@@ -1,43 +1,43 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
+import admin from 'firebase-admin';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+const db = admin.firestore();
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  const eventsPath = path.join(process.cwd(), 'data', 'events.json');
   try {
-    const file = fs.readFileSync(eventsPath, 'utf8');
-    let events = JSON.parse(file);
     const updatedEvent = req.body;
-    // Defensive: require time for update
     if (!updatedEvent.time) {
       return res.status(400).json({ error: 'Missing time for event update.' });
     }
-
-    let found = false;
-    events = events.map((e: any) => {
-      if (
-        e.slug === updatedEvent.originalSlug &&
-        e.date === updatedEvent.originalDate &&
-        e.time === updatedEvent.originalTime
-      ) {
-        found = true;
-        // Remove original* keys from updatedEvent before merging
-        const { originalSlug, originalDate, originalTime, ...rest } = updatedEvent;
-        return { ...e, ...rest };
-      }
-      return e;
-    });
-
-    if (!found) {
+    // Find the original event
+    const snapshot = await db.collection('events')
+      .where('slug', '==', updatedEvent.originalSlug)
+      .where('date', '==', updatedEvent.originalDate)
+      .where('time', '==', updatedEvent.originalTime)
+      .get();
+    if (snapshot.empty) {
       return res.status(404).json({ error: 'Event not found for update.' });
     }
-
-    fs.writeFileSync(eventsPath, JSON.stringify(events, null, 2), 'utf8');
+    // Remove original* keys from updatedEvent before merging
+    const { originalSlug, originalDate, originalTime, ...rest } = updatedEvent;
+    // Update all matched docs (should only be one, but batch for safety)
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => batch.update(doc.ref, rest));
+    await batch.commit();
     res.status(200).json({ success: true, event: updatedEvent });
   } catch (err) {
     res.status(500).json({ error: 'Could not update event.' });

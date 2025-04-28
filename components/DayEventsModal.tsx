@@ -27,7 +27,8 @@ const modalStyle: React.CSSProperties = {
   width: '100vw',
   height: '100vh',
   background: 'rgba(46,58,89,0.18)',
-  zIndex: 9999,
+  zIndex: 110, // Lowered to sit just above nav bar
+
   display: 'flex',
   flexDirection: 'row',
   justifyContent: 'center',
@@ -64,7 +65,7 @@ export default function DayEventsModal({ open, onClose, events, date }: DayEvent
   };
 
   return (
-    <div style={modalStyle} onClick={handleOverlayClick}>
+    <div className="day-events-modal-overlay" style={modalStyle} onClick={handleOverlayClick}>
       <div style={cardStyle} onClick={e => e.stopPropagation()}>
         <h2 style={{ color: '#2e3a59', fontWeight: 700, marginBottom: 18 }}>{dateStr}</h2>
         {events.length === 0 ? (

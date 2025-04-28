@@ -59,6 +59,20 @@ main {
   z-index: 2001 !important;
 }
 
+/* DayEventsModal overlay z-index fix for desktop vs mobile */
+@media (max-width: 700px) {
+  .day-events-modal-overlay {
+    z-index: 9999 !important;
+  }
+}
+
+@media (min-width: 701px) {
+  .day-events-modal-overlay {
+    z-index: 110 !important;
+  }
+}
+
+
 @media (max-width: 700px) {
   /* Shrink event bars in react-big-calendar month view for mobile */
   .rbc-month-view .rbc-event {

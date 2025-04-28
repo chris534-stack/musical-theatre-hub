@@ -7,3 +7,11 @@
   padding-bottom: 0.5rem;
   box-shadow: 0 2px 8px 0 rgba(46,58,89,0.07);
 }
+
+.stickyCalendarHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #fff;
+  box-shadow: 0 2px 8px 0 rgba(46,58,89,0.07);
+}
