@@ -67,23 +67,18 @@ function getUpcomingUniqueEvents(events: any[], now: Date, days: number) {
     seen.add(key);
     return true;
   });
-  unique._skipped = skipped;
-  return unique.slice(0, 3);
+  return { events: unique.slice(0, 3), skipped };
 }
 
 export default function Home() {
   const { data: events, error, isLoading } = useSWR('/api/events', fetcher);
   const now = useMemo(() => new Date(), []);
-  const featuredEvents = useMemo(() => {
-    if (!events) return [];
+  const { events: featuredEvents, skipped: skippedEvents } = useMemo(() => {
+    if (!events) return { events: [], skipped: [] };
     return getUpcomingUniqueEvents(events, now, 30);
   }, [events, now]);
 
   // DEBUG: Show skipped events with reasons (only in dev)
-  let skippedEvents: any[] = [];
-  if (events && featuredEvents && (featuredEvents as any)._skipped) {
-    skippedEvents = (featuredEvents as any)._skipped;
-  }
 
   return (
     <>

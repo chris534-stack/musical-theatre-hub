@@ -324,7 +324,6 @@ export default function CalendarPage() {
               {/* Render the calendar below the header on mobile */}
               <div style={{ marginTop: 64 }}>
                 <Calendar events={filteredEvents || events || []} />
-                {console.log('DEBUG: filters', filters, 'filteredEvents', filteredEvents, 'events', events)}
               </div>
             </>
           ) : (
