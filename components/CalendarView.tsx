@@ -196,30 +196,46 @@ const EventTitleMarquee: React.FC<{ title: string; hideText?: boolean; small?: b
   );
 };
 
-const flattenEvents = (grouped: GroupedEvent[]): CalendarEvent[] => {
+export const flattenEvents = (grouped: (GroupedEvent | CalendarEvent)[]): CalendarEvent[] => {
   console.log('DEBUG: flattenEvents input', grouped);
-  return grouped.flatMap(event =>
-    Array.isArray(event.dates)
-      ? event.dates.map(dateObj => {
-          console.log('DEBUG: flattening', event, dateObj);
-          return {
-            ...event,
-            ...dateObj,
-            // Explicitly set all shared fields for compatibility
-            title: event.title,
-            slug: event.slug,
-            category: event.category,
-            venue: event.venue,
-            description: event.description,
-            director: event.director,
-            ticketLink: event.ticketLink,
-            start: new Date(dateObj.time && dateObj.time.trim() ? `${dateObj.date}T${dateObj.time}` : dateObj.date),
-            end: new Date(dateObj.time && dateObj.time.trim() ? `${dateObj.date}T${dateObj.time}` : dateObj.date),
-            resource: event,
-          };
-        })
-      : []
-  );
+  return grouped.flatMap((event: any) => {
+    // Already a CalendarEvent with start/end
+    if (event.start && event.end) {
+      return [event as CalendarEvent];
+    }
+    // Single event object from Firestore (has date/time)
+    if (event.date) {
+      const dateStr = event.time && typeof event.time === 'string' && event.time.trim()
+        ? `${event.date}T${event.time}`
+        : event.date;
+      const dt = new Date(dateStr);
+      // Build minimal resource for styling/navigation
+      const resourceEvent = { ...event, dates: [{ date: event.date, time: event.time }] };
+      return [{
+        ...event,
+        start: dt,
+        end: dt,
+        resource: resourceEvent,
+      } as CalendarEvent];
+    }
+    // Grouped events from JSON (has dates array)
+    if (Array.isArray(event.dates)) {
+      return event.dates.map((dateObj: any) => {
+        const dateTime = dateObj.time && dateObj.time.trim()
+          ? `${dateObj.date}T${dateObj.time}`
+          : dateObj.date;
+        const dt = new Date(dateTime);
+        return {
+          ...event,
+          ...dateObj,
+          start: dt,
+          end: dt,
+          resource: event,
+        } as CalendarEvent;
+      });
+    }
+    return [];
+  });
 };
 
 const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {

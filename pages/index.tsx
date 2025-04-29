@@ -73,12 +73,18 @@ function getUpcomingUniqueEvents(events: any[], now: Date, days: number) {
 export default function Home() {
   const { data: events, error, isLoading } = useSWR('/api/events', fetcher);
   const now = useMemo(() => new Date(), []);
+  const flatEvents = useMemo(() => {
+    if (!events) return [];
+    return events.flatMap((e: any) => (
+      Array.isArray(e.dates)
+        ? e.dates.map((d: any) => ({ ...e, date: d.date, time: d.time || '' }))
+        : [e]
+    ));
+  }, [events]);
   const { events: featuredEvents, skipped: skippedEvents } = useMemo(() => {
     if (!events) return { events: [], skipped: [] };
-    return getUpcomingUniqueEvents(events, now, 30);
-  }, [events, now]);
-
-  // DEBUG: Show skipped events with reasons (only in dev)
+    return getUpcomingUniqueEvents(flatEvents, now, 30);
+  }, [flatEvents, now]);
 
   return (
     <>
@@ -128,22 +134,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-          {/* DEBUG: Skipped Events */}
-          {skippedEvents.length > 0 && process.env.NODE_ENV !== 'production' && (
-            <div style={{ background: '#fffbe7', border: '1px solid #ffe082', borderRadius: 8, padding: 16, margin: '20px 0', color: '#b26a00', fontSize: 15 }}>
-              <b>Debug: Skipped Events</b>
-              <ul style={{ margin: '10px 0 0 0', padding: 0, listStyle: 'none' }}>
-                {skippedEvents.map((item, i) => (
-                  <li key={i} style={{ marginBottom: 8 }}>
-                    <span style={{ fontWeight: 600 }}>{item.reason}:</span> {item.event?.title || '(no title)'}
-                    {item.event?.date && (
-                      <span style={{ color: '#888', marginLeft: 8 }}>date: {item.event.date}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </section>
         <section className={styles.quickLinks}>
           <h2>Get Involved</h2>

@@ -101,6 +101,9 @@ export default function CalendarPage() {
 
   // Fetch events from Firestore
   const { data: events, error } = useSWR('/api/events', fetcher);
+  useEffect(() => {
+    if (error) console.error('SWR /api/events error:', error);
+  }, [error]);
 
   // Dynamic filter state (future-proof)
   const [filters, setFilters] = useState<{ [key: string]: string[] }>({
@@ -166,7 +169,8 @@ export default function CalendarPage() {
   };
 
 
-  if (!events) return null;
+  if (error) return <div style={{ color: 'red', padding: 16 }}>Error loading calendar: {error.message}</div>;
+  if (!events) return <div style={{ padding: 16 }}>Loading calendar…</div>;
 
   return (
     <>

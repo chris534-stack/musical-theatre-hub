@@ -35,12 +35,22 @@ try {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const start = Date.now();
   try {
+    console.log('[API] /api/events called');
     const snapshot = await db.collection('events').get();
     const events = snapshot.docs.map((doc: QueryDocumentSnapshot) => doc.data());
+    console.log('[API] /api/events Firestore returned type:', Array.isArray(events) ? 'array' : typeof events, 'length:', Array.isArray(events) ? events.length : 'n/a');
+    if (!Array.isArray(events)) {
+      console.error('[API] /api/events: events is not an array!', events);
+    }
+    // Log a preview of the first event for debugging
+    if (Array.isArray(events) && events.length > 0) {
+      console.log('[API] /api/events: first event:', JSON.stringify(events[0], null, 2));
+    }
     res.status(200).json(events);
     const duration = Date.now() - start;
     console.log(`[API] /api/events (Firestore) responded in ${duration}ms`);
   } catch (err) {
-    res.status(500).json({ error: 'Could not load events from Firestore.' });
+    console.error('[API] /api/events error:', err);
+    res.status(500).json({ error: 'Could not load events from Firestore.', details: err instanceof Error ? err.message : err });
   }
 }
