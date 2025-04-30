@@ -22,6 +22,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 function ReviewerSignInSection() {
+  // No highlight/scroll logic here anymore; handled by parent
+
+
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
@@ -46,7 +49,11 @@ function ReviewerSignInSection() {
   }, [user]);
 
   if (!user) {
-    return <GoogleSignInButton />;
+    return (
+      <div>
+        <GoogleSignInButton />
+      </div>
+    );
   }
   if (thankYou) {
     return <div style={{marginTop: 8, color: '#2d6cdf'}}>Thank you for applying! We'll review your application soon.</div>;
@@ -67,6 +74,27 @@ function ReviewerSignInSection() {
 }
 
 export default function GetInvolved() {
+  const [shouldHighlightReviewer, setShouldHighlightReviewer] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#reviewer-signin') {
+      const card = document.getElementById('reviewer-signin');
+      if (card) {
+        const isMobile = window.innerWidth < 700;
+        if (isMobile) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          // Manual scroll with offset for desktop
+          const rect = card.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const offset = 64; // px from top
+          const top = rect.top + scrollTop - offset;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
+        setShouldHighlightReviewer(true);
+        setTimeout(() => setShouldHighlightReviewer(false), 2000);
+      }
+    }
+  }, []);
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
   // Fetch auditions with SWR from new endpoint
   const { data: auditions, isLoading: loadingAuditions } = useSWR('/api/auditions', async (url) => {
@@ -104,14 +132,33 @@ export default function GetInvolved() {
           <div className="callout-card">
             <h3>Audition Opportunities</h3>
             <p>Ready to shine on stage? See upcoming auditions and take your shot!</p>
-            <button onClick={() => document.getElementById('auditions-section')?.scrollIntoView({behavior: 'smooth'})}>View Auditions</button>
+            <button
+  onClick={() => {
+    const el = document.getElementById('auditions-section');
+    if (el) {
+      const isMobile = window.innerWidth < 700;
+      if (isMobile) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        const rect = el.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const offset = 64;
+        const top = rect.top + scrollTop - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    }
+  }}
+>View Auditions</button>
           </div>
           <div className="callout-card">
             <h3>Volunteer With Us</h3>
             <p>Help make the magic happen backstage or front-of-house. Your talents are needed!</p>
             <button onClick={() => document.getElementById('volunteers-section')?.scrollIntoView({behavior: 'smooth'})}>Volunteer Now</button>
           </div>
-          <div className="callout-card">
+          <div
+            id="reviewer-signin"
+            className={`callout-card${shouldHighlightReviewer ? ' highlight-reviewer-card' : ''}`}
+          >
             <h3>Apply to be a Reviewer</h3>
             <p>
               Want to help shape the conversation? Apply to join our reviewer community and share your thoughts on performances.
@@ -333,6 +380,16 @@ export default function GetInvolved() {
         @keyframes skeleton-loading {
           0% { background-position: 200% 0; }
           100% { background-position: -200% 0; }
+        }
+        .highlight-reviewer-card {
+          animation: reviewer-card-pulse 1.5s cubic-bezier(.4,0,.6,1) 0s 2;
+          box-shadow: 0 0 0 0 #ffd700, 0 2px 12px rgba(0,0,0,0.09);
+          border-radius: 10px;
+        }
+        @keyframes reviewer-card-pulse {
+          0% { box-shadow: 0 0 0 0 #ffd700; }
+          50% { box-shadow: 0 0 16px 8px #ffe066; }
+          100% { box-shadow: 0 0 0 0 #ffd700; }
         }
       `}</style>
     </>

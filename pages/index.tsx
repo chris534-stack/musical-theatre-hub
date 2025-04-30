@@ -71,10 +71,10 @@ function getUpcomingUniqueEvents(events: any[], now: Date, days: number) {
 }
 
 export default function Home() {
-  const { data: events, error, isLoading } = useSWR('/api/events', fetcher);
+  const { data: events, error, isLoading } = useSWR('/api/events', fetcher, { revalidateOnMount: true });
   const now = useMemo(() => new Date(), []);
   const flatEvents = useMemo(() => {
-    if (!events) return [];
+    if (!Array.isArray(events)) return [];
     return events.flatMap((e: any) => (
       Array.isArray(e.dates)
         ? e.dates.map((d: any) => ({ ...e, date: d.date, time: d.time || '' }))

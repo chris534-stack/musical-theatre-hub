@@ -16,7 +16,7 @@ export default function Community() {
           <div style={{ background: '#f5f7fb', borderRadius: 10, padding: '1.2rem 1.1rem', marginBottom: 10, color: '#555', fontStyle: 'italic' }}>
             No reviews yet.<br />
             <span>
-              Want to be the first? <a href="/get-involved" style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 500 }}>Apply to become a reviewer</a> on our <b>Get Involved</b> page!
+              Want to be the first? <a href="/get-involved#reviewer-signin" style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 500 }}>Apply to become a reviewer</a> on our <b>Get Involved</b> page!
             </span>
           </div>
         </section>

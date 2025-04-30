@@ -1,56 +1,69 @@
-import fs from 'fs';
 import { NextApiRequest, NextApiResponse } from 'next';
-import admin from 'firebase-admin';
-import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import { createClient } from '@supabase/supabase-js';
 
-// Debugging logs for env variables
-console.log('---[Firebase Admin Debug]---');
-console.log('FIREBASE_ADMIN_CLIENT_EMAIL:', process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
-console.log('FIREBASE_ADMIN_PRIVATE_KEY length:', process.env.FIREBASE_ADMIN_PRIVATE_KEY ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.length : 'undefined');
-console.log('FIREBASE_ADMIN_PRIVATE_KEY preview:', process.env.FIREBASE_ADMIN_PRIVATE_KEY ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.slice(0, 30) : 'undefined');
-console.log('FIREBASE_ADMIN_PRIVATE_KEY end:', process.env.FIREBASE_ADMIN_PRIVATE_KEY ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.slice(-30) : 'undefined');
-console.log('NEXT_PUBLIC_FIREBASE_PROJECT_ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
-console.log('-----------------------------');
+// Debugging logs for Supabase env variables
+console.log('---[Supabase Debug]---');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('SUPABASE_SERVICE_ROLE_KEY length:', process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY.length : 'undefined');
+console.log('----------------------');
 
-let db: Firestore;
-try {
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-    console.log('[Firebase Admin] Initialized successfully.');
-  } else {
-    console.log('[Firebase Admin] Already initialized.');
-  }
-  db = admin.firestore();
-} catch (e) {
-  console.error('[Firebase Admin Initialization Error]', e);
-  throw e;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Supabase credentials are not set in environment variables.');
 }
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const start = Date.now();
   try {
-    console.log('[API] /api/events called');
-    const snapshot = await db.collection('events').get();
-    const events = snapshot.docs.map((doc: QueryDocumentSnapshot) => doc.data());
-    console.log('[API] /api/events Firestore returned type:', Array.isArray(events) ? 'array' : typeof events, 'length:', Array.isArray(events) ? events.length : 'n/a');
-    if (!Array.isArray(events)) {
-      console.error('[API] /api/events: events is not an array!', events);
+    console.log('[API] /api/events called (JOIN event + event_dates)');
+    // Join event and event_dates
+    const { data, error } = await supabase
+      .from('events')
+      .select(`
+        id,
+        title,
+        description,
+        director,
+        slug,
+        ticket_link,
+        venue_id,
+        category,
+        event_dates (
+          id,
+          date,
+          time,
+          is_matinee
+        ),
+        venues (
+          id,
+          name,
+          address
+        )
+      `);
+    if (error) throw error;
+    // Transform to grouped format
+    const groupedEvents = (data || []).map(event => ({
+      ...event,
+      venue: event.venues && typeof event.venues === 'object' && 'name' in event.venues ? event.venues.name : null, // flatten venue name for frontend compatibility
+      dates: (event.event_dates || []).map(ed => ({
+        date: ed.date,
+        time: ed.time,
+        isMatinee: ed.is_matinee, // map snake_case to camelCase for frontend compatibility
+      })),
+    }));
+    if (Array.isArray(groupedEvents) && groupedEvents.length > 0) {
+      console.log('[API] /api/events: first grouped event:', JSON.stringify(groupedEvents[0], null, 2));
     }
-    // Log a preview of the first event for debugging
-    if (Array.isArray(events) && events.length > 0) {
-      console.log('[API] /api/events: first event:', JSON.stringify(events[0], null, 2));
-    }
-    res.status(200).json(events);
+    res.status(200).json(groupedEvents);
     const duration = Date.now() - start;
-    console.log(`[API] /api/events (Firestore) responded in ${duration}ms`);
+    console.log(`[API] /api/events (Supabase JOIN) responded in ${duration}ms`);
   } catch (err) {
     console.error('[API] /api/events error:', err);
-    res.status(500).json({ error: 'Could not load events from Firestore.', details: err instanceof Error ? err.message : err });
+    res.status(500).json({ error: 'Could not load events from Supabase.', details: err instanceof Error ? err.message : err });
   }
 }
+

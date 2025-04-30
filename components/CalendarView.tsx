@@ -1,3 +1,4 @@
+// Fetch grouped events from API instead of static JSON
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { FaPalette } from 'react-icons/fa';
 import useIsAdmin from './useIsAdmin';
@@ -6,22 +7,32 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import styles from './CalendarView.module.css';
-
 import DayEventsModal from './DayEventsModal';
 import { useSwipeable } from 'react-swipeable';
 
-// Import grouped events JSON
-import groupedEvents from '../data/events_grouped.json';
-console.log('DEBUG: groupedEvents', groupedEvents);
+// --- Fetch events from API ---
+function useGroupedEvents(): GroupedEvent[] {
+  const [groupedEvents, setGroupedEvents] = useState<GroupedEvent[]>([]);
+  useEffect(() => {
+    fetch('/api/events')
+      .then(res => res.json())
+      .then(data => {
+        setGroupedEvents(data);
+      })
+      .catch(err => {
+        console.error('Failed to fetch events from /api/events', err);
+        setGroupedEvents([]);
+      });
+  }, []);
+  return groupedEvents;
+}
 
-// Type for a single date entry in the grouped format
 interface EventDate {
   date: string;
   time: string;
   isMatinee?: boolean;
 }
 
-// Type for a grouped event
 interface GroupedEvent {
   slug: string;
   title: string;
@@ -34,43 +45,58 @@ interface GroupedEvent {
   dates: EventDate[];
 }
 
-// Type for a calendar event (flattened)
 export interface CalendarEvent extends Omit<GroupedEvent, 'dates'>, EventDate {
   start: Date;
   end: Date;
   resource: GroupedEvent;
 }
 
-
 const localizer = momentLocalizer(moment);
 
 interface CalendarViewProps {
-  events?: GroupedEvent[]; // Optional, fallback to default import if not provided
+  events?: GroupedEvent[];
 }
 
-// Helper to generate tints and shades (lighter and darker, more saturated)
+// Helper to flatten grouped events into calendar events
+function flattenEvents(grouped: (GroupedEvent | CalendarEvent)[]): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+  for (const event of grouped) {
+    if ('dates' in event && Array.isArray(event.dates)) {
+      for (const dateObj of event.dates) {
+        const start = new Date(dateObj.date + 'T' + (dateObj.time || '19:30'));
+        // Assume 2.5 hour show unless matinee
+        const end = new Date(start.getTime() + (dateObj.isMatinee ? 2 : 2.5) * 60 * 60 * 1000);
+        events.push({
+          ...event,
+          ...dateObj,
+          start,
+          end,
+          resource: event,
+        });
+      }
+    } else if ('start' in event && 'end' in event) {
+      events.push(event as CalendarEvent);
+    }
+  }
+  return events;
+}
+
 function generateVibrantShades(hex: string, count: number): string[] {
-  // Convert hex to RGB
-  let r = parseInt(hex.substring(1, 3), 16);
-  let g = parseInt(hex.substring(3, 5), 16);
-  let b = parseInt(hex.substring(5, 7), 16);
-  const shades = [];
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const shades: string[] = [];
   for (let i = 0; i < count; i++) {
-    // Interpolate between a darker and lighter version
     const t = i / (count - 1);
-    // For first half, darken and saturate; for second half, lighten
     let nr, ng, nb;
     if (t < 0.5) {
-      // Darken and saturate
-      const factor = 1 - t * 1.3; // more darkness
+      const factor = 1 - t * 1.3;
       nr = Math.round(r * factor);
       ng = Math.round(g * factor);
       nb = Math.round(b * factor);
-      // Slightly boost saturation for navy/gold
       if (hex === '#23395d') nr = Math.min(255, Math.round(nr * 1.1));
       if (hex === '#ffd600') nb = Math.max(0, Math.round(nb * 0.7));
     } else {
-      // Lighten
       const factor = (t - 0.5) * 2;
       nr = Math.round(r + (255 - r) * factor * 0.85);
       ng = Math.round(g + (255 - g) * factor * 0.85);
@@ -84,7 +110,6 @@ function generateVibrantShades(hex: string, count: number): string[] {
   }
   return shades;
 }
-
 
 // Generate a larger, more vibrant palette of theme-based colors
 const NAVY = '#23395d';
@@ -104,8 +129,6 @@ const VENUE_COLORS = [
   ...coralShades,
   ...purpleShades,
 ];
-
-
 
 // Map each venue to a color (deterministically)
 function getVenueColor(venue: string) {
@@ -196,47 +219,7 @@ const EventTitleMarquee: React.FC<{ title: string; hideText?: boolean; small?: b
   );
 };
 
-export const flattenEvents = (grouped: (GroupedEvent | CalendarEvent)[]): CalendarEvent[] => {
-  console.log('DEBUG: flattenEvents input', grouped);
-  return grouped.flatMap((event: any) => {
-    // Already a CalendarEvent with start/end
-    if (event.start && event.end) {
-      return [event as CalendarEvent];
-    }
-    // Single event object from Firestore (has date/time)
-    if (event.date) {
-      const dateStr = event.time && typeof event.time === 'string' && event.time.trim()
-        ? `${event.date}T${event.time}`
-        : event.date;
-      const dt = new Date(dateStr);
-      // Build minimal resource for styling/navigation
-      const resourceEvent = { ...event, dates: [{ date: event.date, time: event.time }] };
-      return [{
-        ...event,
-        start: dt,
-        end: dt,
-        resource: resourceEvent,
-      } as CalendarEvent];
-    }
-    // Grouped events from JSON (has dates array)
-    if (Array.isArray(event.dates)) {
-      return event.dates.map((dateObj: any) => {
-        const dateTime = dateObj.time && dateObj.time.trim()
-          ? `${dateObj.date}T${dateObj.time}`
-          : dateObj.date;
-        const dt = new Date(dateTime);
-        return {
-          ...event,
-          ...dateObj,
-          start: dt,
-          end: dt,
-          resource: event,
-        } as CalendarEvent;
-      });
-    }
-    return [];
-  });
-};
+
 
 const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
@@ -296,7 +279,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
   }, [date, view, events]);
 
 
-    // Use provided events or fallback to imported groupedEvents
+      const groupedEvents = useGroupedEvents();
+  // Use provided events or fallback to imported groupedEvents
   const grouped = events ?? (groupedEvents as GroupedEvent[]);
 
   const calendarEvents = useMemo(

@@ -114,7 +114,7 @@ export default function CalendarPage() {
 
   // Extract filter options dynamically
   const filterOptions = useMemo(() => {
-    if (!events) return {};
+    if (!Array.isArray(events)) return {};
     const options: { [key: string]: string[] } = {};
     ['category', 'venue', 'tags'].forEach((key) => {
       let values: string[] = [];
@@ -131,7 +131,7 @@ export default function CalendarPage() {
 
   // Dynamic filtering logic
   const filteredEvents = useMemo(() => {
-    if (!events) return [];
+    if (!Array.isArray(events)) return [];
     return events.filter((event: any) => {
       return Object.entries(filters).every(([key, selected]) => {
         if (!selected.length) return true; // No filter set for this group

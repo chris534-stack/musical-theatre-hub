@@ -88,7 +88,8 @@ export default function EventDetail() {
       })
       .map((show: { date: string; time?: string; isMatinee?: boolean }, idx: number) => {
         let dateTimeStr = show.date;
-        if (show.time && /^\d{1,2}:\d{2}$/.test(show.time.trim())) {
+        // Accept both 'HH:mm' and 'HH:mm:ss' formats
+        if (show.time && /^\d{1,2}:\d{2}(:\d{2})?$/.test(show.time.trim())) {
           dateTimeStr += 'T' + show.time.trim();
         }
         const m = moment(dateTimeStr, moment.ISO_8601, true);
