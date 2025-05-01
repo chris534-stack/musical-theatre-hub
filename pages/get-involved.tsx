@@ -193,6 +193,11 @@ export default function GetInvolved() {
                     })()}</span>
                   </div>
                   <div className="audition-desc">{event.description}</div>
+                  {event.ticketLink && (
+                    <a href={event.ticketLink} target="_blank" rel="noopener noreferrer" className="ticket-link" style={{ color: '#2e3a59', fontWeight: 600, textDecoration: 'underline', display: 'block', marginTop: 6 }}>
+                      Get Tickets
+                    </a>
+                  )}
                 </div>
               ))}
             </div>

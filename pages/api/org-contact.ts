@@ -12,8 +12,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing fields' });
   }
 
-  // Use your provided admin email as default
-  const adminEmail = process.env.ADMIN_EMAIL || 'christopher.ridgley@gmail.com';
+    // Use only the provided admin email from environment variables
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) {
+    return res.status(500).json({ error: 'ADMIN_EMAIL environment variable is not set.' });
+  }
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',

@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import { SessionProvider } from 'next-auth/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/react';
 import '../styles/globals.css';
 import '../components/Header.module.css';
 import '../components/CalendarView.mobile.css';
@@ -16,6 +17,7 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
       <MobileNavBar />
       <div id="global-portal-root" />
       <SpeedInsights />
+      <Analytics />
     </SessionProvider>
   );
 }

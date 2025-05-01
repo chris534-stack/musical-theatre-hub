@@ -303,32 +303,68 @@ export default function CalendarPage() {
                 padding: '0.6rem 1.1rem 0.6rem 1.1rem',
               }}>
                 <h1 className="stickyCalendarHeader" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#2e3a59' }}>Events Calendar</h1>
-                <button
-                  aria-label="Show filters"
-                  style={{
-                    background: '#ffd700',
-                    color: '#2e3a59',
-                    border: 'none',
-                    borderRadius: 16,
-                    padding: '0.55rem 0.85rem',
-                    fontSize: '1.3rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
-                    cursor: 'pointer',
-                    marginLeft: 0,
-                    marginRight: 18,
-                    marginTop: 8,
-                  }}
-                  onClick={() => setFilterModalOpen(true)}
-                >
-                  <span style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    aria-label="Show filters"
+                    style={{
+                      background: '#ffd700',
+                      color: '#2e3a59',
+                      border: 'none',
+                      borderRadius: 16,
+                      padding: '0.55rem 0.85rem',
+                      fontSize: '1.3rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
+                      cursor: 'pointer',
+                      marginLeft: 0,
+                      marginRight: 8,
+                      marginTop: 8,
+                    }}
+                    onClick={() => setFilterModalOpen(true)}
+                  >
+                    <span style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
+                  </button>
+                </div>
               </div>
               {/* Render the calendar below the header on mobile */}
               <div style={{ marginTop: 64 }}>
                 <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />
               </div>
+              {/* Floating Add Event Button (FAB) for mobile admins */}
+              {isMobile && isAdmin && !modalOpen && (
+                <button
+                  onClick={() => setModalOpen(true)}
+                  aria-label="Add Event"
+                  style={{
+                    position: 'fixed',
+                    bottom: 80,
+                    left: 20,
+                    zIndex: 1201,
+                    background: '#ffd700',
+                    color: '#2e3a59',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 62,
+                    height: 62,
+                    boxShadow: '0 4px 16px 0 rgba(46,58,89,0.19)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 900,
+                    fontSize: 26,
+                    cursor: 'pointer',
+                    transition: 'background 0.18s',
+                    outline: 'none',
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                  }}
+                >
+                  <span style={{ fontSize: 38, lineHeight: 1, marginBottom: 0 }}>+</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, marginTop: -2 }}>Add</span>
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -349,7 +385,33 @@ export default function CalendarPage() {
                   fontWeight: 900,
                   color: '#2e3a59',
                 }}>Events Calendar</h1>
-                {/* No filter button on desktop */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {/* No filter button on desktop */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => setModalOpen(true)}
+                      style={{
+                        background: '#ffd700',
+                        color: '#2e3a59',
+                        border: 'none',
+                        borderRadius: 16,
+                        padding: '0.55rem 1.1rem',
+                        fontSize: '1.08rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
+                        cursor: 'pointer',
+                        marginLeft: 8,
+                        marginRight: 18,
+                        marginTop: 4
+                      }}
+                      aria-label="Add Event"
+                    >
+                      + Add Event
+                    </button>
+                  )}
+                </div>
               </div>
               {/* Calendar for desktop */}
               <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import admin from 'firebase-admin';
+import { requireAdmin } from '../../utils/isAdmin';
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -16,6 +17,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+
+  // Admin check
+  const isAdmin = await requireAdmin(req, res);
+  if (!isAdmin) {
+    return res.status(403).json({ error: 'Forbidden: Admins only' });
   }
 
   try {

@@ -1,12 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs';
 import path from 'path';
+import { requireAdmin } from '../../utils/isAdmin';
 
 const VOLUNTEER_FILE = path.join(process.cwd(), 'data', 'volunteer-requests.json');
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const start = Date.now();
   if (req.method === 'POST') {
+    const isAdmin = await requireAdmin(req, res);
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Forbidden: Admins only' });
+    }
     try {
       const data = req.body;
       let requests = [];

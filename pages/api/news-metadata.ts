@@ -2,8 +2,15 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import { decodeHtml } from '../../lib/decodeHtml';
+import { requireAdmin } from '../../utils/isAdmin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    const isAdmin = await requireAdmin(req, res);
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Forbidden: Admins only' });
+    }
+  }
   const { url } = req.query;
   if (typeof url !== 'string') {
     return res.status(400).json({ error: 'Missing url param' });
