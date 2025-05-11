@@ -8,6 +8,7 @@ import { GetServerSideProps } from 'next';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import { auth } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
+import { supabase } from '../lib/supabaseClient'; // Corrected import path
 
 interface Event {
   title: string;
@@ -110,12 +111,37 @@ export default function GetInvolved() {
   const isAdmin = useIsAdmin();
 
   const handleDeleteVolunteer = async (id: number) => {
-    await fetch('/api/delete-volunteer-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    mutate();
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        console.error('Error getting session for delete:', sessionError);
+        // Optionally, show a user-facing error message here
+        alert('Authentication error. Please try signing out and in again.');
+        return;
+      }
+      const accessToken = sessionData.session.access_token;
+
+      const res = await fetch('/api/delete-volunteer-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`, // Added Authorization header
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      if (res.ok) {
+        mutate(); // Re-fetches volunteer requests via SWR key '/api/add-volunteer-request'
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Failed to delete volunteer request - Server response:', res.status, errorData);
+        alert(`Failed to delete volunteer request. Server responded with ${res.status}. ${errorData.error || ''}`);
+      }
+    } catch (e: any) {
+      console.error('Failed to delete volunteer request - Network or other error:', e);
+      alert('Failed to delete volunteer request. Check your network connection.');
+    }
   };
 
   return (
@@ -192,10 +218,14 @@ export default function GetInvolved() {
                       return timeStr ? `${dateStr} at ${timeStr}` : dateStr;
                     })()}</span>
                   </div>
-                  <div className="audition-desc">{event.description}</div>
+                  <div className="audition-desc">
+                    {event.description && event.description.length > 150
+                      ? `${event.description.substring(0, 150)}...`
+                      : event.description}
+                  </div>
                   {event.ticketLink && (
                     <a href={event.ticketLink} target="_blank" rel="noopener noreferrer" className="ticket-link" style={{ color: '#2e3a59', fontWeight: 600, textDecoration: 'underline', display: 'block', marginTop: 6 }}>
-                      Get Tickets
+                      Learn more
                     </a>
                   )}
                 </div>
@@ -231,11 +261,12 @@ export default function GetInvolved() {
                         ×
                       </button>
                     )}
-                    <div className="volunteer-details">
-                      <span><strong>{req.venue}</strong> - {req.description}</span>
-                      <span><b>Expertise:</b> {req.expertise || 'Any'}</span>
-                      <span><b>Dates Needed:</b> {req.dates && req.dates.length ? req.dates.map((d: string) => formatDate(d)).join(', ') : 'TBA'}</span>
-                      <span><b>Time Commitment:</b> {req.timeCommitment || 'TBA'}</span>
+                    <h4 className="volunteer-venue">{req.venue}</h4>
+                    <p className="volunteer-description">{req.description}</p>
+                    <div className="volunteer-meta">
+                      <p><span className="label">Expertise:</span> {req.expertise || 'Any'}</p>
+                      <p><span className="label">Dates Needed:</span> {req.dates && req.dates.length ? req.dates.map((d: string) => formatDate(d)).join(', ') : 'TBA'}</p>
+                      <p><span className="label">Time Commitment:</span> {req.timeCommitment || 'TBA'}</p>
                     </div>
                   </div>
                 ))
@@ -347,9 +378,34 @@ export default function GetInvolved() {
           color: #888;
           font-style: italic;
         }
-        .volunteer-details {
+        .volunteer-card h4.volunteer-venue {
+          font-size: 1.1rem;
+          margin-top: 0;
+          margin-bottom: 8px;
           color: #333;
-          font-size: 0.97rem;
+          font-weight: 600;
+        }
+        p.volunteer-description {
+          font-size: 0.95rem;
+          color: #555;
+          margin-bottom: 12px;
+          line-height: 1.5;
+        }
+        .volunteer-meta {
+          margin-top: auto;
+        }
+        .volunteer-meta p {
+          font-size: 0.9rem;
+          color: #444;
+          margin-bottom: 6px;
+        }
+        .volunteer-meta p:last-child {
+          margin-bottom: 0;
+        }
+        .volunteer-meta .label {
+          font-weight: 600;
+          margin-right: 5px;
+          color: #333;
         }
         .remove-btn {
           color: #fff;

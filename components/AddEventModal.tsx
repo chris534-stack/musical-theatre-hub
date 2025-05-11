@@ -116,65 +116,63 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
     if (!validateStep()) return;
     setLoading(true);
     setSubmitError(null);
-    let allOk = true;
-    let errorMsg = '';
     // Dynamically import supabase client for browser
     const { supabase } = await import('../lib/supabaseClient');
+    const session = await supabase.auth.getSession();
+    const accessToken = session.data.session?.access_token;
 
-    for (const d of dates) {
-      // Combine date and mainTime into a single ISO timestamp
-      let dateTimeStr = '';
-      if (d.date && d.mainTime) {
-        dateTimeStr = `${d.date}T${d.mainTime}:00`;
-      } else if (d.date) {
-        dateTimeStr = `${d.date}T00:00:00`;
+    // Look up venue_id by venue name ONCE
+    let venue_id: number | null = null;
+    if (venue) {
+      const { data: venues, error } = await supabase
+        .from('venues')
+        .select('id')
+        .ilike('name', venue);
+      if (error || !venues || venues.length === 0) {
+        setPendingEventData({
+          title,
+          description,
+          venue,
+        });
+        setNewVenueName(venue);
+        setLoading(false);
+        setSubmitError(`Venue '${venue}' not found in database.`);
+        return;
       }
-      // Look up venue_id by venue name
-      let venue_id: number | null = null;
-      if (venue) {
-        const { data: venues, error } = await supabase
-          .from('venues')
-          .select('id')
-          .ilike('name', venue);
-        if (error || !venues || venues.length === 0) {
-          allOk = false;
-          errorMsg = `Venue '${venue}' not found in database.`;
-          setPendingEventData({
-            title,
-            description,
-            dateTimeStr,
-          });
-          setNewVenueName(venue);
-          break;
-        }
-        venue_id = venues[0].id;
-      }
-      const eventPayload = {
-        title,
-        description,
-        date: dateTimeStr,
-        venue_id,
-      };
-      const res = await fetch('/api/add-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(eventPayload),
-      });
-      if (!res.ok) {
-        allOk = false;
-        const errJson = await res.json().catch(() => ({}));
-        errorMsg = errJson.error || 'Failed to add event.';
-        break;
-      }
+      venue_id = venues[0].id;
     }
+
+    // Prepare dates array for backend
+    const eventPayload = {
+      title,
+      description,
+      venue_id,
+      dates: dates.map(d => ({
+        date: d.date,
+        mainTime: d.mainTime,
+        isMatinee: d.isMatinee,
+        matineeTime: d.matineeTime,
+      })),
+    };
+
+    const res = await fetch('/api/add-event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+      },
+      body: JSON.stringify(eventPayload),
+    });
     setLoading(false);
-    if (allOk) {
+    if (res.ok) {
       mutate('/api/events'); // Refresh calendar events
       onClose();
     } else {
-      setSubmitError(errorMsg || 'Failed to add one or more events.');
+      const errJson = await res.json().catch(() => ({}));
+      setSubmitError(errJson.error || 'Failed to add event.');
     }
   };
+
 
   return (
     <>

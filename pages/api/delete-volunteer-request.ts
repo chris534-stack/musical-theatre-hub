@@ -1,24 +1,44 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '../../utils/isAdmin';
 
-const VOLUNTEER_FILE = path.join(process.cwd(), 'data', 'volunteer-requests.json');
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Supabase credentials are not set in environment variables.');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
+    const isAdmin = await requireAdmin(req, res);
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Forbidden: Admins only' });
+    }
+
     const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'Missing id' });
+    if (!id) {
+      return res.status(400).json({ error: 'Missing id' });
+    }
+
     try {
-      let requests = [];
-      if (fs.existsSync(VOLUNTEER_FILE)) {
-        const raw = fs.readFileSync(VOLUNTEER_FILE, 'utf-8');
-        requests = JSON.parse(raw || '[]');
+      const { error } = await supabase
+        .from('volunteer_requests')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('[API] Error deleting volunteer request from Supabase:', error);
+        return res.status(500).json({ error: 'Failed to delete volunteer request from Supabase.', details: error.message });
       }
-      const updated = requests.filter((r: any) => r.id !== id);
-      fs.writeFileSync(VOLUNTEER_FILE, JSON.stringify(updated, null, 2));
+
       res.status(200).json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: 'Failed to delete volunteer request' });
+    } catch (err: any) {
+      console.error('[API] Catch block error in POST /delete-volunteer-request:', err);
+      res.status(500).json({ error: 'Failed to delete volunteer request', details: err.message });
     }
   } else {
     res.setHeader('Allow', ['POST']);

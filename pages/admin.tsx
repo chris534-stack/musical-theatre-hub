@@ -1,14 +1,47 @@
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import type { User } from '@supabase/supabase-js';
 import Head from 'next/head';
 
-export default function AdminPage() {
-  const { data: session, status } = useSession();
+const ADMIN_EMAILS = [
+  "christopher.ridgley@gmail.com",
+  ...(process.env.NEXT_PUBLIC_ADMIN_EMAILS ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(',').map(e => e.trim()).filter(Boolean) : [])
+];
 
-  if (status === 'loading') {
+export default function AdminPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Handle OAuth hash in URL after redirect
+    if (window.location.hash.includes('access_token')) {
+      supabase.auth.getUser().then(({ data }) => {
+        setUser(data?.user || null);
+        setLoading(false);
+      });
+      // Remove hash from URL for cleanliness
+      window.history.replaceState(null, '', window.location.pathname);
+    } else {
+      const getUser = async () => {
+        const { data, error } = await supabase.auth.getUser();
+        setUser(data?.user || null);
+        setLoading(false);
+      };
+      getUser();
+    }
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+    return () => listener?.subscription.unsubscribe();
+  }, []);
+
+  const isAdmin = user && typeof user.email === 'string' && ADMIN_EMAILS.includes(user.email);
+
+  if (loading) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9f9f6' }}>Loading...</div>;
   }
 
-  if (!session) {
+  if (!user || !isAdmin) {
     return (
       <main style={{ minHeight: '100vh', background: '#f9f9f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Head>
@@ -17,10 +50,12 @@ export default function AdminPage() {
         <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 6px 32px 0 rgba(46,58,89,0.10)', padding: '2.5rem 2.5rem 2rem 2.5rem', maxWidth: 380, width: '100%', textAlign: 'center' }}>
           <h1 style={{ color: '#2e3a59', fontWeight: 800, marginBottom: 8, fontSize: '2rem', letterSpacing: '0.5px' }}>Admin Login</h1>
           <p style={{ color: '#4b5d8c', marginBottom: 28, fontSize: '1.08rem' }}>
-            Please sign in with your authorized Google account to access the admin dashboard.
+            Please sign in with your authorized email to access the admin dashboard.
           </p>
           <button
-            onClick={() => signIn('google')}
+            onClick={async () => {
+              await supabase.auth.signInWithOAuth({ provider: 'google' });
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -71,10 +106,13 @@ export default function AdminPage() {
       <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 6px 32px 0 rgba(46,58,89,0.10)', padding: '2.5rem 2.5rem 2rem 2.5rem', maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <h1 style={{ color: '#2e3a59', fontWeight: 800, marginBottom: 8, fontSize: '2rem', letterSpacing: '0.5px' }}>Admin Panel</h1>
         <p style={{ color: '#4b5d8c', marginBottom: 28, fontSize: '1.08rem' }}>
-          Welcome, {session.user?.email}!
+          Welcome, {user?.email}!
         </p>
         <button
-          onClick={() => signOut()}
+          onClick={async () => {
+            await supabase.auth.signOut();
+            setUser(null);
+          }}
           style={{
             background: '#ffd700',
             color: '#2e3a59',

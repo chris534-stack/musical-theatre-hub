@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import DatePicker from 'react-multi-date-picker';
 import { mutate } from 'swr';
 import styles from './AddEventModal.module.css';
+import { supabase } from '../lib/supabaseClient';
 
 interface VolunteerRequest {
   venue: string;
@@ -48,28 +49,52 @@ export default function VolunteerRequestModal({ isOpen, onClose }: VolunteerRequ
     }
 
     setLoading(true);
-    const req: VolunteerRequest = {
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !sessionData.session) {
+      setSubmitError('Authentication error. Please try signing out and in again.');
+      setLoading(false);
+      console.error('Error getting session:', sessionError);
+      return;
+    }
+    const accessToken = sessionData.session.access_token;
+
+    const reqData: VolunteerRequest = {
       venue,
       expertise,
       description,
       dates: [],
       timeCommitment
     };
-    const res = await fetch('/api/add-volunteer-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req),
-    });
-    setLoading(false);
-    if (res.ok) {
-      mutate('/api/add-volunteer-request');
-      setSuccessMessage('Volunteer request submitted!');
-      setTimeout(() => {
-        setSuccessMessage(null);
-        onClose();
-      }, 1200);
-    } else {
-      setSubmitError('Failed to add volunteer request.');
+
+    try {
+      const res = await fetch('/api/add-volunteer-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(reqData),
+      });
+
+      if (res.ok) {
+        mutate('/api/add-volunteer-request');
+        setSuccessMessage('Volunteer request submitted!');
+        setTimeout(() => {
+          setSuccessMessage(null);
+          onClose();
+        }, 1200);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Failed to add volunteer request - Server response:', res.status, errorData);
+        setSubmitError(`Failed to add volunteer request. Server responded with ${res.status}. ${errorData.error || ''}`);
+      }
+    } catch (e: any) {
+      console.error('Failed to add volunteer request - Network or other error:', e);
+      setSubmitError('Failed to add volunteer request. Check your network connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
