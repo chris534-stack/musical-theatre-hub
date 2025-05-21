@@ -64,26 +64,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 2. Insert event (no date field, with unique slug)
-    const { data: event, error: eventError } = await supabase.from('events').insert([{ title, description, venue_id, slug }]).select('*').single();
+    // Format dates for JSONB storage
+    const formattedDates = dates.map((d: any) => ({
+      date: d.date,
+      time: d.mainTime,
+      isMatinee: d.isMatinee || false,
+      matineeTime: d.matineeTime || null
+    }));
+    
+    // Insert event with dates in JSONB field
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .insert([{ 
+        title, 
+        description, 
+        venue_id, 
+        slug,
+        dates: formattedDates,
+        director: req.body.director,
+        category: req.body.category,
+        ticket_link: req.body.ticket_link
+      }])
+      .select('*')
+      .single();
+    
     if (eventError || !event) {
       return res.status(500).json({ error: eventError?.message || 'Could not add event.' });
     }
 
-    // 2. Insert dates into event_dates
-    const eventDatesPayload = dates.map((d: any) => ({
-      event_id: event.id,
-      date: d.date,
-      time: d.mainTime,
-      is_matinee: d.isMatinee || false,
-      matinee_time: d.matineeTime || null,
-    }));
-    const { data: eventDates, error: datesError } = await supabase.from('event_dates').insert(eventDatesPayload).select('*');
-    if (datesError) {
-      return res.status(500).json({ error: datesError.message || 'Could not add event dates.' });
-    }
-
-    res.status(201).json({ success: true, event, event_dates: eventDates });
+    res.status(201).json({ success: true, event });
   } catch (err) {
     res.status(500).json({ error: 'Could not add event.' });
   }
