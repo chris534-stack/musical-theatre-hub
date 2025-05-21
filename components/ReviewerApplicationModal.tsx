@@ -68,12 +68,63 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
         // email: user.email, // Example: if you add an email column to your 'reviewers' table
       };
 
+      console.log('Submitting reviewer application with data:', applicationData);
+
+      // First check if the reviewers table exists
+      const { error: tableCheckError } = await supabase
+        .from('reviewers')
+        .select('count(*)', { count: 'exact', head: true })
+        .limit(1);
+
+      if (tableCheckError) {
+        console.error('Error checking reviewers table:', tableCheckError);
+        // If error contains 'relation "public.reviewers" does not exist', the table doesn't exist
+        if (tableCheckError.message?.includes('relation "public.reviewers" does not exist')) {
+          throw new Error('The reviewers table does not exist in the database. Please contact the administrator.');
+        }
+      }
+
+      // Now try to insert the data
       const { error } = await supabase.from('reviewers').upsert(applicationData, {
         onConflict: 'id', // Upsert based on the user's ID
       });
 
+      console.log('Upsert result:', { error });
+
       if (error) {
+        // Check if this is an RLS policy error
+        if (error.code === '42501' || error.message?.includes('permission denied')) {
+          console.error('RLS policy error:', error);
+          throw new Error('You do not have permission to submit an application. This is likely due to Row Level Security settings.');
+        }
         throw error;
+      }
+
+      // Application submitted successfully, notify admin
+      try {
+        // Prepare user display name from form or user metadata
+        const userName = `${firstName} ${lastName}`;
+        const userEmail = user.email;
+
+        // Call our notification API endpoint
+        const notifyResponse = await fetch('/api/notify-admin-reviewer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            reviewerId: user.id,
+            userName,
+            userEmail
+          })
+        });
+
+        if (!notifyResponse.ok) {
+          console.warn('Admin notification failed, but application was saved successfully.');
+        }
+      } catch (notifyError) {
+        // Don't fail the whole process if notification fails
+        console.warn('Error sending admin notification:', notifyError);
       }
 
       setSuccessMessage('Application submitted successfully!');

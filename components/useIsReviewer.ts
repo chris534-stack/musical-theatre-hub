@@ -50,27 +50,74 @@ export default function useIsReviewer(): UseIsReviewerReturn {
         }
 
         if (currentUser) {
-          const { data, error: reviewerError } = await supabase
-            .from('reviewers')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single(); // Use single() as 'id' is PK and should be unique
-
-          if (reviewerError) {
-            // PGRST116: 'No rows found'. This is not an error in this context,
-            // it just means the user is not in the reviewers table.
-            if (reviewerError.code === 'PGRST116') {
-              if (isMounted) {
-                setReviewerProfile(null);
-                setIsReviewer(false);
+          try {
+            const { data, error: reviewerError } = await supabase
+              .from('reviewers')
+              .select('*')
+              .eq('id', currentUser.id)
+              .single(); // Use single() as 'id' is PK and should be unique
+  
+            if (reviewerError) {
+              // PGRST116: 'No rows found'. This is not an error in this context,
+              // it just means the user is not in the reviewers table.
+              if (reviewerError.code === 'PGRST116') {
+                if (isMounted) {
+                  setReviewerProfile(null);
+                  setIsReviewer(false);
+                }
+              } else if (reviewerError.message?.includes('relation "public.reviewers" does not exist')) {
+                // Handle the case where the reviewers table doesn't exist
+                console.error('Reviewers table does not exist:', reviewerError);
+                if (isMounted) {
+                  setError({
+                    message: 'The reviewers table does not exist in the database. Please contact the administrator.',
+                    code: 'TABLE_NOT_FOUND',
+                    details: reviewerError.message
+                  });
+                  setReviewerProfile(null);
+                  setIsReviewer(false);
+                }
+              } else if (reviewerError.code === '42501' || reviewerError.message?.includes('permission denied')) {
+                // Handle RLS permission issues
+                console.error('RLS permission denied:', reviewerError);
+                if (isMounted) {
+                  setError({
+                    message: 'Access to reviewer data is restricted. Please contact the administrator.',
+                    code: 'PERMISSION_DENIED',
+                    details: reviewerError.message
+                  });
+                  setReviewerProfile(null);
+                  setIsReviewer(false);
+                }
+              } else {
+                // Other errors should be properly formatted and reported
+                console.error('Other reviewer data error:', reviewerError);
+                if (isMounted) {
+                  setError({
+                    message: 'Error fetching reviewer status',
+                    code: reviewerError.code || 'UNKNOWN',
+                    details: reviewerError.message || 'Unknown error'
+                  });
+                  setReviewerProfile(null);
+                  setIsReviewer(false);
+                }
               }
             } else {
-              throw reviewerError; // Other errors should be thrown
+              if (isMounted) {
+                setReviewerProfile(data as ReviewerProfile);
+                setIsReviewer(data.reviewer_application_status === 'approved');
+              }
             }
-          } else {
+          } catch (e: any) {
+            console.error('Unexpected error in reviewer lookup:', e);
             if (isMounted) {
-              setReviewerProfile(data as ReviewerProfile);
-              setIsReviewer(data.reviewer_application_status === 'approved');
+              setError({
+                message: 'Unexpected error checking reviewer status',
+                details: e.message || 'Unknown error',
+                code: 'UNEXPECTED_ERROR'
+              });
+              setReviewerProfile(null);
+              setIsReviewer(false);
             }
           }
         } else {

@@ -193,9 +193,23 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
                 date: pendingEventData.dateTimeStr,
                 venue_id: venue.id,
               };
+              // Get authentication token
+              const { supabase } = await import('../lib/supabaseClient');
+              const session = await supabase.auth.getSession();
+              const accessToken = session.data.session?.access_token;
+              
+              if (!accessToken) {
+                setSubmitError('Authentication error: No access token available. Please try signing out and in again.');
+                setLoading(false);
+                return;
+              }
+              
               const res = await fetch('/api/add-event', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`
+                },
                 body: JSON.stringify(eventPayload),
               });
               setLoading(false);
