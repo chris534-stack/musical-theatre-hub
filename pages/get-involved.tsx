@@ -5,9 +5,6 @@ import VolunteerRequestModal from '../components/VolunteerRequestModal';
 import formatDate from '../components/formatDate';
 import useIsAdmin from '../components/useIsAdmin';
 import { GetServerSideProps } from 'next';
-import GoogleSignInButton from '../components/GoogleSignInButton';
-import { auth } from '../firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
 import { supabase } from '../lib/supabaseClient'; // Corrected import path
 
 interface Event {
@@ -19,56 +16,148 @@ interface Event {
 }
 
 import ReviewerApplicationModal from '../components/ReviewerApplicationModal';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import useIsReviewer from '../components/useIsReviewer'; // Import the hook
+import Link from 'next/link'; // Import Link for navigation
 
 function ReviewerSignInSection() {
-  // No highlight/scroll logic here anymore; handled by parent
-
-
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const { user, isReviewer, reviewerProfile, loading: reviewerLoading, error: reviewerError } = useIsReviewer();
   const [showModal, setShowModal] = useState(false);
-  const [thankYou, setThankYou] = useState(false);
+  const [thankYou, setThankYou] = useState(false); // For after modal submission
+  const [signInLoading, setSignInLoading] = useState(false); // For OAuth button click
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      getDoc(doc(db, 'users', user.uid)).then((snap) => {
-        setProfile(snap.exists() ? snap.data() : null);
-        // If missing reviewer info, prompt modal
-        if (!snap.exists() || !snap.data().firstName || !snap.data().lastName || !snap.data().reviewerApplication) {
-          setShowModal(true);
-        }
-      });
+    // Decide whether to show the modal based on reviewerProfile and user status
+    if (user && !isReviewer && reviewerProfile === null && !thankYou && !reviewerLoading) {
+      // User is logged in, not an approved reviewer, has no reviewer profile yet,
+      // hasn't just submitted, and loading is complete.
+      setShowModal(true);
+    } else if (user && !isReviewer && reviewerProfile && 
+               (!reviewerProfile.first_name || !reviewerProfile.last_name || !reviewerProfile.reviewer_application_status) &&
+               reviewerProfile.reviewer_application_status !== 'pending' && !thankYou && !reviewerLoading) {
+      // User has a profile, but it's incomplete (e.g. old data before status field) and not pending
+      setShowModal(true);
     } else {
-      setProfile(null);
+      setShowModal(false);
     }
-  }, [user]);
+  }, [user, isReviewer, reviewerProfile, thankYou, reviewerLoading]);
+
+  const handleSignIn = async () => {
+    setSignInLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.href, // Redirect back to the same page
+      },
+    });
+    if (error) {
+      console.error('Error signing in:', error);
+      setSignInLoading(false); // Stop loading only if error occurs before redirect
+    }
+    // Supabase handles redirection, loading will be managed by useIsReviewer's auth listener
+  };
+
+  if (reviewerLoading || signInLoading) {
+    return <div style={{ marginTop: 8, color: '#2d6cdf' }}>Loading...</div>;
+  }
+
+  if (reviewerError) {
+    return <div style={{ marginTop: 8, color: 'red' }}>Error: {reviewerError.message}</div>;
+  }
 
   if (!user) {
     return (
       <div>
-        <GoogleSignInButton />
+        <button
+          onClick={handleSignIn}
+          style={{
+            backgroundColor: '#4285F4', // Google's blue
+            color: 'white',
+            padding: '10px 15px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '16px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            marginTop: '8px',
+          }}
+        >
+          <svg
+            version="1.1"
+            xmlns="http://www.w3.org/2000/svg"
+            width="18px"
+            height="18px"
+            viewBox="0 0 48 48"
+            style={{ marginRight: '10px' }}
+          >
+            <g>
+              <path
+                fill="#EA4335"
+                d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+              ></path>
+              <path
+                fill="#4285F4"
+                d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+              ></path>
+              <path
+                fill="#FBBC05"
+                d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+              ></path>
+              <path
+                fill="#34A853"
+                d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+              ></path>
+              <path fill="none" d="M0 0h48v48H0z"></path>
+            </g>
+          </svg>
+          Sign in with Google
+        </button>
       </div>
     );
   }
-  if (thankYou) {
+
+  if (isReviewer) {
+    return (
+      <div style={{ marginTop: 8, color: '#2d6cdf' }}>
+        <p>You are an approved reviewer.</p>
+        <Link href="/reviewer/dashboard" style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
+          Go to Reviewer Dashboard
+        </Link>
+      </div>
+    );
+  }
+  
+  if (thankYou || (reviewerProfile && reviewerProfile.reviewer_application_status === 'pending')) {
     return <div style={{marginTop: 8, color: '#2d6cdf'}}>Thank you for applying! We'll review your application soon.</div>;
   }
+
+  // User is logged in, not a reviewer, not pending, and modal should be shown (determined by useEffect)
+  // Or user is logged in, but needs to complete application (showModal will be true)
   return (
     <>
       <div style={{marginTop: 8, color: '#2d6cdf'}}>
-        Signed in as <b>{user.displayName || user.email}</b>
+        Signed in as <b>{user.user_metadata?.full_name || user.email}</b>
       </div>
+      {/* The ReviewerApplicationModal is shown/hidden based on showModal state controlled by useEffect */}
       <ReviewerApplicationModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        user={user}
-        onSubmitted={() => { setShowModal(false); setThankYou(true); }}
+        onClose={() => {
+          setShowModal(false);
+          // If they close the modal without submitting, and they don't have a profile,
+          // we might want to avoid immediately re-showing it. This depends on desired UX.
+          // For now, just closing it. If they have a partial profile, it might re-trigger.
+        }}
+        user={user} 
+        onSubmitted={() => { 
+          setShowModal(false); 
+          setThankYou(true); 
+          // The useIsReviewer hook will automatically pick up the profile change
+          // due to its onAuthStateChange listener re-fetching, or if we force a re-fetch.
+          // For an immediate update, we could trigger a re-fetch here if the hook doesn't do it fast enough.
+          // However, the `thankYou` state will cover the immediate UI change.
+        }}
       />
     </>
   );

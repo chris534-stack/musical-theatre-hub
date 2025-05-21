@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../lib/supabaseClient'; // Import Supabase client
 import styles from './AddEventModal.module.css';
 
 interface ReviewerApplicationModalProps {
@@ -21,12 +20,17 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
 
   useEffect(() => {
     if (isOpen && user) {
-      // Pre-fill from Google profile if available
-      if (user.displayName) {
-        const parts = user.displayName.split(' ');
+      // Pre-fill from Supabase user profile if available
+      if (user.user_metadata?.full_name) {
+        const parts = user.user_metadata.full_name.split(' ');
+        setFirstName(parts[0] || '');
+        setLastName(parts.slice(1).join(' ') || '');
+      } else if (user.user_metadata?.name) { // Fallback for some providers
+        const parts = user.user_metadata.name.split(' ');
         setFirstName(parts[0] || '');
         setLastName(parts.slice(1).join(' ') || '');
       }
+      // Email is available at user.email, but not currently a field in this form/table
     }
     if (!isOpen) {
       setFirstName('');
@@ -53,27 +57,36 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
     }
     setLoading(true);
     try {
-      await setDoc(doc(db, 'users', user.uid), {
-        firstName,
-        lastName,
-        preferredName,
-        pronouns,
-        reviewerApplication: {
-          status: 'pending',
-          appliedAt: serverTimestamp(),
-        },
-      }, { merge: true });
-      setSuccessMessage('Application submitted!');
+      const applicationData = {
+        id: user.id, // Supabase user ID
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        preferred_name: preferredName.trim(),
+        pronouns: pronouns.trim(),
+        reviewer_application_status: 'pending',
+        applied_at: new Date().toISOString(),
+        // email: user.email, // Example: if you add an email column to your 'reviewers' table
+      };
+
+      const { error } = await supabase.from('reviewers').upsert(applicationData, {
+        onConflict: 'id', // Upsert based on the user's ID
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setSuccessMessage('Application submitted successfully!');
       setTimeout(() => {
         setSuccessMessage(null);
         setLoading(false);
         if (onSubmitted) onSubmitted();
-        onClose();
+        onClose(); // Close modal on success
       }, 1200);
-    } catch (err) {
+    } catch (err: any) {
       setLoading(false);
-      setSubmitError('Failed to submit application.');
-      console.error('Reviewer application Firestore error:', err);
+      setSubmitError(`Failed to submit application: ${err.message || 'Please try again.'}`);
+      console.error('Reviewer application Supabase error:', err);
     }
   };
 
