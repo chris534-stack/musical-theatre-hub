@@ -25,12 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ticket_link,
         venues ( name ),
         category,
-        event_dates (
-          id,
-          date,
-          time,
-          is_matinee
-        )
+        dates
       `)
       .ilike('category', 'audition');
 
@@ -47,16 +42,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .map((e: any) => {
         console.log('[API DEBUG] Processing event:', JSON.stringify(e, null, 2)); // Log each event being processed
         let soonestDate = null;
-        if (Array.isArray(e.event_dates) && e.event_dates.length > 0) {
-          // If event_dates is joined, filter for future dates
-          console.log(`[API DEBUG] Event ${e.id} event_dates:`, JSON.stringify(e.event_dates, null, 2)); // Log event_dates
-          const futureDates = e.event_dates.filter((d: any) => new Date(d.date) >= now);
-          soonestDate = futureDates.length > 0 ? futureDates[0] : e.event_dates[0];
-        } else if (Array.isArray(e.dates) && e.dates.length > 0) {
-          // fallback for legacy field
-          console.log(`[API DEBUG] Event ${e.id} (legacy) dates:`, JSON.stringify(e.dates, null, 2)); // Log legacy dates
-          const futureDates = e.dates.filter((d: any) => new Date(d.date) >= now);
-          soonestDate = futureDates.length > 0 ? futureDates[0] : e.dates[0];
+        if (Array.isArray(e.dates) && e.dates.length > 0) {
+          // Use the JSONB dates field
+          console.log(`[API DEBUG] Event ${e.id} dates:`, JSON.stringify(e.dates, null, 2));
+          const futureDates = e.dates
+            .filter((d: any) => new Date(d.date) >= now)
+            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          
+          if (futureDates.length > 0) {
+            soonestDate = futureDates[0];
+          } else {
+            // If no future dates, use the first date
+            soonestDate = e.dates[0];
+          }
         }
         console.log(`[API DEBUG] Event ${e.id} soonestDate:`, JSON.stringify(soonestDate, null, 2)); // Log soonestDate
         return {
