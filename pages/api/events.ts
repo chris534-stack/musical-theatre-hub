@@ -1,6 +1,39 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
+// Define interfaces for our data model
+interface EventDate {
+  date: string;
+  time?: string;
+  mainTime?: string;
+  isMatinee: boolean;
+  matineeTime?: string | null;
+}
+
+interface Venue {
+  id: number;
+  name: string;
+  address?: string;
+}
+
+interface Event {
+  id: number;
+  title: string;
+  description?: string;
+  director?: string;
+  slug: string;
+  ticket_link?: string;
+  venue_id: number;
+  category?: string;
+  venues?: Venue | any; // Allow for different venues response types from Supabase
+  dates?: EventDate[] | any; // Allow for different dates formats during migration
+}
+
+interface FormattedEvent extends Omit<Event, 'venues' | 'dates'> {
+  venue: string | null;
+  dates: EventDate[];
+}
+
 // Debugging logs for Supabase env variables
 console.log('---[Supabase Debug]---');
 console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
@@ -19,8 +52,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const start = Date.now();
   try {
-    console.log('[API] /api/events called (JOIN event + event_dates)');
-    // Join event and event_dates
+    console.log('[API] /api/events called (new JSONB dates format)');
+    
+    // Get events with JSONB dates field and venue join
     const { data, error } = await supabase
       .from('events')
       .select(`
@@ -32,12 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ticket_link,
         venue_id,
         category,
-        event_dates (
-          id,
-          date,
-          time,
-          is_matinee
-        ),
+        dates,
         venues (
           id,
           name,
@@ -45,16 +74,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         )
       `);
     if (error) throw error;
-    // Transform to grouped format
-    const groupedEvents = (data || []).map(event => ({
-      ...event,
-      venue: event.venues && typeof event.venues === 'object' && 'name' in event.venues ? event.venues.name : null, // flatten venue name for frontend compatibility
-      dates: (event.event_dates || []).map(ed => ({
-        date: ed.date,
-        time: ed.time,
-        isMatinee: ed.is_matinee, // map snake_case to camelCase for frontend compatibility
-      })),
-    }));
+    
+    // Transform to grouped format (ensuring backward compatibility)
+    const groupedEvents = (data || []).map((event: Event) => {
+      // Handle both old and new date formats
+      let formattedDates: EventDate[] = [];
+      
+      // If we have the new JSONB dates format
+      if (event.dates && Array.isArray(event.dates)) {
+        formattedDates = event.dates.map((d: any) => ({
+          date: d.date,
+          time: d.mainTime || d.time, // Support both new and old formats
+          isMatinee: d.isMatinee || false,
+          matineeTime: d.matineeTime || null
+        }));
+      }
+      
+      return {
+        ...event,
+        venue: event.venues && typeof event.venues === 'object' && 'name' in event.venues ? event.venues.name : null, // flatten venue name for frontend compatibility
+        dates: formattedDates,
+      } as FormattedEvent;
+    });
     if (Array.isArray(groupedEvents) && groupedEvents.length > 0) {
       console.log('[API] /api/events: first grouped event:', JSON.stringify(groupedEvents[0], null, 2));
     }

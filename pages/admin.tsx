@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { User } from '@supabase/supabase-js';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
+
+// Dynamically import AddEventModal to avoid SSR issues with date picker
+const AddEventModal = dynamic(
+  () => import('../components/AddEventModal'),
+  { ssr: false }
+);
 
 const ADMIN_EMAILS = [
   "christopher.ridgley@gmail.com",
@@ -11,6 +18,8 @@ const ADMIN_EMAILS = [
 export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Handle OAuth hash in URL after redirect
@@ -98,38 +107,134 @@ export default function AdminPage() {
     );
   }
 
+  const handleEventSubmit = async (data: any) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      const response = await fetch('/api/add-event', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add event');
+      }
+
+      setSuccessMessage('Event added successfully!');
+      setShowAddEventModal(false);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (error) {
+      console.error('Error adding event:', error);
+      alert(error instanceof Error ? error.message : 'Failed to add event');
+    }
+  };
+
   return (
-    <main style={{ minHeight: '100vh', background: '#f9f9f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <main style={{ minHeight: '100vh', background: '#f9f9f6', padding: '2rem 1rem' }}>
       <Head>
         <title>Admin Panel | Our Stage, Eugene</title>
       </Head>
-      <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 6px 32px 0 rgba(46,58,89,0.10)', padding: '2.5rem 2.5rem 2rem 2.5rem', maxWidth: 480, width: '100%', textAlign: 'center' }}>
-        <h1 style={{ color: '#2e3a59', fontWeight: 800, marginBottom: 8, fontSize: '2rem', letterSpacing: '0.5px' }}>Admin Panel</h1>
-        <p style={{ color: '#4b5d8c', marginBottom: 28, fontSize: '1.08rem' }}>
-          Welcome, {user?.email}!
-        </p>
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut();
-            setUser(null);
-          }}
-          style={{
-            background: '#ffd700',
-            color: '#2e3a59',
-            border: 'none',
-            borderRadius: 8,
-            fontWeight: 700,
-            fontSize: '1rem',
-            padding: '0.7rem 1.5rem',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
-            transition: 'background 0.2s, color 0.2s',
-          }}
-        >
-          Sign out
-        </button>
-        {/* TODO: Add event/news management tools here */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ 
+          background: '#fff', 
+          borderRadius: 16, 
+          boxShadow: '0 6px 32px 0 rgba(46,58,89,0.10)', 
+          padding: '2.5rem', 
+          marginBottom: '2rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div>
+              <h1 style={{ color: '#2e3a59', fontWeight: 800, marginBottom: 8, fontSize: '2rem', letterSpacing: '0.5px' }}>Admin Panel</h1>
+              <p style={{ color: '#4b5d8c', fontSize: '1.08rem' }}>
+                Welcome, {user?.email}!
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+              }}
+              style={{
+                background: '#ffd700',
+                color: '#2e3a59',
+                border: 'none',
+                borderRadius: 8,
+                fontWeight: 700,
+                fontSize: '1rem',
+                padding: '0.7rem 1.5rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+
+          {successMessage && (
+            <div style={{
+              background: '#e6f7e6',
+              color: '#2e7d32',
+              padding: '1rem',
+              borderRadius: '8px',
+              marginBottom: '1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z" fill="currentColor"/>
+              </svg>
+              {successMessage}
+            </div>
+          )}
+
+          <div style={{ marginTop: '2rem' }}>
+            <h2 style={{ color: '#2e3a59', fontSize: '1.5rem', marginBottom: '1rem' }}>Event Management</h2>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setShowAddEventModal(true)}
+                style={{
+                  background: '#4a90e2',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  padding: '0.7rem 1.5rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 2px 8px 0 rgba(46,58,89,0.15)',
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={e => (e.currentTarget.style.background = '#357abd')}
+                onMouseOut={e => (e.currentTarget.style.background = '#4a90e2')}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
+                </svg>
+                Add New Event
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {showAddEventModal && (
+        <AddEventModal
+          isOpen={showAddEventModal}
+          onClose={() => setShowAddEventModal(false)}
+          onSubmit={handleEventSubmit}
+        />
+      )}
     </main>
   );
 }

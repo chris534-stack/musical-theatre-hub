@@ -1,13 +1,32 @@
 import React, { useState } from 'react';
-import DatePicker from 'react-multi-date-picker';
+import DatePicker, { DateObject } from 'react-multi-date-picker';
 import useIsAdmin from './useIsAdmin';
+import { supabase } from '../lib/supabaseClient';
+
+// Helper function to normalize dates to YYYY-MM-DD format
+const formatDateString = (date: Date | DateObject): string => {
+  if (date instanceof Date) {
+    return date.toISOString().split('T')[0];
+  } else if (date && typeof date === 'object' && 'year' in date) {
+    const dateObj = date as DateObject;
+    return new Date(Number(dateObj.year), Number(dateObj.month) - 1, Number(dateObj.day)).toISOString().split('T')[0];
+  }
+  return '';
+};
+
+// Helper to convert DateObject to Date
+const dateObjectToDate = (date: Date | DateObject): Date => {
+  if (date instanceof Date) return date;
+  return new Date(Number(date.year), Number(date.month) - 1, Number(date.day));
+};
 
 interface EventDate {
-  date: any; // date object from DatePicker
-  mainTime?: string;
-  isMatinee?: boolean;
-  matineeTime?: string;
+  date: Date;
+  mainTime: string;
+  isMatinee: boolean;
+  matineeTime: string;
 }
+
 interface EventFormValues {
   category: '' | 'performance' | 'audition' | 'workshop';
   title: string;
@@ -43,10 +62,12 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Handle per-date matinee changes
-  const handleDateMatineeChange = (idx: number, field: 'isMatinee' | 'matineeTime', value: any) => {
+  const handleDateMatineeChange = (idx: number, field: 'isMatinee' | 'matineeTime', value: boolean | string) => {
     setValues(v => {
       const newDates = [...v.dates];
-      newDates[idx] = { ...newDates[idx], [field]: value };
+      if (newDates[idx]) {
+        newDates[idx] = { ...newDates[idx], [field]: value };
+      }
       return { ...v, dates: newDates };
     });
   };
@@ -71,121 +92,72 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
     e.preventDefault();
     setLoading(true);
     setError(null);
-    // Generate slug by title
-    const slug = values.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    let allOk = true;
-    for (const d of values.dates) {
-      let dateStr;
-      if (d.date && typeof d.date.format === 'function') {
-        dateStr = d.date.format('YYYY-MM-DD');
-      } else if (typeof d.date === 'string') {
-        dateStr = d.date;
-      } else if (d.date instanceof Date) {
-        dateStr = d.date.toISOString().slice(0, 10);
-      } else {
-        dateStr = '';
-      }
-      if (values.category === 'performance') {
-        const endpoint = editMode ? '/api/update-event' : '/api/add-event';
-        // Only create main event if mainTime is present
-        if (d.mainTime) {
-          const mainEvent = {
-            title: values.title,
-            slug,
-            venue: values.venue,
-            description: values.description,
-            director: values.director,
-            category: 'performance',
-            date: dateStr,
-            time: d.mainTime,
-            ticketLink: values.ticketLink,
-            isMatinee: false,
-          };
-          // Debug: log the main event
-          // eslint-disable-next-line no-console
-          console.log('Submitting main event:', mainEvent);
-          const res1 = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(mainEvent),
-          });
-          if (!res1.ok) allOk = false;
-        }
-        // Only create matinee event if isMatinee and matineeTime are present
-        if (d.isMatinee && d.matineeTime) {
-          const matineeEvent = {
-            title: values.title,
-            slug,
-            venue: values.venue,
-            description: values.description,
-            director: values.director,
-            category: 'performance',
-            date: dateStr,
-            time: d.matineeTime,
-            ticketLink: values.ticketLink,
-            isMatinee: true,
-          };
-          // Debug: log the matinee event
-          // eslint-disable-next-line no-console
-          console.log('Submitting matinee event:', matineeEvent);
-          const res2 = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(matineeEvent),
-          });
-          if (!res2.ok) allOk = false;
-        } else if (editMode && d.matineeTime) {
-          // Remove any existing matinee event for this date/time
-          await fetch('/api/remove-event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug, date: dateStr, time: d.matineeTime }),
-          });
-        }
-      } else if (values.category === 'workshop' || values.category === 'audition') {
-        // Single event (workshop or audition)
-        const event: any = {
-          title: values.title,
-          slug,
-          venue: values.venue,
-          description: values.description,
-          category: values.category,
+    
+    try {
+      // Generate slug by title
+      const slug = values.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      
+      // Process each date
+      const processedDates = values.dates.map(d => {
+        const dateStr = formatDateString(d.date);
+        return {
           date: dateStr,
-          time: d.mainTime,
+          mainTime: d.mainTime || null,
+          isMatinee: d.isMatinee || false,
+          matineeTime: d.matineeTime || null
         };
-        if (values.category === 'workshop') {
-          event.instructor = values.instructor;
-        }
-        if (values.category === 'audition') {
-          event.requirements = values.requirements;
-        }
-        const endpoint = editMode ? '/api/update-event' : '/api/add-event';
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(event),
-        });
-        if (!res.ok) allOk = false;
+      });
+
+      // Get the current session for auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
       }
-    }
-    setLoading(false);
-    if (allOk) {
-      if (initialValues) {
-        setValues({ ...initialValues, dates: initialValues.dates ? initialValues.dates.map(d => ({ date: d.date, mainTime: '' })) : [] });
-      } else {
-        setValues({ ...initialValuesDefault });
+
+      // Prepare the event data
+      const eventData = {
+        title: values.title,
+        description: values.description,
+        venue_id: values.venue, // Assuming venue is the ID
+        dates: processedDates,
+        director: values.director,
+        ticketLink: values.ticketLink,
+        category: values.category,
+        requirements: values.requirements,
+        instructor: values.instructor
+      };
+
+      // Submit to the API
+      const response = await fetch('/api/add-event', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(eventData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to add event');
       }
+
+      // If we get here, the event was added successfully
+      setValues(initialValues || { ...initialValuesDefault });
       setStep(1);
       onSuccess();
-    } else {
-      setError('Failed to add one or more events.');
+    } catch (err) {
+      console.error('Error submitting event:', err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 320 }}>
+    <form onSubmit={handleSubmit} style={{ maxWidth: 600, margin: '0 auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }} noValidate>
       {step === 1 && (
-        <>
+        <React.Fragment>
           <label style={{ fontWeight: 600 }}>Event Type</label>
           <select value={values.category} onChange={e => handleChange('category', e.target.value as EventFormValues['category'])} required>
             <option value='' disabled>Select type</option>
@@ -194,114 +166,19 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
             <option value='workshop'>Workshop</option>
           </select>
           <button type='button' onClick={handleNext} disabled={!values.category}>Next</button>
-        </>
+        </React.Fragment>
       )}
       {step === 2 && (
-        <>
+        <React.Fragment>
           <button type='button' onClick={handleBack}>&larr; Back</button>
           <label style={{ fontWeight: 600 }}>Title</label>
           <input value={values.title} onChange={e => handleChange('title', e.target.value)} required />
           <label style={{ fontWeight: 600 }}>Venue</label>
-<input value={values.venue} onChange={e => handleChange('venue', e.target.value)} required />
-
-          {/* Per-date main and matinee times */}
-          <div style={{ margin: '1rem 0' }}>
-  <label style={{ fontWeight: 600 }}>Dates and Times</label>
-  <div style={{ marginBottom: 10 }}>
-    <label style={{ fontWeight: 600, marginRight: 8 }}>Default Regular Performance Time:</label>
-    <input type="time" value={defaultMainTime} onChange={e => setDefaultMainTime(e.target.value)} style={{ marginRight: 24 }} />
-    <label style={{ fontWeight: 600, marginRight: 8 }}>Default Matinee Time:</label>
-    <input type="time" value={defaultMatineeTime} onChange={e => setDefaultMatineeTime(e.target.value)} />
-  </div>
-  {/* DatePicker with controlled open state and onClose for outside click */}
-  {/*
-    react-multi-date-picker (DatePicker) does not support open/onClose in all versions. If not supported, fallback to default behavior.
-    TODO: If your version does not support 'open', consider updating or use a wrapper for dismiss-on-blur.
-  */}
-  <DatePicker
-    multiple
-    value={values.dates.map(d => d.date)}
-
-    onChange={dates => {
-      setDatePickerOpen(false); // close after change as well
-      // Ensure dates is always an array of EventDate objects
-      const newDates = Array.isArray(dates)
-        ? dates.map(date => {
-            // Try to preserve times for existing dates
-            const dateStr = date && typeof date.format === 'function' ? date.format('YYYY-MM-DD') : (typeof date === 'string' ? date : '');
-            const existing = values.dates.find(d => {
-              if (typeof d.date === 'string') {
-                return d.date === dateStr;
-              }
-              if (d.date && typeof d.date.format === 'function') {
-                return d.date.format('YYYY-MM-DD') === dateStr;
-              }
-              return false;
-            });
-            // If new, default times
-            return existing || { date, mainTime: defaultMainTime, isMatinee: false, matineeTime: defaultMatineeTime };
-          })
-        : [];
-      handleChange('dates', newDates);
-    }}
-    format="YYYY-MM-DD"
-    placeholder="Select dates"
-
-    inputClass="date-picker-input"
-  />
-  {values.dates.length > 0 && values.dates.map((d, idx) => (
-    <div key={idx} style={{ border: '1px solid #ccc', borderRadius: 4, padding: 8, marginBottom: 8 }}>
-      <div>Date: {typeof d.date === 'string' ? d.date : d.date && typeof d.date.format === 'function' ? d.date.format('YYYY-MM-DD') : d.date?.toString?.() ?? ''}</div>
-      <label>Main Time: </label>
-      <input
-        type="time"
-        value={d.mainTime || ''}
-        onChange={e => {
-          const newDates = [...values.dates];
-          newDates[idx] = { ...newDates[idx], mainTime: e.target.value };
-          handleChange('dates', newDates);
-        }}
-        required
-        placeholder={defaultMainTime}
-      />
-      <label style={{ marginLeft: 12 }}>Matinee</label>
-      <input
-        type="checkbox"
-        checked={!!d.isMatinee}
-        onChange={e => {
-          const checked = e.target.checked;
-          const newDates = [...values.dates];
-          newDates[idx] = {
-            ...newDates[idx],
-            isMatinee: checked,
-            matineeTime: checked
-              ? (newDates[idx].matineeTime || defaultMatineeTime)
-              : ''
-          };
-          handleChange('dates', newDates);
-        }}
-        style={{ marginLeft: 8, marginRight: 4 }}
-      />
-      <label style={{ marginLeft: 8 }}>Matinee Time:</label>
-      <input
-        type="time"
-        value={d.matineeTime || ''}
-        onChange={e => {
-          const newDates = [...values.dates];
-          newDates[idx] = { ...newDates[idx], matineeTime: e.target.value };
-          handleChange('dates', newDates);
-        }}
-        disabled={!d.isMatinee}
-        placeholder={defaultMatineeTime}
-      />
-    </div>
-  ))}
-</div>
           <input value={values.venue} onChange={e => handleChange('venue', e.target.value)} required />
           <label style={{ fontWeight: 600 }}>Description</label>
           <textarea value={values.description} onChange={e => handleChange('description', e.target.value)} required />
           {values.category === 'performance' && (
-            <>
+            <React.Fragment>
               <label style={{ fontWeight: 600 }}>Director</label>
               <input value={values.director} onChange={e => handleChange('director', e.target.value)} />
               <label style={{ fontWeight: 600 }}>Ticket Link (optional)</label>
@@ -311,58 +188,135 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
                 onChange={e => handleChange('ticketLink', e.target.value)}
                 placeholder="https://buytickets.example.com"
               />
-            </>
+            </React.Fragment>
           )}
           {values.category === 'workshop' && (
-            <>
+            <React.Fragment>
               <label style={{ fontWeight: 600 }}>Instructor</label>
               <input value={values.instructor} onChange={e => handleChange('instructor', e.target.value)} />
-            </>
+            </React.Fragment>
           )}
           {values.category === 'audition' && (
-            <>
+            <React.Fragment>
               <label style={{ fontWeight: 600 }}>Requirements</label>
               <textarea value={values.requirements} onChange={e => handleChange('requirements', e.target.value)} />
-            </>
+            </React.Fragment>
           )}
           <button type='button' onClick={handleNext} disabled={!values.title || !values.venue || !values.description}>Next</button>
-        </>
+        </React.Fragment>
       )}
       {step === 3 && (
-        <>
+        <React.Fragment>
           <button type='button' onClick={handleBack}>&larr; Back</button>
           <label style={{ fontWeight: 600 }}>Event Dates</label>
-          <DatePicker
-            multiple
-            value={values.dates.map(d => d.date)}
-            onChange={dates => {
-              // Convert selected dates into array of EventDate objects, preserving matinee info if possible
-              setValues(v => {
-                // If dates is array of date objects, keep isMatinee/matineeTime/mainTime if present
-                const newDates = dates.map((d: any) => {
-                  const existing = v.dates.find(ed => ed.date.format ? ed.date.format('YYYY-MM-DD') === d.format('YYYY-MM-DD') : ed.date.toISOString().slice(0, 10) === d.toISOString().slice(0, 10));
-                  return existing ? existing : { date: d, mainTime: '' };
+          <div style={{ position: 'relative', width: '100%' }}>
+            <DatePicker
+              multiple
+              value={values.dates.map(d => d.date)}
+              onChange={dates => {
+                if (!dates) return;
+                
+                setValues(v => {
+                  const dateArray = Array.isArray(dates) ? dates : [dates];
+                  const newDates: EventDate[] = dateArray.map(date => {
+                    const dateObj = dateObjectToDate(date);
+                    const dateStr = formatDateString(dateObj);
+                    const existing = v.dates.find(d => formatDateString(d.date) === dateStr);
+                    return existing || { 
+                      date: dateObj,
+                      mainTime: defaultMainTime,
+                      isMatinee: false,
+                      matineeTime: defaultMatineeTime 
+                    };
+                  });
+                  return { ...v, dates: newDates };
                 });
-                return { ...v, dates: newDates };
-              });
-            }}
-            format='YYYY-MM-DD'
-            placeholder='Select dates'
-          />
+              }}
+              format='YYYY-MM-DD'
+              placeholder='Select dates'
+              onOpen={() => setDatePickerOpen(true)}
+              onClose={() => setDatePickerOpen(false)}
+              containerStyle={{
+                position: 'relative',
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}
+              renderButton={() => null}
+            />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <button 
+                type="button" 
+                onClick={() => (document.querySelector('.rmdp-input') as HTMLElement)?.click()}
+                style={{ 
+                  padding: '8px 16px', 
+                  border: '1px solid #ccc', 
+                  borderRadius: '4px',
+                  flex: '1',
+                  textAlign: 'left',
+                  backgroundColor: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                {values.dates.length > 0 
+                  ? `${values.dates.length} date${values.dates.length !== 1 ? 's' : ''} selected` 
+                  : 'Select dates'}
+              </button>
+              {datePickerOpen && (
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const picker = document.querySelector('.rmdp-container');
+                    if (picker) {
+                      picker.remove();
+                      setDatePickerOpen(false);
+                    }
+                  }}
+                  style={{ 
+                    padding: '8px 16px', 
+                    background: '#4CAF50', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    minWidth: '80px',
+                    textAlign: 'center'
+                  }}
+                >
+                  Done
+                </button>
+              )}
+              {!datePickerOpen && values.dates.length > 0 && (
+                <button 
+                  type="button" 
+                  onClick={() => (document.querySelector('.rmdp-input') as HTMLElement)?.click()}
+                  style={{ 
+                    padding: '8px 16px', 
+                    background: '#4CAF50', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    minWidth: '80px',
+                    textAlign: 'center'
+                  }}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          </div>
 
           {values.category === 'performance' && values.dates.length > 0 && (
-            <>
+            <React.Fragment>
               <label style={{ fontWeight: 600 }}>Matinee Performances</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {values.dates.map((d, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>{d.date && typeof d.date.format === 'function'
-  ? d.date.format('YYYY-MM-DD')
-  : typeof d.date === 'string'
-    ? d.date
-    : d.date instanceof Date
-      ? d.date.toISOString().slice(0, 10)
-      : ''}</span>
+                    <span>{formatDateString(d.date)}</span>
                     <label style={{ fontWeight: 400 }}>
                       <input
                         type='checkbox'
@@ -382,7 +336,7 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
                       Matinee
                     </label>
                     {d.isMatinee && (
-                      <>
+                      <React.Fragment>
                         <label style={{ fontWeight: 400, marginLeft: 8 }}>Time:</label>
                         <input
                           type='time'
@@ -390,12 +344,12 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
                           onChange={e => handleDateMatineeChange(idx, 'matineeTime', e.target.value)}
                           style={{ marginLeft: 4 }}
                         />
-                      </>
+                      </React.Fragment>
                     )}
                   </div>
                 ))}
               </div>
-            </>
+            </React.Fragment>
           )}
           <button type='submit' disabled={loading || values.dates.length === 0 || values.dates.some(d => !d.mainTime && !d.matineeTime)}>{loading ? 'Adding...' : 'Submit'}</button>
 {values.dates.some(d => !d.mainTime && !d.matineeTime) && (
@@ -403,7 +357,7 @@ const MultiStepAddEventForm = ({ onSuccess, editMode = false, initialValues }: M
     Each date must have at least a Main Time or a Matinee Time.
   </div>
 ) }
-        </>
+        </React.Fragment>
       )}
       {/* Debug: Show current dates state */}
       <pre style={{ background: '#f4f4f4', fontSize: 12, padding: 8, margin: '1em 0', maxHeight: 200, overflow: 'auto' }}>{JSON.stringify(values.dates, null, 2)}</pre>
