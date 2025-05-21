@@ -391,10 +391,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
   // Debug: log the events being passed to the calendar
   console.log('DEBUG: calendarEvents', calendarEvents);
   return (
-    <div {...(isMobile ? swipeHandlers : {})}>
+    <div 
+      {...(isMobile ? swipeHandlers : {})}
+      style={{
+        marginTop: '-2px', /* Pull entire calendar component up to remove any gap */
+        position: 'relative',
+        zIndex: 5
+      }}
+    >
       {/* Custom navigation buttons for month view */}
       {view === 'month' && (
-        <div className={styles.stickyMonthHeader} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div className={styles.stickyMonthHeader} style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          gap: 12, 
+          marginBottom: 0,
+          borderTop: '1px solid #fff' /* Cover any potential border/gap */
+        }}>
           <button
             onClick={() => {
               if (!isCurrentMonth) setDate(prev => {
@@ -452,6 +466,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
           endAccessor="end"
           style={{ height: 600, margin: '2rem 0' }}
           selectable={false}
+          fixedWeeks={true} /* Force all months to display with exactly 6 weeks */
           longPressThreshold={isMobile ? 1 : 250}
           view={view}
           onView={(v: string) => setView(v as 'month' | 'week' | 'day')}

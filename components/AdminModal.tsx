@@ -36,6 +36,45 @@ const closeStyle: React.CSSProperties = {
 
 export default function AdminModal({ open, onClose, title, children }: AdminModalProps) {
   const isMobile = useIsMobileModal();
+  
+  // Implement scroll locking when modal is open
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Only apply scroll locking if the modal is open
+      if (open) {
+        // Store the current scroll position
+        const scrollY = window.scrollY;
+        // Add styles to prevent scrolling while maintaining position
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflowY = 'hidden';
+      } else {
+        // Restore scrolling and position when modal is closed
+        const scrollY = document.body.style.top;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflowY = '';
+        // Restore scroll position
+        if (scrollY) {
+          window.scrollTo(0, parseInt(scrollY.replace('-', '')) || 0);
+        }
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (typeof window !== 'undefined') {
+        // Always restore scrolling capability when component unmounts
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflowY = '';
+      }
+    };
+  }, [open]);
+  
   if (!open) return null;
 
   const modalStyle: React.CSSProperties = isMobile ? {

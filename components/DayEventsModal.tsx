@@ -27,8 +27,7 @@ const modalStyle: React.CSSProperties = {
   width: '100vw',
   height: '100vh',
   background: 'rgba(46,58,89,0.18)',
-  zIndex: 110, // Lowered to sit just above nav bar
-
+  zIndex: 999, // Higher than any other element to ensure it's on top
   display: 'flex',
   flexDirection: 'row',
   justifyContent: 'center',
@@ -43,9 +42,10 @@ const cardStyle: React.CSSProperties = {
   minWidth: 260,
   maxWidth: 400,
   width: '90vw',
-  maxHeight: '80vh',
+  maxHeight: '85vh',
   overflowY: 'auto',
   textAlign: 'left',
+  position: 'relative', // For positioning the close button
 };
 
 const eventTokenStyle: React.CSSProperties = {
@@ -56,7 +56,76 @@ const eventTokenStyle: React.CSSProperties = {
   boxShadow: '0 1px 7px 0 rgba(46,58,89,0.05)',
 };
 
+const closeButtonStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '10px',
+  right: '10px',
+  background: 'none',
+  border: 'none',
+  fontSize: '1.5rem',
+  color: '#2e3a59',
+  cursor: 'pointer',
+  padding: '5px 10px',
+  zIndex: 10,
+  fontWeight: 300,
+  lineHeight: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '50%',
+  width: '34px',
+  height: '34px',
+  opacity: 0.7,
+  transition: 'opacity 0.2s, background 0.2s',
+};
+
 export default function DayEventsModal({ open, onClose, events, date }: DayEventsModalProps) {
+  // Dispatch custom event when modal state changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dayEventsModalStateChange', { 
+        detail: { open } 
+      }));
+      
+      // Lock body scroll when modal is open
+      if (open) {
+        // Store the current scroll position
+        const scrollY = window.scrollY;
+        // Add styles to prevent scrolling while maintaining position
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflowY = 'hidden';
+      } else {
+        // Restore scrolling and position when modal is closed
+        const scrollY = document.body.style.top;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflowY = '';
+        // Restore scroll position
+        if (scrollY) {
+          window.scrollTo(0, parseInt(scrollY.replace('-', '')) || 0);
+        }
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('dayEventsModalStateChange', { 
+          detail: { open: false } 
+        }));
+        
+        // Always restore scrolling capability when component unmounts
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflowY = '';
+      }
+    };
+  }, [open]);
+  
   if (!open) return null;
   const dateStr = date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -67,7 +136,22 @@ export default function DayEventsModal({ open, onClose, events, date }: DayEvent
   return (
     <div className="day-events-modal-overlay" style={modalStyle} onClick={handleOverlayClick}>
       <div style={cardStyle} onClick={e => e.stopPropagation()}>
-        <h2 style={{ color: '#2e3a59', fontWeight: 700, marginBottom: 18 }}>{dateStr}</h2>
+        <button 
+          style={closeButtonStyle} 
+          onClick={onClose}
+          aria-label="Close"
+          onMouseOver={(e) => { 
+            e.currentTarget.style.opacity = '1'; 
+            e.currentTarget.style.background = 'rgba(46,58,89,0.08)';
+          }}
+          onMouseOut={(e) => { 
+            e.currentTarget.style.opacity = '0.7'; 
+            e.currentTarget.style.background = 'none';
+          }}
+        >
+          ×
+        </button>
+        <h2 style={{ color: '#2e3a59', fontWeight: 700, marginBottom: 18, paddingRight: '30px' }}>{dateStr}</h2>
         {events.length === 0 ? (
           <div style={{ color: '#888', fontStyle: 'italic' }}>No events for this day.</div>
         ) : (
@@ -101,6 +185,8 @@ export default function DayEventsModal({ open, onClose, events, date }: DayEvent
             </div>
           ))
         )}
+        {/* Extra padding div at the bottom for better scrolling experience */}
+        <div style={{ height: '30px' }} />
       </div>
     </div>
   );

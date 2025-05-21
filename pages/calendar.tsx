@@ -84,7 +84,7 @@ function useMobileOrAdjacent(): boolean {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     function check() {
-      setIsMobile(window.matchMedia('(max-width: 600px)').matches);
+      setIsMobile(window.innerWidth <= 768);
     }
     check();
     window.addEventListener('resize', check);
@@ -94,10 +94,25 @@ function useMobileOrAdjacent(): boolean {
 }
 
 export default function CalendarPage() {
-  const isAdmin = useIsAdmin();
+  const isMobile = useMobileOrAdjacent();
   const [modalOpen, setModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const isMobile = useMobileOrAdjacent();
+  const [dayEventsModalOpen, setDayEventsModalOpen] = useState(false);
+  
+  // Listen for the DayEventsModal open/close state
+  useEffect(() => {
+    const handleDayEventsModalState = (e: CustomEvent) => {
+      setDayEventsModalOpen(e.detail.open);
+    };
+    
+    // Custom event listener for DayEventsModal state changes
+    window.addEventListener('dayEventsModalStateChange', handleDayEventsModalState as EventListener);
+    
+    return () => {
+      window.removeEventListener('dayEventsModalStateChange', handleDayEventsModalState as EventListener);
+    };
+  }, []);
+  const isAdmin = useIsAdmin();
 
   // Fetch events from Firestore
   const { data: events, error } = useSWR('/api/events', fetcher);
@@ -177,13 +192,16 @@ export default function CalendarPage() {
       <Head>
         <title>Events Calendar | Our Stage, Eugene</title>
       </Head>
+      {/* Calendar content begins here */}
       <main
         style={{
           display: 'flex',
           alignItems: 'flex-start',
           gap: 0,
-          marginTop: 24,
+          marginTop: 0,
+          paddingTop: 0,
           position: 'relative',
+          zIndex: 10
         }}
       >
         {/* Sticky sidebar on desktop */}
@@ -207,8 +225,7 @@ export default function CalendarPage() {
                   {key.charAt(0).toUpperCase() + key.slice(1)}
                 </h3>
                 <div style={{ marginBottom: 8 }}>
-                  <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    Select All
+                  <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                     <input
                       type="checkbox"
                       checked={filters[key]?.length === filterOptions[key].length && filterOptions[key].length > 0}
@@ -222,86 +239,45 @@ export default function CalendarPage() {
                           handleSelectAll(key);
                         }
                       }}
-                      style={{ marginLeft: 8 }}
+                      style={{ marginRight: 8 }}
                     />
+                    Select All
                   </label>
                 </div>
                 {filterOptions[key].map((option: string) => (
-                  <label key={option} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
-                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  <label key={option} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
                     <input
                       type="checkbox"
                       checked={filters[key]?.includes(option)}
                       onChange={() => handleFilterChange(key, option)}
-                      style={{ marginLeft: 8 }}
+                      style={{ marginRight: 8 }}
                     />
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
                   </label>
                 ))}
               </div>
             ))}
           </div>
         )}
-        {/* Modal filter on mobile */}
-        {isMobile && (
-          <AdminModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Events">
-            {Object.keys(filterOptions).map((key) => (
-              <div key={key} style={{ marginBottom: 32 }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#23395d', marginBottom: 10 }}>
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </h3>
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    Select All
-                    <input
-                      type="checkbox"
-                      checked={filters[key]?.length === filterOptions[key].length && filterOptions[key].length > 0}
-                      ref={el => {
-                        if (el) el.indeterminate = filters[key]?.length > 0 && filters[key]?.length < filterOptions[key].length;
-                      }}
-                      onChange={() => {
-                        if (filters[key]?.length === filterOptions[key].length) {
-                          handleDeselectAll(key);
-                        } else {
-                          handleSelectAll(key);
-                        }
-                      }}
-                      style={{ marginLeft: 8 }}
-                    />
-                  </label>
-                </div>
-                {filterOptions[key].map((option: string) => (
-                  <label key={option} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
-                    {option.charAt(0).toUpperCase() + option.slice(1)}
-                    <input
-                      type="checkbox"
-                      checked={filters[key]?.includes(option)}
-                      onChange={() => handleFilterChange(key, option)}
-                      style={{ marginLeft: 8 }}
-                    />
-                  </label>
-                ))}
-              </div>
-            ))}
-          </AdminModal>
-        )}
-        {/* Main calendar pane: allow this to scroll vertically if needed */}
-        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
-          {/* Header and filter button: mobile only */}
+        <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
           {isMobile ? (
             <>
-              <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100%',
-                zIndex: 1100,
-                background: '#fff',
-                boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.6rem 1.1rem 0.6rem 1.1rem',
-              }}>
+              {/* Mobile sticky header with filter button - hidden when day events modal is open */}
+              {!dayEventsModalOpen && (
+                <div className="mobileCalendarHeader" style={{
+                  position: 'sticky',
+                  zIndex: 10,
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  background: '#fff',
+                  boxShadow: '0 2px 8px rgba(46,58,89,0.07)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.6rem 1.1rem 0.6rem 1.1rem',
+                  marginBottom: '12px'
+                }}>
                 <h1 className="stickyCalendarHeader" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#2e3a59' }}>Events Calendar</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <button
@@ -326,9 +302,10 @@ export default function CalendarPage() {
                     <span style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
                   </button>
                 </div>
-              </div>
-              {/* Render the calendar below the header on mobile */}
-              <div style={{ marginTop: 64 }}>
+                </div>
+              )}
+              {/* Render the calendar below the header on mobile - adjust margin when modal is open */}
+              <div style={{ marginTop: dayEventsModalOpen ? -60 : 0 }}>
                 <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />
               </div>
               {/* Floating Add Event Button (FAB) for mobile admins */}
@@ -374,7 +351,8 @@ export default function CalendarPage() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 background: '#fff',
-                zIndex: 1000,
+                zIndex: 10,
+                position: 'relative',
                 boxShadow: '0 2px 8px 0 rgba(46,58,89,0.07)',
                 padding: '1.1rem 0 0.7rem 0',
                 margin: 0
@@ -426,6 +404,49 @@ export default function CalendarPage() {
                 setModalOpen(false);
               }}
             />
+          )}
+          {/* Mobile filter modal */}
+          {isMobile && (
+            <AdminModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Events">
+              {Object.keys(filterOptions).map((key) => (
+                <div key={key} style={{ marginBottom: 32 }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#23395d', marginBottom: 10 }}>
+                    {key.charAt(0).toUpperCase() + key.slice(1)}
+                  </h3>
+                  <div style={{ marginBottom: 8 }}>
+                    <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={filters[key]?.length === filterOptions[key].length && filterOptions[key].length > 0}
+                        ref={el => {
+                          if (el) el.indeterminate = filters[key]?.length > 0 && filters[key]?.length < filterOptions[key].length;
+                        }}
+                        onChange={() => {
+                          if (filters[key]?.length === filterOptions[key].length) {
+                            handleDeselectAll(key);
+                          } else {
+                            handleSelectAll(key);
+                          }
+                        }}
+                        style={{ marginRight: 8 }}
+                      />
+                      Select All
+                    </label>
+                  </div>
+                  {filterOptions[key].map((option: string) => (
+                    <label key={option} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
+                      <input
+                        type="checkbox"
+                        checked={filters[key]?.includes(option)}
+                        onChange={() => handleFilterChange(key, option)}
+                        style={{ marginRight: 8 }}
+                      />
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </AdminModal>
           )}
         </div>
       </main>
