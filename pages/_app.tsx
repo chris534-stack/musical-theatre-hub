@@ -28,6 +28,30 @@ function MyApp({ Component, pageProps }: AppProps) {
       router.events?.off('routeChangeComplete', logSession);
     };
   }, [router]);
+  
+  // Handle OAuth redirects and ensure proper page refresh for reviewer flow
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Check if this is a fresh OAuth redirect
+    const isOAuthRedirect = router.asPath.includes('#access_token=');
+    if (!isOAuthRedirect) return;
+    
+    // Get the intended redirect URL (before Supabase added the hash)
+    const currentUrl = new URL(window.location.href.split('#')[0]);
+    
+    // Check if this was a reviewer sign-in
+    const wasReviewerSignIn = currentUrl.searchParams.get('reviewerSignIn') === 'true';
+    
+    if (wasReviewerSignIn) {
+      // Update URL to remove OAuth hash but preserve reviewer context
+      const cleanUrl = new URL(currentUrl);
+      cleanUrl.searchParams.set('justSignedIn', 'true');
+      
+      // Use router.replace to avoid adding to history stack
+      router.replace(cleanUrl.toString(), undefined, { shallow: false });
+    }
+  }, [router.asPath, router]);
 
   return (
     <>

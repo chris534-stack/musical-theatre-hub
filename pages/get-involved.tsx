@@ -20,35 +20,71 @@ import useIsReviewer from '../components/useIsReviewer'; // Import the hook
 import Link from 'next/link'; // Import Link for navigation
 
 function ReviewerSignInSection() {
-  const { user, isReviewer, reviewerProfile, loading: reviewerLoading, error: reviewerError } = useIsReviewer();
+  const { user, isReviewer, reviewerProfile, loading: reviewerLoading, error: reviewerError, refetch: refetchReviewer } = useIsReviewer();
   const [showModal, setShowModal] = useState(false);
-  const [thankYou, setThankYou] = useState(false); // For after modal submission
-  const [signInLoading, setSignInLoading] = useState(false); // For OAuth button click
+  const [thankYou, setThankYou] = useState(false);
+  const [signInLoading, setSignInLoading] = useState(false);
+  const [justSignedIn, setJustSignedIn] = useState(false);
+
+  // Check if the user just came back from OAuth sign-in
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Check if we have the context parameter indicating a reviewer application flow
+      const urlParams = new URLSearchParams(window.location.search);
+      const fromReviewerSignIn = urlParams.get('reviewerSignIn') === 'true';
+      const freshSignIn = urlParams.get('justSignedIn') === 'true';
+      
+      // Only set justSignedIn if we came from the reviewer application flow
+      if (freshSignIn && fromReviewerSignIn) {
+        setJustSignedIn(true);
+        
+        // Clean up URL parameters
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('justSignedIn');
+        newUrl.searchParams.delete('reviewerSignIn');
+        window.history.replaceState({}, '', newUrl.toString());
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    // Decide whether to show the modal based on reviewerProfile and user status
-    if (user && !isReviewer && reviewerProfile === null && !thankYou && !reviewerLoading) {
-      // User is logged in, not an approved reviewer, has no reviewer profile yet,
-      // hasn't just submitted, and loading is complete.
-      setShowModal(true);
-    } else if (user && !isReviewer && reviewerProfile && 
-               (!reviewerProfile.first_name || !reviewerProfile.last_name || !reviewerProfile.reviewer_application_status) &&
-               reviewerProfile.reviewer_application_status !== 'pending' && !thankYou && !reviewerLoading) {
-      // User has a profile, but it's incomplete (e.g. old data before status field) and not pending
-      setShowModal(true);
+    // Decide whether to show the modal based on reviewerProfile, user status, and sign-in context
+    if (user && !isReviewer && !thankYou && !reviewerLoading) {
+      // Check if this is a fresh sign-in from the reviewer application flow
+      if (justSignedIn) {
+        // Show modal for new sign-ins from reviewer flow
+        setShowModal(true);
+      } else if (reviewerProfile === null) {
+        // User has no reviewer profile - only show modal if they're in the reviewer section
+        const isReviewerSection = window.location.hash === '#reviewer-signin';
+        setShowModal(isReviewerSection);
+      } else if (reviewerProfile && 
+                (!reviewerProfile.first_name || !reviewerProfile.last_name || !reviewerProfile.reviewer_application_status) &&
+                reviewerProfile.reviewer_application_status !== 'pending') {
+        // User has an incomplete profile - only show modal if they're in the reviewer section
+        const isReviewerSection = window.location.hash === '#reviewer-signin';
+        setShowModal(isReviewerSection);
+      } else {
+        setShowModal(false);
+      }
     } else {
       setShowModal(false);
     }
-  }, [user, isReviewer, reviewerProfile, thankYou, reviewerLoading]);
+  }, [user, isReviewer, reviewerProfile, thankYou, reviewerLoading, justSignedIn]);
 
   const handleSignIn = async () => {
     setSignInLoading(true);
+    // Add parameters to the redirect URL to indicate this is a fresh sign-in from reviewer flow
+    const redirectUrl = new URL(window.location.href);
+    redirectUrl.searchParams.set('justSignedIn', 'true');
+    redirectUrl.searchParams.set('reviewerSignIn', 'true'); // Mark that this came from reviewer sign-in
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.href, // Redirect back to the same page
+        redirectTo: redirectUrl.toString(),
         queryParams: {
-          prompt: 'select_account', // Force Google to show the account selector
+          prompt: 'select_account',
           access_type: 'offline' // Request a refresh token
         }
       },
