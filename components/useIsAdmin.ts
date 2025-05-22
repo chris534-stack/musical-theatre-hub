@@ -18,22 +18,12 @@ interface UseIsAdminReturn {
 // Support both object destructuring and direct boolean access for backwards compatibility
 export default function useIsAdmin(): UseIsAdminReturn & { valueOf: () => boolean } {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     // Fetch user on mount
-    setLoading(true);
-    supabase.auth.getUser().then(({ data, error: authError }) => {
-      if (authError) {
-        console.error('[useIsAdmin] Auth error:', authError);
-        setError(new Error(authError.message));
-      } else {
-        console.log('[useIsAdmin] Supabase getUser() result:', data);
-        setUserEmail(data?.user?.email || null);
-        setError(null);
-      }
-      setLoading(false);
+    supabase.auth.getUser().then(({ data }) => {
+      console.log('[useIsAdmin] Supabase getUser() result:', data);
+      setUserEmail(data?.user?.email || null);
     });
 
     // Subscribe to auth state changes
@@ -48,6 +38,8 @@ export default function useIsAdmin(): UseIsAdminReturn & { valueOf: () => boolea
   // Robust admin check: case-insensitive, trimmed
   const adminEmailsLower = ADMIN_EMAILS.map(e => e.toLowerCase().trim());
   const userEmailLower = userEmail?.toLowerCase().trim();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   
   // Check if user is admin based on email
   const isAdmin = !!userEmailLower && adminEmailsLower.includes(userEmailLower);

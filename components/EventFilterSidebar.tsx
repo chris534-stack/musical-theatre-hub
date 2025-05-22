@@ -124,7 +124,8 @@ const EventFilterSidebar: React.FC<EventFilterSidebarProps> = ({
       <div style={{ marginBottom: 32 }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#23395d', marginBottom: 10 }}>Event Type</h3>
         <div style={{ marginBottom: 8 }}>
-          <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+          <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+  {isMobile ? 'All' : 'Select All'}
   <input
     type="checkbox"
     ref={el => {
@@ -138,27 +139,27 @@ const EventFilterSidebar: React.FC<EventFilterSidebarProps> = ({
         onTypeSelectAll();
       }
     }}
-    style={{ marginRight: 8 }}
+    style={{ marginLeft: 8 }}
   />
-  {isMobile ? 'All' : 'Select All'}
 </label>
         </div>
         {eventTypes.map((type) => (
-          <label key={type} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
+          <label key={type} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
+  {type.charAt(0).toUpperCase() + type.slice(1)}
   <input
     type="checkbox"
     checked={selectedTypes.includes(type)}
     onChange={() => onTypeChange(type)}
-    style={{ marginRight: 8 }}
+    style={{ marginLeft: 8 }}
   />
-  {type.charAt(0).toUpperCase() + type.slice(1)}
 </label>
         ))}
       </div>
       <div>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#23395d', marginBottom: 10 }}>Venue</h3>
         <div style={{ marginBottom: 8 }}>
-          <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+          <label style={{ fontWeight: 600, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+  {isMobile ? 'All' : 'Select All'}
   <input
     type="checkbox"
     ref={el => {
@@ -172,22 +173,21 @@ const EventFilterSidebar: React.FC<EventFilterSidebarProps> = ({
         onVenueSelectAll();
       }
     }}
-    style={{ marginRight: 8 }}
+    style={{ marginLeft: 8 }}
   />
-  {isMobile ? 'All' : 'Select All'}
 </label>
         </div>
         {canonicalVenues.map((venue) => {
           const displayVenue = isMobile && VENUE_ABBREVIATIONS[venue] ? VENUE_ABBREVIATIONS[venue] : venue;
           return (
-            <label key={venue} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
+            <label key={venue} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontWeight: 500 }}>
+  {displayVenue}
   <input
     type="checkbox"
     checked={selectedVenues.includes(venue)}
     onChange={() => onVenueChange(venue)}
-    style={{ marginRight: 8 }}
+    style={{ marginLeft: 8 }}
   />
-  {displayVenue}
 </label>
           );
         })}
