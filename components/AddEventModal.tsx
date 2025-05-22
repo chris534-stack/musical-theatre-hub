@@ -117,7 +117,7 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
     setLoading(true);
     setSubmitError(null);
     // Dynamically import supabase client for browser
-    const { supabase } = await import('../lib/supabaseClient');
+    const { supabase } = await import('../lib/supabaseClient') as { supabase: any };
     const session = await supabase.auth.getSession();
     const accessToken = session.data.session?.access_token;
 
