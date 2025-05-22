@@ -7,35 +7,16 @@ const ADMIN_EMAILS = [
   ...(process.env.NEXT_PUBLIC_ADMIN_EMAILS ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(',').map(e => e.trim()).filter(Boolean) : [])
 ];
 
-// Optional debug mode for local development
-const DEBUG_ADMIN = process.env.NEXT_PUBLIC_DEBUG_ADMIN === 'true';
-
 console.log('[useIsAdmin] Hook loaded');
 
-interface UseIsAdminReturn {
-  isAdmin: boolean;
-  loading: boolean;
-  error: Error | null;
-}
-
-export default function useIsAdmin(): UseIsAdminReturn {
+export default function useIsAdmin(): boolean {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     // Fetch user on mount
-    setLoading(true);
-    supabase.auth.getUser().then(({ data, error: authError }) => {
-      if (authError) {
-        console.error('[useIsAdmin] Auth error:', authError);
-        setError(new Error(authError.message));
-      } else {
-        console.log('[useIsAdmin] Supabase getUser() result:', data);
-        setUserEmail(data?.user?.email || null);
-        setError(null);
-      }
-      setLoading(false);
+    supabase.auth.getUser().then(({ data }) => {
+      console.log('[useIsAdmin] Supabase getUser() result:', data);
+      setUserEmail(data?.user?.email || null);
     });
 
     // Subscribe to auth state changes
@@ -50,16 +31,12 @@ export default function useIsAdmin(): UseIsAdminReturn {
   // Robust admin check: case-insensitive, trimmed
   const adminEmailsLower = ADMIN_EMAILS.map(e => e.toLowerCase().trim());
   const userEmailLower = userEmail?.toLowerCase().trim();
-  
-  // Check if user is admin based on email or debug mode
-  const isEmailAdmin = !!userEmailLower && adminEmailsLower.includes(userEmailLower);
-  const isAdmin = isEmailAdmin || DEBUG_ADMIN;
+  const isAdmin = !!userEmailLower && adminEmailsLower.includes(userEmailLower);
 
   // Debugging output
   console.log('[useIsAdmin] userEmail:', userEmail, '| userEmailLower:', userEmailLower);
   console.log('[useIsAdmin] ADMIN_EMAILS:', ADMIN_EMAILS, '| adminEmailsLower:', adminEmailsLower);
-  console.log('[useIsAdmin] isAdmin:', isAdmin, '| DEBUG_ADMIN:', DEBUG_ADMIN);
+  console.log('[useIsAdmin] isAdmin:', isAdmin);
 
-  // Return object with all needed properties
-  return { isAdmin, loading, error };
+  return isAdmin;
 }
