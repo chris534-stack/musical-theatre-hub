@@ -226,7 +226,8 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
         title: pendingEventData.title,
         description: pendingEventData.description,
         date: pendingEventData.dateTimeStr,
-        venue_id: venue.id,
+        // Ensure venue_id is properly typed for TypeScript
+        venue_id: typeof venue === 'string' ? venue : (venue as {id: string}).id,
       };
       const res = await fetch('/api/add-event', {
         method: 'POST',
@@ -245,7 +246,22 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
   };
 
   return (
-    // ... rest of the code remains the same ...
+    <>
+      {showAddVenueModal && (
+        <AddVenueModal
+          isOpen={showAddVenueModal}
+          onClose={() => setShowAddVenueModal(false)}
+          initialVenueName={newVenueName}
+          onVenueAdded={async (venue: { id: number; name: string }) => {
+            if (pendingEventData) {
+              setLoading(true);
+              setSubmitError(null);
+              const eventPayload = {
+                title: pendingEventData.title,
+                description: pendingEventData.description,
+                date: pendingEventData.dateTimeStr,
+                // Use venue.id from the callback parameter
+                venue_id: venue.id,
               };
               const res = await fetch('/api/add-event', {
                 method: 'POST',

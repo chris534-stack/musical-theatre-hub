@@ -10,8 +10,12 @@ type MinimalSupabaseClient = {
   auth: {
     getSession: () => Promise<{data: {session: null | any}, error: null | any}>,
     getUser: () => Promise<{data: {user: null | any}, error: null | any}>,
-    onAuthStateChange: () => {data: {subscription: {unsubscribe: () => void}}}
-  }
+    onAuthStateChange: () => {data: {subscription: {unsubscribe: () => void}}},
+    signInWithOAuth: (options: any) => Promise<{data: null, error: null}>,
+    signOut: () => Promise<{error: null}>
+  },
+  // Add database methods to the type for build-time support
+  from: (table: string) => any
 };
 
 // The exported supabase client will either be a real SupabaseClient or our minimal version
@@ -26,8 +30,17 @@ try {
       auth: {
         getSession: () => Promise.resolve({ data: { session: null }, error: null }),
         getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
-      }
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        signInWithOAuth: (options: any) => Promise.resolve({ data: null, error: null }),
+        signOut: () => Promise.resolve({ error: null })
+      },
+      from: (table: string) => ({
+        insert: (data: any) => ({
+          select: (columns: string) => ({
+            single: () => Promise.resolve({ data: null, error: null })
+          })
+        })
+      })
     };
   }
 } catch (error) {
@@ -37,8 +50,17 @@ try {
     auth: {
       getSession: () => Promise.resolve({ data: { session: null }, error: null }),
       getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
-    }
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithOAuth: (options: any) => Promise.resolve({ data: null, error: null }),
+      signOut: () => Promise.resolve({ error: null })
+    },
+    from: (table: string) => ({
+      insert: (data: any) => ({
+        select: (columns: string) => ({
+          single: () => Promise.resolve({ data: null, error: null })
+        })
+      })
+    })
   };
 }
 
