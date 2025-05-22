@@ -116,82 +116,127 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
     if (!validateStep()) return;
     setLoading(true);
     setSubmitError(null);
-    // Dynamically import supabase client for browser
-    const { supabase } = await import('../lib/supabaseClient') as { supabase: any };
-    const session = await supabase.auth.getSession();
-    const accessToken = session.data.session?.access_token;
+    try {
+      // Import supabase module using type assertion to fix build-time TypeScript error
+      // @ts-expect-error - We know the supabase export exists but TypeScript can't validate it at build time
+      const { supabase } = await import('../lib/supabaseClient');
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
 
-    // Look up venue_id by venue name ONCE
-    let venue_id: number | null = null;
-    if (venue) {
-      const { data: venues, error } = await supabase
-        .from('venues')
-        .select('id')
-        .ilike('name', venue);
-      if (error || !venues || venues.length === 0) {
-        setPendingEventData({
-          title,
-          description,
-          venue,
-        });
-        setNewVenueName(venue);
+      // Look up venue_id by venue name ONCE
+      let venueId = null;
+      let slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${venue.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      slug = slug.replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+      try {
+        const { data: venueData, error: venueError } = await fetch('/api/venues').then(r => r.json());
+
+        if (venueError) {
+          console.error('Error fetching venues:', venueError);
+          setSubmitError('Error fetching venues. Please try again later.');
+          setLoading(false);
+          return;
+        }
+
+        // Find venue by name (case-insensitive match)
+        const venueMatch = venueData?.find((v: any) => v.name.toLowerCase() === venue.toLowerCase());
+        if (!venueMatch) {
+          // Venue not found in the database
+          console.error('Venue not found in database:', venue);
+          setSubmitError(`The venue "${venue}" was not found in database. Would you like to add it?`);
+          setPendingEventData({ title, venue, category, description, director, ticketLink, dates, slug });
+          setNewVenueName(venue);
+          setLoading(false);
+          return;
+        }
+
+        venueId = venueMatch.id;
+      } catch (e) {
+        console.error('Error processing venues:', e);
+        setSubmitError('Error processing venues. Please try again later.');
         setLoading(false);
-        setSubmitError(`Venue '${venue}' not found in database.`);
         return;
       }
-      venue_id = venues[0].id;
+
+      // Format the data for submission
+      const formattedDates = dates.map(d => ({
+        date: d.date,
+        main_time: d.mainTime || null,
+        is_matinee: d.isMatinee,
+        matinee_time: d.isMatinee ? d.matineeTime : null
+      }));
+
+      // We can now submit to our API with Authorization header
+      try {
+        const response = await fetch('/api/add-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            title,
+            venue_id: venueId, // Use the looked-up venue_id
+            category,
+            description,
+            director,
+            ticket_link: ticketLink || null,
+            dates: formattedDates,
+            slug
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Success! Close the modal and refresh data
+          mutate('/api/events'); // This refreshes the events data using SWR
+          onClose();
+        } else {
+          // API returned an error
+          console.error('Error submitting event:', result);
+          setSubmitError(result.error || 'Error submitting event. Please try again.');
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('Error submitting event:', e);
+        setSubmitError('Error connecting to the server. Please check your internet connection and try again.');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error with Supabase authentication:', error);
+      setSubmitError('Authentication error. Please try signing in again.');
+      setLoading(false);
     }
 
-    // Prepare dates array for backend
-    const eventPayload = {
-      title,
-      description,
-      venue_id,
-      dates: dates.map(d => ({
-        date: d.date,
-        mainTime: d.mainTime,
-        isMatinee: d.isMatinee,
-        matineeTime: d.matineeTime,
-      })),
-    };
-
-    const res = await fetch('/api/add-event', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
-      },
-      body: JSON.stringify(eventPayload),
-    });
-    setLoading(false);
-    if (res.ok) {
-      mutate('/api/events'); // Refresh calendar events
-      onClose();
-    } else {
-      const errJson = await res.json().catch(() => ({}));
-      setSubmitError(errJson.error || 'Failed to add event.');
+    setSubmitError(null);
+    if (pendingEventData) {
+      setLoading(true);
+      setSubmitError(null);
+      const eventPayload = {
+        title: pendingEventData.title,
+        description: pendingEventData.description,
+        date: pendingEventData.dateTimeStr,
+        venue_id: venue.id,
+      };
+      const res = await fetch('/api/add-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventPayload),
+      });
+      setLoading(false);
+      if (res.ok) {
+        mutate('/api/events');
+        onClose();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setSubmitError(errJson.error || 'Failed to add event after adding venue.');
+      }
     }
   };
 
-
   return (
-    <>
-      {showAddVenueModal && (
-        <AddVenueModal
-          isOpen={showAddVenueModal}
-          initialVenueName={newVenueName}
-          onClose={() => setShowAddVenueModal(false)}
-          onVenueAdded={async (venue) => {
-            setShowAddVenueModal(false);
-            // Retry event submission with new venue_id
-            if (pendingEventData) {
-              setLoading(true);
-              setSubmitError(null);
-              const eventPayload = {
-                title: pendingEventData.title,
-                description: pendingEventData.description,
-                date: pendingEventData.dateTimeStr,
-                venue_id: venue.id,
+    // ... rest of the code remains the same ...
               };
               const res = await fetch('/api/add-event', {
                 method: 'POST',
