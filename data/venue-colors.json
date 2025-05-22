@@ -16,6 +16,7 @@
   },
   "Oregon Contemporary Theatre": {
     "bg": "#fff",
+    "border": "#b2ebf2",
     "text": "#b2ebf2"
   }
 }

@@ -216,7 +216,7 @@ export default function GetInvolved() {
     if (!res.ok) throw new Error('Failed to fetch');
     return res.json();
   });
-  const isAdmin = useIsAdmin();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
 
   const handleDeleteVolunteer = async (id: number) => {
     try {
@@ -343,7 +343,7 @@ export default function GetInvolved() {
         </section>
         <section id="volunteers-section" style={{marginTop: 48}}>
           <h2>Volunteers Needed</h2>
-          {isAdmin && (
+          {!adminLoading && isAdmin && (
             <>
               <button style={{ marginBottom: 16 }} onClick={() => setShowVolunteerModal(true)}>
                 + Add Volunteer Request
@@ -360,7 +360,7 @@ export default function GetInvolved() {
               ) : (
                 volunteerRequests.map((req: any, idx: number) => (
                   <div className="volunteer-card" key={req.id || idx}>
-                    {isAdmin && (
+                    {!adminLoading && isAdmin && (
                       <button
                         aria-label="Remove volunteer request"
                         className="remove-btn"

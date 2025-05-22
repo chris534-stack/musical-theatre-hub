@@ -1,0 +1,88 @@
+/* Global calendar fixes that override react-big-calendar default styles */
+
+/* Fix container width issues */
+.rbc-calendar {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+/* Fix month view layout */
+.rbc-month-view {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  border-collapse: collapse !important;
+}
+
+/* Fix row layout */
+.rbc-month-row {
+  width: 100% !important;
+  display: flex !important;
+  flex: 1 1 0% !important;
+  overflow: hidden !important;
+}
+
+/* Fix cell sizing */
+.rbc-date-cell {
+  min-width: 0 !important;
+  padding-right: 5px !important;
+  text-align: right !important;
+  flex: 1 1 0% !important;
+}
+
+/* Fix day background cells */
+.rbc-day-bg {
+  min-width: 0 !important;
+  flex: 1 1 0% !important;
+}
+
+/* Ensure headers size properly */
+.rbc-header {
+  min-width: 0 !important;
+  flex: 1 1 0% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding: 4px 3px !important;
+  font-weight: bold !important;
+}
+
+/* Ensure proper row sizing */
+.rbc-row-content {
+  width: 100% !important;
+}
+
+/* Specifically targeting mobile */
+@media (max-width: 768px) {
+  /* Enforce full width and prevent overflow */
+  .rbc-calendar, .rbc-month-view, .rbc-month-row {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Make date cells more compact */
+  .rbc-header, .rbc-date-cell {
+    font-size: 0.9rem !important;
+    padding: 2px !important;
+  }
+  
+  /* Ensure containers don't add padding */
+  .rbc-month-view, .rbc-month-row, .rbc-row-content, .rbc-row {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Fix event positioning */
+  .rbc-event {
+    margin: 1px !important;
+  }
+}

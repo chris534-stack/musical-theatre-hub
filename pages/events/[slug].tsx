@@ -16,7 +16,7 @@ export default function EventDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const router = useRouter();
   const { slug, venue } = router.query;
-  const isAdmin = useIsAdmin();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { data: events, error, isLoading } = useSWR('/api/events', fetcher);
   const [photos, setPhotos] = useState<string[]>([]); // In production, fetch from API or storage
 
@@ -117,7 +117,7 @@ export default function EventDetail() {
             onUpdated={() => { setEditingPerformance(null); window.location.reload(); }}
           />
         )}
-        {isAdmin && (
+        {!adminLoading && isAdmin && (
   <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
     <button
       style={{ background: '#d32f2f', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer' }}
@@ -150,7 +150,7 @@ export default function EventDetail() {
             ))}
           </div>
         )}
-        {isAdmin && (
+        {!adminLoading && isAdmin && (
           <div style={{ marginTop: 16 }}>
             <label style={{ fontWeight: 500 }}>
               Add Production Photos:

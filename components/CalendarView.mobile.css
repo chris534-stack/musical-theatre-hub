@@ -8,3 +8,108 @@
     transition: background 0.15s;
   }
 }
+
+/* Fix mobile calendar layout issues */
+@media (max-width: 768px) {
+  /* Fix the right margin gap by ensuring calendar fits viewport width */
+  .rbc-calendar {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Fix month view alignment */
+  .rbc-month-view {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    transform: scale(0.98) !important; /* Slight scale down to ensure fit */
+  }
+
+  /* Ensure the day cells scale correctly */
+  .rbc-month-row {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Make each day cell fit proportionally */
+  .rbc-header, .rbc-day-bg, .rbc-date-cell {
+    flex: 1 1 0% !important;
+    min-width: 0 !important; /* Allow cell to shrink below content size */
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    font-size: 0.9em !important; /* Reduce font size slightly */
+  }
+
+  /* Force all cells to be equal width */
+  .rbc-header {
+    width: calc(100% / 7) !important;
+    max-width: calc(100% / 7) !important;
+    overflow: hidden !important;
+  }
+
+  .rbc-date-cell {
+    width: calc(100% / 7) !important;
+    max-width: calc(100% / 7) !important;
+    overflow: hidden !important;
+  }
+
+  .rbc-day-bg {
+    width: calc(100% / 7) !important;
+    max-width: calc(100% / 7) !important;
+    overflow: hidden !important;
+  }
+  
+  /* Special handling for May 2025 and current month layouts */
+  .rbc-month-header {
+    width: 100% !important;
+    table-layout: fixed !important;
+    display: flex !important;
+    justify-content: space-between !important;
+  }
+  
+  .rbc-row-content {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+  
+  /* Fix for current month view */
+  .rbc-month-view:not(.past-month) .rbc-month-row:last-child {
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* Ensure Saturday column displays correctly */
+  .rbc-header:last-child, 
+  .rbc-day-bg:nth-child(7), 
+  .rbc-date-cell:nth-child(7) {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    border-right: none !important;
+  }
+
+  /* Adjust event rendering */
+  .rbc-event {
+    padding: 0 3px !important;
+    margin: 0 1px !important;
+    font-size: 0.8em !important;
+  }
+
+  /* Adjust navigation bar in calendar view */
+  .rbc-toolbar {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    margin-bottom: 10px !important;
+  }
+}

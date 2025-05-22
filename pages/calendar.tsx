@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 import { useState, useMemo, useEffect } from 'react';
 // import useSWR, { mutate } from 'swr';
@@ -112,7 +112,7 @@ export default function CalendarPage() {
       window.removeEventListener('dayEventsModalStateChange', handleDayEventsModalState as EventListener);
     };
   }, []);
-  const isAdmin = useIsAdmin();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
 
   // Fetch events from Firestore
   const { data: events, error } = useSWR('/api/events', fetcher);
@@ -201,7 +201,11 @@ export default function CalendarPage() {
           marginTop: 0,
           paddingTop: 0,
           position: 'relative',
-          zIndex: 10
+          zIndex: 10,
+          width: '100%',
+          maxWidth: '100vw',
+          overflowX: 'hidden',
+          boxSizing: 'border-box'
         }}
       >
         {/* Sticky sidebar on desktop */}
@@ -259,12 +263,12 @@ export default function CalendarPage() {
             ))}
           </div>
         )}
-        <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', maxWidth: '100%', margin: '0 auto' }}>
           {isMobile ? (
             <>
               {/* Mobile sticky header with filter button - hidden when day events modal is open */}
               {!dayEventsModalOpen && (
-                <div className="mobileCalendarHeader" style={{
+                <div className="mobileCalendarHeader" data-component-name="CalendarPage" style={{
                   position: 'sticky',
                   zIndex: 10,
                   top: 0,
@@ -275,33 +279,29 @@ export default function CalendarPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '0.6rem 1.1rem 0.6rem 1.1rem',
+                  padding: '0.6rem 1.1rem',
                   marginBottom: '12px'
                 }}>
-                <h1 className="stickyCalendarHeader" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#2e3a59' }}>Events Calendar</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <button
-                    aria-label="Show filters"
-                    style={{
-                      background: '#ffd700',
-                      color: '#2e3a59',
-                      border: 'none',
-                      borderRadius: 16,
-                      padding: '0.55rem 0.85rem',
-                      fontSize: '1.3rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
-                      cursor: 'pointer',
-                      marginLeft: 0,
-                      marginRight: 8,
-                      marginTop: 8,
-                    }}
-                    onClick={() => setFilterModalOpen(true)}
-                  >
-                    <span style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
-                  </button>
-                </div>
+                <h1 className="stickyCalendarHeader" data-component-name="CalendarPage" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#2e3a59' }}>Events Calendar</h1>
+                <button
+                  aria-label="Show filters"
+                  data-component-name="CalendarPage"
+                  style={{
+                    background: '#ffd700',
+                    color: '#2e3a59',
+                    border: 'none',
+                    borderRadius: 16,
+                    padding: '0.55rem 0.85rem',
+                    fontSize: '1.3rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxShadow: '0 1px 4px 0 rgba(46,58,89,0.10)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setFilterModalOpen(true)}
+                >
+                  <span data-component-name="CalendarPage" style={{ fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>☰</span>
+                </button>
                 </div>
               )}
               {/* Render the calendar below the header on mobile - adjust margin when modal is open */}
@@ -309,7 +309,7 @@ export default function CalendarPage() {
                 <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />
               </div>
               {/* Floating Add Event Button (FAB) for mobile admins */}
-              {isMobile && isAdmin && !modalOpen && (
+              {isMobile && !adminLoading && isAdmin && !modalOpen && (
                 <button
                   onClick={() => setModalOpen(true)}
                   aria-label="Add Event"
@@ -365,7 +365,7 @@ export default function CalendarPage() {
                 }}>Events Calendar</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                   {/* No filter button on desktop */}
-                  {isAdmin && (
+                  {!adminLoading && isAdmin && (
                     <button
                       onClick={() => setModalOpen(true)}
                       style={{
@@ -392,16 +392,30 @@ export default function CalendarPage() {
                 </div>
               </div>
               {/* Calendar for desktop */}
-              <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />
-              {console.log('DEBUG: filters', filters, 'filteredEvents', filteredEvents, 'events', events)}
+              <div style={{
+                width: '100%',
+                maxWidth: '100%',
+                overflowX: 'hidden',
+                boxSizing: 'border-box',
+                position: 'relative'
+              }}>
+                <Calendar events={Array.isArray(filteredEvents) ? filteredEvents : (events || [])} />
+                {/* Debug info logged to console */}
+                {(() => {
+                  console.log('DEBUG: filters', filters, 'filteredEvents', filteredEvents, 'events', events);
+                  return null;
+                })()}
+              </div>
             </>
           )}
-          {isAdmin && (
+          {!adminLoading && isAdmin && (
             <AddEventModal
               isOpen={modalOpen}
               onClose={() => setModalOpen(false)}
-              onSubmit={() => {
+              onSubmit={(data) => {
                 setModalOpen(false);
+                // Refresh the events list after adding a new event
+                mutate('/api/events');
               }}
             />
           )}

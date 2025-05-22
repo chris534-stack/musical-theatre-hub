@@ -15,7 +15,7 @@ async function fetchMetadata(url: string) {
 }
 
 export default function News() {
-  const isAdmin = useIsAdmin();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +107,7 @@ export default function News() {
       </Head>
       <main style={{ margin: '0 auto', padding: '2rem 1rem' }}>
         <h1 style={{ fontWeight: 900, fontSize: '2.3rem', color: '#2e3a59', marginBottom: 20 }}>News</h1>
-        {isAdmin && (
+        {!adminLoading && isAdmin && (
           <button
             style={{ marginBottom: 20, padding: '8px 18px', fontWeight: 600, background: '#2e3a59', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
             onClick={() => setModalOpen(true)}
@@ -138,7 +138,7 @@ export default function News() {
                 url={meta.url}
                 source={meta.source}
               />
-              {isAdmin && (
+              {!adminLoading && isAdmin && (
                 <button
                   style={{ position: 'absolute', top: 10, right: 10, background: '#eee', border: '1px solid #bbb', borderRadius: 6, padding: '2px 10px', fontSize: 13, cursor: 'pointer', zIndex: 2 }}
                   onClick={() => { setEditData(meta); setEditModalOpen(true); }}

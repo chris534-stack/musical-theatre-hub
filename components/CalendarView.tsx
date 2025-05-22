@@ -7,6 +7,7 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import styles from './CalendarView.module.css';
+import calendarFixStyles from './CalendarFixes.module.css';
 import DayEventsModal from './DayEventsModal';
 import { useSwipeable } from 'react-swipeable';
 
@@ -146,12 +147,19 @@ const marqueeStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
   position: 'relative',
   width: '100%',
+  maxWidth: '100%',
   display: 'block',
+  flexShrink: 1,
+  flexGrow: 0,
+  boxSizing: 'border-box',
 };
 const marqueeInnerStyle: React.CSSProperties = {
   display: 'inline-block',
   position: 'relative',
   transition: 'transform 0.3s',
+  maxWidth: '100%',
+  textOverflow: 'ellipsis',
+  boxSizing: 'border-box',
 };
 
 // Custom event token with marquee on hover
@@ -174,6 +182,12 @@ const EventTitleMarquee: React.FC<{ title: string; hideText?: boolean; small?: b
   const ref = React.useRef<HTMLDivElement>(null);
   const [scroll, setScroll] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
+  const isMobile = useMobileOrAdjacent();
+  const isCurrentMonth = moment().format('YYYY-MM') === moment(new Date()).format('YYYY-MM');
+  
+  // Force shorter text for May (current month) on mobile to prevent overflow
+  const displayTitle = isCurrentMonth && isMobile && title.length > 12 ? 
+    title.substring(0, 10) + '...' : title;
 
   React.useEffect(() => {
     if (hovered && ref.current) {
@@ -201,19 +215,26 @@ const EventTitleMarquee: React.FC<{ title: string; hideText?: boolean; small?: b
         height: small ? 15 : undefined,
         minHeight: small ? 15 : undefined,
         margin: small ? '2px 0' : undefined,
+        maxWidth: isCurrentMonth ? '100%' : undefined,
+        width: isCurrentMonth ? 'auto' : '100%',
+        overflow: 'hidden',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       ref={ref}
+      className={isCurrentMonth ? 'current-month-event' : ''}
     >
       <div
         style={{
           ...marqueeInnerStyle,
           transform: hovered && scroll > 0 ? `translateX(-${scroll}px)` : 'translateX(0)',
           transition: hovered && scroll > 0 ? `transform ${duration.toFixed(2)}s linear` : 'transform 0.4s',
+          maxWidth: isCurrentMonth ? '100%' : undefined,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
-        {!hideText ? title : null}
+        {!hideText ? displayTitle : null}
       </div>
     </div>
   );
@@ -458,13 +479,31 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
           </button>
         </div>
       )}
-      <div style={{ position: 'relative' }}>
+      <div
+        {...swipeHandlers}
+        className={`${styles.calendarContainer} ${isMobile ? 'mobile-calendar-view' : ''} ${isCurrentMonth ? 'current-month-view' : 'past-month'}`}
+        style={{
+          width: '100%',
+          margin: '0 auto',
+          maxWidth: '100%',
+          position: 'relative'
+        }}
+      >
         <Calendar
           localizer={localizer}
           events={calendarEvents}
           startAccessor="start"
           endAccessor="end"
-          style={{ height: 600, margin: '2rem 0' }}
+          className={isCurrentMonth ? 'current-month-calendar' : 'past-month-calendar'}
+          style={{ 
+            height: 600, 
+            margin: '0.5rem 0',
+            width: '100%',
+            maxWidth: '100%',
+            paddingTop: '10px',
+            overflow: 'hidden',
+            boxSizing: 'border-box'
+          }}
           selectable={false}
           fixedWeeks={true} /* Force all months to display with exactly 6 weeks */
           longPressThreshold={isMobile ? 1 : 250}
