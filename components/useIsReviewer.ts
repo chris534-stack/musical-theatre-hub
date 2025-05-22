@@ -61,10 +61,11 @@ export default function useIsReviewer(): UseIsReviewerReturn {
             .from('reviewers')
             .select('*')
             .eq('id', currentUser.id)
-            .single();
+            .single(); // Use single() as 'id' is PK and should be unique
 
           if (reviewerError) {
-            // Handle different error cases
+            // PGRST116: 'No rows found'. This is not an error in this context,
+            // it just means the user is not in the reviewers table.
             if (reviewerError.code === 'PGRST116') {
               // No rows found - user is not a reviewer
               if (isMounted.current) {
@@ -72,7 +73,7 @@ export default function useIsReviewer(): UseIsReviewerReturn {
                 setIsReviewer(false);
               }
             } else {
-              // Other error
+              // Other error - combine approaches from both branches
               console.error('Error fetching reviewer status:', reviewerError);
               if (isMounted.current) {
                 setError({

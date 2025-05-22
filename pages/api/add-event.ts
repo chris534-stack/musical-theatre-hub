@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../../lib/supabaseClient';
 import { requireAdmin } from '../../utils/isAdmin';
-import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -11,53 +10,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Admin check using Supabase token
   const authHeader = req.headers.authorization;
-  console.log('[API Debug] Auth header exists:', !!authHeader);
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error('[API Error] Missing or malformed authorization header');
-    return res.status(401).json({ error: 'No valid authorization header provided.' });
-  }
-  
-  const token = authHeader.split('Bearer ')[1];
+  const token = authHeader?.split('Bearer ')[1];
   if (!token) {
-    console.error('[API Error] No token found after Bearer prefix');
     return res.status(401).json({ error: 'No access token provided.' });
   }
-  
-  console.log('[API Debug] Retrieved token length:', token.length);
-  
   // Use supabase client to get user from token
   const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-  
-  if (userError) {
-    console.error('[API Error] User validation error:', userError.message);
-    return res.status(401).json({ error: `Invalid access token: ${userError.message}` });
+  if (userError || !user) {
+    return res.status(401).json({ error: 'Invalid or expired access token.' });
   }
-  
-  if (!user) {
-    console.error('[API Error] No user found with token');
-    return res.status(401).json({ error: 'No user found with this token.' });
-  }
-  
-  console.log('[API Debug] User email from token:', user.email);
-  
-  // Use environment variable for admin emails
-  const adminEmailsEnv = process.env.ADMIN_EMAILS || 'christopher.ridgley@gmail.com';
-  const ADMIN_EMAILS = adminEmailsEnv.split(',').map(email => email.trim().toLowerCase());
-  
-  const userEmail = typeof user.email === 'string' ? user.email.toLowerCase().trim() : '';
-  const isAdmin = ADMIN_EMAILS.includes(userEmail);
-  
-  console.log('[API Debug] Admin emails:', ADMIN_EMAILS);
-  console.log('[API Debug] User email lowercase:', userEmail);
-  console.log('[API Debug] Is admin:', isAdmin);
-  
+  const ADMIN_EMAILS = ['christopher.ridgley@gmail.com']; // Or import from config
+  const userEmail = typeof user.email === 'string' ? user.email : '';
+  const isAdmin = ADMIN_EMAILS.map(e => e.toLowerCase().trim()).includes(userEmail.toLowerCase().trim());
   if (!isAdmin) {
-    console.error(`[API Error] User ${userEmail} is not in admin list`);
-    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    return res.status(403).json({ error: 'Forbidden: Admins only' });
   }
-  
-  console.log('[API Debug] Admin check passed for user:', userEmail);
 
   try {
     let { title, description, venue_id, dates } = req.body;
@@ -105,21 +72,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       matineeTime: d.matineeTime || null
     }));
     
-    // Create admin client that bypasses RLS policies
-    console.log('[API Debug] Creating admin Supabase client to bypass RLS');
-    const adminSupabase = createClient(
-      process.env.SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-    
-    // Insert event with dates in JSONB field using admin privileges
-    const { data: event, error: eventError } = await adminSupabase
+    // Insert event with dates in JSONB field
+    const { data: event, error: eventError } = await supabase
       .from('events')
       .insert([{ 
         title, 

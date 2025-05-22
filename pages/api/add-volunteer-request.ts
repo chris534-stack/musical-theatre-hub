@@ -10,32 +10,16 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
   throw new Error('Supabase credentials are not set in environment variables.');
 }
 
-// Standard client for authentication
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-
-// Create a separate admin client that bypasses RLS
-const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const start = Date.now();
 
   if (req.method === 'POST') {
-    // Log the request headers for debugging
-    console.log('[API Debug Volunteer] Auth header exists:', !!req.headers.authorization);
-    
     const isAdmin = await requireAdmin(req, res);
-    
     if (!isAdmin) {
-      console.error('[API Error Volunteer] Admin check failed');
-      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+      return res.status(403).json({ error: 'Forbidden: Admins only' });
     }
-    
-    console.log('[API Debug Volunteer] Admin check passed');
 
     try {
       const { venue, expertise, description, dates, timeCommitment } = req.body;
@@ -45,8 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Venue and Description are required.' });
       }
 
-      console.log('[API Debug Volunteer] Using admin client to bypass RLS policies');
-      const { data, error } = await adminSupabase
+      const { data, error } = await supabase
         .from('volunteer_requests')
         .insert([
           {

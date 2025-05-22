@@ -116,74 +116,143 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
     if (!validateStep()) return;
     setLoading(true);
     setSubmitError(null);
-    // Dynamically import supabase client for browser
-    const { supabase } = await import('../lib/supabaseClient');
-    const session = await supabase.auth.getSession();
-    const accessToken = session.data.session?.access_token;
+    try {
+      // Import Supabase client dynamically
+      const { supabase } = await import('../lib/supabaseClient');
+      
+      // Type assertion for TypeScript during build
+      type SupabaseClientType = {
+        auth: {
+          getSession: () => Promise<{data: {session: null | {access_token?: string}}, error: null | any}>
+        }
+      };
+      
+      // Use type assertion to ensure TypeScript accepts the client
+      const typedSupabase = supabase as SupabaseClientType;
+      const session = await typedSupabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
 
-    // Look up venue_id by venue name ONCE
-    let venue_id: number | null = null;
-    if (venue) {
-      const { data: venues, error } = await supabase
-        .from('venues')
-        .select('id')
-        .ilike('name', venue);
-      if (error || !venues || venues.length === 0) {
-        setPendingEventData({
-          title,
-          description,
-          venue,
-        });
-        setNewVenueName(venue);
+      // Look up venue_id by venue name ONCE
+      let venueId = null;
+      let slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${venue.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      slug = slug.replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+      try {
+        const { data: venueData, error: venueError } = await fetch('/api/venues').then(r => r.json());
+
+        if (venueError) {
+          console.error('Error fetching venues:', venueError);
+          setSubmitError('Error fetching venues. Please try again later.');
+          setLoading(false);
+          return;
+        }
+
+        // Find venue by name (case-insensitive match)
+        const venueMatch = venueData?.find((v: any) => v.name.toLowerCase() === venue.toLowerCase());
+        if (!venueMatch) {
+          // Venue not found in the database
+          console.error('Venue not found in database:', venue);
+          setSubmitError(`The venue "${venue}" was not found in database. Would you like to add it?`);
+          setPendingEventData({ title, venue, category, description, director, ticketLink, dates, slug });
+          setNewVenueName(venue);
+          setLoading(false);
+          return;
+        }
+
+        venueId = venueMatch.id;
+      } catch (e) {
+        console.error('Error processing venues:', e);
+        setSubmitError('Error processing venues. Please try again later.');
         setLoading(false);
-        setSubmitError(`Venue '${venue}' not found in database.`);
         return;
       }
-      venue_id = venues[0].id;
+
+      // Format the data for submission
+      const formattedDates = dates.map(d => ({
+        date: d.date,
+        main_time: d.mainTime || null,
+        is_matinee: d.isMatinee,
+        matinee_time: d.isMatinee ? d.matineeTime : null
+      }));
+
+      // We can now submit to our API with Authorization header
+      try {
+        const response = await fetch('/api/add-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            title,
+            venue_id: venueId, // Use the looked-up venue_id
+            category,
+            description,
+            director,
+            ticket_link: ticketLink || null,
+            dates: formattedDates,
+            slug
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Success! Close the modal and refresh data
+          mutate('/api/events'); // This refreshes the events data using SWR
+          onClose();
+        } else {
+          // API returned an error
+          console.error('Error submitting event:', result);
+          setSubmitError(result.error || 'Error submitting event. Please try again.');
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('Error submitting event:', e);
+        setSubmitError('Error connecting to the server. Please check your internet connection and try again.');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error with Supabase authentication:', error);
+      setSubmitError('Authentication error. Please try signing in again.');
+      setLoading(false);
     }
 
-    // Prepare dates array for backend
-    const eventPayload = {
-      title,
-      description,
-      venue_id,
-      dates: dates.map(d => ({
-        date: d.date,
-        mainTime: d.mainTime,
-        isMatinee: d.isMatinee,
-        matineeTime: d.matineeTime,
-      })),
-    };
-
-    const res = await fetch('/api/add-event', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
-      },
-      body: JSON.stringify(eventPayload),
-    });
-    setLoading(false);
-    if (res.ok) {
-      mutate('/api/events'); // Refresh calendar events
-      onClose();
-    } else {
-      const errJson = await res.json().catch(() => ({}));
-      setSubmitError(errJson.error || 'Failed to add event.');
+    setSubmitError(null);
+    if (pendingEventData) {
+      setLoading(true);
+      setSubmitError(null);
+      const eventPayload = {
+        title: pendingEventData.title,
+        description: pendingEventData.description,
+        date: pendingEventData.dateTimeStr,
+        // Ensure venue_id is properly typed for TypeScript
+        venue_id: typeof venue === 'string' ? venue : (venue as {id: string}).id,
+      };
+      const res = await fetch('/api/add-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventPayload),
+      });
+      setLoading(false);
+      if (res.ok) {
+        mutate('/api/events');
+        onClose();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setSubmitError(errJson.error || 'Failed to add event after adding venue.');
+      }
     }
   };
-
 
   return (
     <>
       {showAddVenueModal && (
         <AddVenueModal
           isOpen={showAddVenueModal}
-          initialVenueName={newVenueName}
           onClose={() => setShowAddVenueModal(false)}
-          onVenueAdded={async (venue) => {
-            setShowAddVenueModal(false);
-            // Retry event submission with new venue_id
+          initialVenueName={newVenueName}
+          onVenueAdded={async (venue: { id: number; name: string }) => {
             if (pendingEventData) {
               setLoading(true);
               setSubmitError(null);
@@ -191,25 +260,12 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
                 title: pendingEventData.title,
                 description: pendingEventData.description,
                 date: pendingEventData.dateTimeStr,
+                // Use venue.id from the callback parameter
                 venue_id: venue.id,
               };
-              // Get authentication token
-              const { supabase } = await import('../lib/supabaseClient');
-              const session = await supabase.auth.getSession();
-              const accessToken = session.data.session?.access_token;
-              
-              if (!accessToken) {
-                setSubmitError('Authentication error: No access token available. Please try signing out and in again.');
-                setLoading(false);
-                return;
-              }
-              
               const res = await fetch('/api/add-event', {
                 method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${accessToken}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(eventPayload),
               });
               setLoading(false);

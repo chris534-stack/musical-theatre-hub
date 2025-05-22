@@ -48,106 +48,109 @@ function ReviewerSignInSection() {
   }, []);
 
   useEffect(() => {
-    // Decide whether to show the modal based on reviewerProfile, user status, and sign-in context
-    if (user && !isReviewer && !thankYou && !reviewerLoading) {
-      // Check if this is a fresh sign-in from the reviewer application flow
-      if (justSignedIn) {
-        // Show modal for new sign-ins from reviewer flow
-        setShowModal(true);
-      } else if (reviewerProfile === null) {
-        // User has no reviewer profile - only show modal if they're in the reviewer section
-        const isReviewerSection = window.location.hash === '#reviewer-signin';
-        setShowModal(isReviewerSection);
-      } else if (reviewerProfile && 
-                (!reviewerProfile.first_name || !reviewerProfile.last_name || !reviewerProfile.reviewer_application_status) &&
-                reviewerProfile.reviewer_application_status !== 'pending') {
-        // User has an incomplete profile - only show modal if they're in the reviewer section
-        const isReviewerSection = window.location.hash === '#reviewer-signin';
-        setShowModal(isReviewerSection);
-      } else {
-        setShowModal(false);
-      }
+    // This useEffect determines if the application modal should be shown.
+    // It runs when relevant states from useIsReviewer or local component state change.
+
+    // Basic conditions to NOT show modal:
+    // - Still loading initial data from useIsReviewer
+    // - No user is logged in
+    // - User is already an approved reviewer
+    // - User has just submitted the form (thankYou state is true)
+    if (reviewerLoading || !user || isReviewer || thankYou) {
+      setShowModal(false);
+      return;
+    }
+
+    // At this point: user exists, not loading, not a reviewer, and hasn't just submitted the modal.
+    
+    // If a profile exists AND its status is 'pending' AND it has first/last names,
+    // then the main "Thank You" message (outside this useEffect, in the render logic)
+    // will be displayed, so don't show the modal.
+    if (reviewerProfile && 
+        reviewerProfile.reviewer_application_status === 'pending' && 
+        reviewerProfile.first_name && 
+        reviewerProfile.last_name) {
+      setShowModal(false);
+      return;
+    }
+    
+    // Just came from auth signin with the intention to become a reviewer - 
+    // show the modal immediately regardless of fragment identifier
+    if (justSignedIn) {
+      setShowModal(true);
+      return;
+    }
+    
+    // For all other cases, check if we're in the reviewer section before showing
+    // the modal (indicated by #reviewer-signin fragment or manual click)
+    const isReviewerSection = window.location.hash === '#reviewer-signin';
+    if (!isReviewerSection) {
+      setShowModal(false);
+      return;
+    }
+    
+    // At this point: 
+    // - User is in reviewer section (#reviewer-signin)
+    // - User is signed in
+    // - User is not an approved reviewer
+    // - User hasn't just submitted the form
+    // - User is not in a pending complete application state
+    
+    // If they have no profile at all or an incomplete profile, show the modal
+    //    (even if status is 'pending' but names are missing, modal should show to complete it).
+    if (reviewerProfile === null || !reviewerProfile.first_name || !reviewerProfile.last_name) {
+      setShowModal(true);
     } else {
+      // Profile exists, has first/last names.
+      // If status is not 'pending' (already handled above if complete) and not 'approved' (handled by `isReviewer`),
+      // this could be 'rejected' or some other state. For these, we don't show the modal.
       setShowModal(false);
     }
   }, [user, isReviewer, reviewerProfile, thankYou, reviewerLoading, justSignedIn]);
 
   const handleSignIn = async () => {
     setSignInLoading(true);
-    // Add parameters to the redirect URL to indicate this is a fresh sign-in from reviewer flow
-    const redirectUrl = new URL(window.location.href);
-    redirectUrl.searchParams.set('justSignedIn', 'true');
-    redirectUrl.searchParams.set('reviewerSignIn', 'true'); // Mark that this came from reviewer sign-in
-    
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl.toString(),
-        queryParams: {
-          prompt: 'select_account',
-          access_type: 'offline' // Request a refresh token
-        }
-      },
-    });
-    if (error) {
-      console.error('Error signing in:', error);
-      setSignInLoading(false); // Stop loading only if error occurs before redirect
+    try {
+      // Add parameters to the redirect URL to indicate this is a fresh sign-in from reviewer flow
+      const redirectUrl = new URL(window.location.href);
+      redirectUrl.searchParams.set('justSignedIn', 'true');
+      redirectUrl.searchParams.set('reviewerSignIn', 'true'); // Mark that this came from reviewer sign-in
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl.toString(),
+          queryParams: {
+            prompt: 'select_account',
+            access_type: 'offline' // Request a refresh token
+          }
+        },
+      });
+
+      if (error) {
+        console.error('Error signing in:', error);
+        setSignInLoading(false);
+      } else if (!data?.url) {
+        // If there's no error but also no URL to redirect to,
+        // it implies the OAuth flow might have been cancelled by the user
+        // Reset loading state to allow another attempt.
+        console.warn('OAuth sign-in did not result in a redirect URL. User may have cancelled.');
+        setSignInLoading(false);
+      }
+      // If data.url is present, Supabase handles the redirect.
+    } catch (catchedError) {
+      // Catch any unexpected synchronous errors from the signInWithOAuth call itself.
+      console.error('Unexpected error during signInWithOAuth call:', catchedError);
+      setSignInLoading(false);
     }
-    // Supabase handles redirection, loading will be managed by useIsReviewer's auth listener
   };
 
-  // Add timeout for loading state to prevent infinite loading
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  
-  useEffect(() => {
-    if (reviewerLoading) {
-      // Set a timeout to show a message if loading takes too long
-      const timer = setTimeout(() => {
-        setLoadingTimeout(true);
-      }, 5000); // 5 seconds
-      
-      return () => clearTimeout(timer);
-    } else {
-      setLoadingTimeout(false);
-    }
-  }, [reviewerLoading]);
-  
   if (reviewerLoading || signInLoading) {
-    return (
-      <div style={{ marginTop: 8, color: '#2d6cdf' }}>
-        Loading...
-        {loadingTimeout && (
-          <div style={{ marginTop: 8, fontSize: '0.9em', color: '#e67e22' }}>
-            This is taking longer than expected. There may be an issue with the database connection.
-            <br />
-            <button 
-              onClick={() => window.location.reload()} 
-              style={{ marginTop: 8, padding: '4px 8px', background: '#f1c40f', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Refresh Page
-            </button>
-          </div>
-        )}
-      </div>
-    );
+    return <div style={{ marginTop: 8, color: '#2d6cdf' }}>Loading...</div>;
   }
 
   if (reviewerError) {
-    // Show details about the error for debugging
-    console.error('Reviewer error details:', reviewerError);
-    return (
-      <div style={{ marginTop: 8, color: 'red' }}>
-        <div>Error: {reviewerError.message}</div>
-        {reviewerError.code && <div>Error code: {reviewerError.code}</div>}
-        {reviewerError.details && <div>Details: {reviewerError.details}</div>}
-        <button 
-          onClick={() => window.location.reload()} 
-          style={{ marginTop: 8, padding: '4px 8px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-        >
-          Try Again
-        </button>
-      </div>
-    );
+    return <div style={{ marginTop: 8, color: 'red' }}>Error: {reviewerError.message}</div>;
   }
 
   if (!user) {
@@ -156,17 +159,48 @@ function ReviewerSignInSection() {
         <button
           onClick={handleSignIn}
           style={{
-            backgroundColor: '#2d6cdf', // Return to previous blue
-            color: 'white',
+            backgroundColor: '#FFFFFF', // White background
+            color: '#444444', // Darker text color for contrast
             padding: '10px 15px',
-            border: 'none',
+            border: '1px solid #DADCE0', // Standard Google button border
             borderRadius: '4px',
             fontSize: '16px',
             cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)', // Softer shadow
             marginTop: '8px',
-            fontWeight: 'bold',
           }}
         >
+          <svg
+            version="1.1"
+            xmlns="http://www.w3.org/2000/svg"
+            width="18px"
+            height="18px"
+            viewBox="0 0 48 48"
+            style={{ marginRight: '10px' }}
+          >
+            <g>
+              <path
+                fill="#EA4335"
+                d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+              ></path>
+              <path
+                fill="#4285F4"
+                d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+              ></path>
+              <path
+                fill="#FBBC05"
+                d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+              ></path>
+              <path
+                fill="#34A853"
+                d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+              ></path>
+              <path fill="none" d="M0 0h48v48H0z"></path>
+            </g>
+          </svg>
           Sign in with Google
         </button>
       </div>
@@ -184,11 +218,24 @@ function ReviewerSignInSection() {
     );
   }
   
-  if (thankYou || (reviewerProfile && reviewerProfile.reviewer_application_status === 'pending')) {
+  // "Thank you" message logic:
+  // Show if `thankYou` state is true (user just submitted the modal)
+  // OR if they have a complete (has names) pending application from a previous session.
+  const hasCompletePendingApplication = 
+    reviewerProfile && 
+    reviewerProfile.reviewer_application_status === 'pending' &&
+    reviewerProfile.first_name && 
+    reviewerProfile.last_name;
+
+  if (thankYou || hasCompletePendingApplication) {
     return <div style={{marginTop: 8, color: '#2d6cdf'}}>Thank you for applying! We'll review your application soon.</div>;
   }
 
-  // User is logged in, not a reviewer, not pending, and modal should be shown (determined by useEffect)
+  // If none of the above conditions are met, and useEffect sets showModal to true,
+  // the user needs to apply or complete their application.
+  // This means: user is logged in, not a reviewer, not loading, not in thankYou state, 
+  // and doesn't have a complete pending application.
+  // The useEffect will then show the modal if profile is null or names are missing.
   // Or user is logged in, but needs to complete application (showModal will be true)
   return (
     <>
@@ -252,7 +299,7 @@ export default function GetInvolved() {
     if (!res.ok) throw new Error('Failed to fetch');
     return res.json();
   });
-  const isAdmin = useIsAdmin();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
 
   const handleDeleteVolunteer = async (id: number) => {
     try {
@@ -379,7 +426,7 @@ export default function GetInvolved() {
         </section>
         <section id="volunteers-section" style={{marginTop: 48}}>
           <h2>Volunteers Needed</h2>
-          {isAdmin && (
+          {!adminLoading && isAdmin && (
             <>
               <button style={{ marginBottom: 16 }} onClick={() => setShowVolunteerModal(true)}>
                 + Add Volunteer Request
@@ -396,7 +443,7 @@ export default function GetInvolved() {
               ) : (
                 volunteerRequests.map((req: any, idx: number) => (
                   <div className="volunteer-card" key={req.id || idx}>
-                    {isAdmin && (
+                    {!adminLoading && isAdmin && (
                       <button
                         aria-label="Remove volunteer request"
                         className="remove-btn"

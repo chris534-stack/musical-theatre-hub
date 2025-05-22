@@ -16,6 +16,22 @@ A centralized, user-friendly website for the Eugene musical theatre community. B
 - Search and navigation
 - Security, backups, and performance optimizations
 
+## Required Environment Variables
+
+For the application to build and run correctly, certain environment variables must be set. These variables are essential for connecting to backend services like Supabase and Firebase. Ensure you have a `.env.local` file in the root of your project with the following variables defined:
+
+-   `NEXT_PUBLIC_SUPABASE_URL`: The URL for your Supabase project.
+-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`: The anonymous public key for your Supabase project.
+-   `NEXT_PUBLIC_FIREBASE_API_KEY`: Firebase project API Key.
+-   `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`: Firebase project Auth Domain.
+-   `NEXT_PUBLIC_FIREBASE_PROJECT_ID`: Firebase project ID.
+-   `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`: Firebase project Storage Bucket.
+-   `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`: Firebase project Messaging Sender ID.
+-   `NEXT_PUBLIC_FIREBASE_APP_ID`: Firebase project App ID.
+-   `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`: (Optional) Firebase project Measurement ID, if Firebase Analytics is actively used.
+
+These variables are prefixed with `NEXT_PUBLIC_` to be exposed to the browser, as per Next.js conventions for client-side accessible environment variables. They are crucial for the application to initialize and interact with these backend services. Without them, the build process may fail, or the application will not function as expected at runtime.
+
 ## Setup Instructions
 1. Clone this repository and install dependencies:
    ```
