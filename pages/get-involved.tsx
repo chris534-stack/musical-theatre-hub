@@ -29,28 +29,36 @@ function ReviewerSignInSection() {
     // This useEffect determines if the application modal should be shown.
     // It runs when relevant states from useIsReviewer or local component state change.
 
-    // Conditions under which the modal should NOT be shown:
-    if (reviewerLoading || !user || isReviewer || thankYou || (reviewerProfile && reviewerProfile.reviewer_application_status === 'pending')) {
+    // Basic conditions to NOT show modal:
+    // - Still loading initial data from useIsReviewer
+    // - No user is logged in
+    // - User is already an approved reviewer
+    // - User has just submitted the form (thankYou state is true)
+    if (reviewerLoading || !user || isReviewer || thankYou) {
       setShowModal(false);
       return;
     }
 
-    // If we've passed the above conditions, it means:
-    // - Not loading data (`!reviewerLoading`)
-    // - User is logged in (`user` is present)
-    // - User is not an approved reviewer (`!isReviewer`)
-    // - User hasn't just submitted the form (`!thankYou`)
-    // - User's application is not 'pending' (already checked)
+    // At this point: user exists, not loading, not a reviewer, and hasn't just submitted the modal.
+    
+    // If a profile exists AND its status is 'pending' AND it has first/last names,
+    // then the main "Thank You" message (outside this useEffect, in the render logic)
+    // should be handling this case. So, we should not show the modal here.
+    if (reviewerProfile && reviewerProfile.reviewer_application_status === 'pending' && reviewerProfile.first_name && reviewerProfile.last_name) {
+        setShowModal(false);
+        return;
+    }
 
-    // Now, decide to show the modal if:
-    // 1. The user has no reviewer profile record yet (`reviewerProfile === null`).
-    // OR 2. The user has a profile, but it's missing essential information like first_name or last_name.
+    // Show the modal if:
+    // 1. No reviewer profile exists yet (`reviewerProfile === null`).
+    // OR 2. A profile exists but it's missing first_name or last_name 
+    //    (even if status is 'pending' but names are missing, modal should show to complete it).
     if (reviewerProfile === null || !reviewerProfile.first_name || !reviewerProfile.last_name) {
       setShowModal(true);
     } else {
-      // Profile exists, has first/last names, is not pending, and user is not approved.
-      // This could be a 'rejected' status or a profile that's somehow complete but not approved/pending.
-      // Based on the current task (prompt for new/incomplete applications), we don't show the modal here.
+      // Profile exists, has first/last names.
+      // If status is not 'pending' (already handled above if complete) and not 'approved' (handled by `isReviewer`),
+      // this could be 'rejected' or some other state. For these, we don't show the modal.
       setShowModal(false);
     }
   }, [user, isReviewer, reviewerProfile, thankYou, reviewerLoading]);
@@ -101,17 +109,17 @@ function ReviewerSignInSection() {
         <button
           onClick={handleSignIn}
           style={{
-            backgroundColor: '#4285F4', // Google's blue
-            color: 'white',
+            backgroundColor: '#FFFFFF', // White background
+            color: '#444444', // Darker text color for contrast
             padding: '10px 15px',
-            border: 'none',
+            border: '1px solid #DADCE0', // Standard Google button border
             borderRadius: '4px',
             fontSize: '16px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)', // Softer shadow
             marginTop: '8px',
           }}
         >
@@ -160,11 +168,24 @@ function ReviewerSignInSection() {
     );
   }
   
-  if (thankYou || (reviewerProfile && reviewerProfile.reviewer_application_status === 'pending')) {
+  // "Thank you" message logic:
+  // Show if `thankYou` state is true (user just submitted the modal)
+  // OR if they have a complete (has names) pending application from a previous session.
+  const hasCompletePendingApplication = 
+    reviewerProfile && 
+    reviewerProfile.reviewer_application_status === 'pending' &&
+    reviewerProfile.first_name && 
+    reviewerProfile.last_name;
+
+  if (thankYou || hasCompletePendingApplication) {
     return <div style={{marginTop: 8, color: '#2d6cdf'}}>Thank you for applying! We'll review your application soon.</div>;
   }
 
-  // User is logged in, not a reviewer, not pending, and modal should be shown (determined by useEffect)
+  // If none of the above conditions are met, and useEffect sets showModal to true,
+  // the user needs to apply or complete their application.
+  // This means: user is logged in, not a reviewer, not loading, not in thankYou state, 
+  // and doesn't have a complete pending application.
+  // The useEffect will then show the modal if profile is null or names are missing.
   // Or user is logged in, but needs to complete application (showModal will be true)
   return (
     <>
