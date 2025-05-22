@@ -33,6 +33,9 @@ function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
+    // Force rebuild - timestamp: 2025-05-21T17:10:00
+    console.log('[OAuth Redirect Debug] Checking for OAuth redirect');
+    
     // Check if this is a fresh OAuth redirect
     const isOAuthRedirect = router.asPath.includes('#access_token=');
     if (!isOAuthRedirect) return;
