@@ -117,10 +117,19 @@ export default function AddEventModal({ isOpen, onClose, onSubmit }: AddEventMod
     setLoading(true);
     setSubmitError(null);
     try {
-      // Import supabase module using type assertion to fix build-time TypeScript error
-      // @ts-expect-error - We know the supabase export exists but TypeScript can't validate it at build time
+      // Import Supabase client dynamically
       const { supabase } = await import('../lib/supabaseClient');
-      const session = await supabase.auth.getSession();
+      
+      // Type assertion for TypeScript during build
+      type SupabaseClientType = {
+        auth: {
+          getSession: () => Promise<{data: {session: null | {access_token?: string}}, error: null | any}>
+        }
+      };
+      
+      // Use type assertion to ensure TypeScript accepts the client
+      const typedSupabase = supabase as SupabaseClientType;
+      const session = await typedSupabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
 
       // Look up venue_id by venue name ONCE

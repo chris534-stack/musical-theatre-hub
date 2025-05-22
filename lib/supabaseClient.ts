@@ -1,11 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Use null coalescing to prevent crashes during build when env vars may not be available
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 // Wrap client creation in try/catch to handle build-time env issues
-let supabase;
+// Define a type for our fallback client that matches the minimal interface we need
+type MinimalSupabaseClient = {
+  auth: {
+    getSession: () => Promise<{data: {session: null | any}, error: null | any}>,
+    getUser: () => Promise<{data: {user: null | any}, error: null | any}>,
+    onAuthStateChange: () => {data: {subscription: {unsubscribe: () => void}}}
+  }
+};
+
+// The exported supabase client will either be a real SupabaseClient or our minimal version
+let supabase: SupabaseClient | MinimalSupabaseClient;
 try {
   if (supabaseUrl && supabaseAnonKey) {
     supabase = createClient(supabaseUrl, supabaseAnonKey);
