@@ -31,11 +31,17 @@ function ReviewerSignInSection() {
     if (typeof window !== 'undefined') {
       // Check if we have the context parameter indicating a reviewer application flow
       const urlParams = new URLSearchParams(window.location.search);
-      const fromReviewerSignIn = urlParams.get('reviewerSignIn') === 'true';
-      const freshSignIn = urlParams.get('justSignedIn') === 'true';
+      const fromReviewerSignInParam = urlParams.get('reviewerSignIn');
+      const justSignedInParam = urlParams.get('justSignedIn');
+      console.log("[Reviewer Flow Debug] useEffect1: reviewerSignIn param:", fromReviewerSignInParam);
+      console.log("[Reviewer Flow Debug] useEffect1: justSignedIn param:", justSignedInParam);
+
+      const fromReviewerSignIn = fromReviewerSignInParam === 'true';
+      const freshSignIn = justSignedInParam === 'true';
       
       // Only set justSignedIn if we came from the reviewer application flow
       if (freshSignIn && fromReviewerSignIn) {
+        console.log("[Reviewer Flow Debug] useEffect1: Calling setJustSignedIn(true)");
         setJustSignedIn(true);
         
         // Clean up URL parameters
@@ -50,6 +56,9 @@ function ReviewerSignInSection() {
   useEffect(() => {
     // This useEffect determines if the application modal should be shown.
     // It runs when relevant states from useIsReviewer or local component state change.
+    console.log("[Reviewer Flow Debug] useEffect2: Inputs - reviewerLoading:", reviewerLoading, "user:", !!user, "isReviewer:", isReviewer, "thankYou:", thankYou, "reviewerProfile:", reviewerProfile, "justSignedIn:", justSignedIn, "hash:", typeof window !== 'undefined' ? window.location.hash : 'N/A');
+
+    let newShowModalValue;
 
     // Basic conditions to NOT show modal:
     // - Still loading initial data from useIsReviewer
@@ -57,55 +66,51 @@ function ReviewerSignInSection() {
     // - User is already an approved reviewer
     // - User has just submitted the form (thankYou state is true)
     if (reviewerLoading || !user || isReviewer || thankYou) {
-      setShowModal(false);
-      return;
-    }
-
-    // At this point: user exists, not loading, not a reviewer, and hasn't just submitted the modal.
-    
-    // If a profile exists AND its status is 'pending' AND it has first/last names,
-    // then the main "Thank You" message (outside this useEffect, in the render logic)
-    // will be displayed, so don't show the modal.
-    if (reviewerProfile && 
-        reviewerProfile.reviewer_application_status === 'pending' && 
-        reviewerProfile.first_name && 
-        reviewerProfile.last_name) {
-      setShowModal(false);
-      return;
-    }
-    
-    // Just came from auth signin with the intention to become a reviewer - 
-    // show the modal immediately regardless of fragment identifier
-    if (justSignedIn) {
-      setShowModal(true);
-      return;
-    }
-    
-    // For all other cases, check if we're in the reviewer section before showing
-    // the modal (indicated by #reviewer-signin fragment or manual click)
-    const isReviewerSection = window.location.hash === '#reviewer-signin';
-    if (!isReviewerSection) {
-      setShowModal(false);
-      return;
-    }
-    
-    // At this point: 
-    // - User is in reviewer section (#reviewer-signin)
-    // - User is signed in
-    // - User is not an approved reviewer
-    // - User hasn't just submitted the form
-    // - User is not in a pending complete application state
-    
-    // If they have no profile at all or an incomplete profile, show the modal
-    //    (even if status is 'pending' but names are missing, modal should show to complete it).
-    if (reviewerProfile === null || !reviewerProfile.first_name || !reviewerProfile.last_name) {
-      setShowModal(true);
+      newShowModalValue = false;
+    } else if (
+      reviewerProfile &&
+      reviewerProfile.reviewer_application_status === 'pending' &&
+      reviewerProfile.first_name &&
+      reviewerProfile.last_name
+    ) {
+      // If a profile exists AND its status is 'pending' AND it has first/last names,
+      // then the main "Thank You" message (outside this useEffect, in the render logic)
+      // will be displayed, so don't show the modal.
+      newShowModalValue = false;
+    } else if (justSignedIn) {
+      // Just came from auth signin with the intention to become a reviewer - 
+      // show the modal immediately regardless of fragment identifier
+      newShowModalValue = true;
     } else {
-      // Profile exists, has first/last names.
-      // If status is not 'pending' (already handled above if complete) and not 'approved' (handled by `isReviewer`),
-      // this could be 'rejected' or some other state. For these, we don't show the modal.
-      setShowModal(false);
+      // For all other cases, check if we're in the reviewer section before showing
+      // the modal (indicated by #reviewer-signin fragment or manual click)
+      const isReviewerSection = typeof window !== 'undefined' && window.location.hash === '#reviewer-signin';
+      if (!isReviewerSection) {
+        newShowModalValue = false;
+      } else {
+        // At this point: 
+        // - User is in reviewer section (#reviewer-signin)
+        // - User is signed in
+        // - User is not an approved reviewer
+        // - User hasn't just submitted the form
+        // - User is not in a pending complete application state
+        
+        // If they have no profile at all or an incomplete profile, show the modal
+        //    (even if status is 'pending' but names are missing, modal should show to complete it).
+        if (reviewerProfile === null || !reviewerProfile.first_name || !reviewerProfile.last_name) {
+          newShowModalValue = true;
+        } else {
+          // Profile exists, has first/last names.
+          // If status is not 'pending' (already handled above if complete) and not 'approved' (handled by `isReviewer`),
+          // this could be 'rejected' or some other state. For these, we don't show the modal.
+          newShowModalValue = false;
+        }
+      }
     }
+    
+    console.log("[Reviewer Flow Debug] useEffect2: Final showModal value before set:", newShowModalValue);
+    setShowModal(newShowModalValue);
+
   }, [user, isReviewer, reviewerProfile, thankYou, reviewerLoading, justSignedIn]);
 
   const handleSignIn = async () => {
@@ -115,6 +120,7 @@ function ReviewerSignInSection() {
       const redirectUrl = new URL(window.location.href);
       redirectUrl.searchParams.set('justSignedIn', 'true');
       redirectUrl.searchParams.set('reviewerSignIn', 'true'); // Mark that this came from reviewer sign-in
+      console.log("[Reviewer Flow Debug] handleSignIn: Constructed redirectUrl:", redirectUrl.toString());
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
