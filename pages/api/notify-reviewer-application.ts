@@ -10,6 +10,7 @@ const supabase = createClient(
 );
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('[NotifyReviewerApp] Value of process.env.ADMIN_EMAILS:', process.env.ADMIN_EMAILS);
   if (req.method !== 'POST') {
     console.log('[NotifyReviewerApp] Method Not Allowed');
     return res.status(405).json({ error: 'Method not allowed' });
