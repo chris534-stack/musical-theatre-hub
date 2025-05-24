@@ -76,6 +76,32 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
         throw error;
       }
 
+      // Notify admin after successful upsert
+      console.log('[ReviewerModalNotify] Attempting to send reviewer application notification email...');
+      fetch('/api/notify-reviewer-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          preferredName: preferredName.trim(),
+          pronouns: pronouns.trim(),
+          email: user.email,
+        }),
+      })
+      .then(async response => {
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[ReviewerModalNotify] Notification email sent successfully. Message ID:', data.messageId);
+        } else {
+          const errorData = await response.json().catch(() => ({})); // Catch if response is not JSON
+          console.error('[ReviewerModalNotify] Failed to send notification email. Status:', response.status, 'Error:', errorData.error || 'Unknown error');
+        }
+      })
+      .catch(networkError => {
+        console.error('[ReviewerModalNotify] Network error sending notification email:', networkError);
+      });
+      
       setSuccessMessage('Application submitted successfully!');
       setTimeout(() => {
         setSuccessMessage(null);
