@@ -89,10 +89,11 @@ export default function ReviewApplicationPage() {
       console.log('Processing action:', action, 'for application ID:', application.id);
       
       // Update the reviewer status in Supabase
+      const statusToUpdate = action === 'approved' ? 'approved' : 'rejected';
       const { error } = await supabase
         .from('reviewers')
         .update({ 
-          reviewer_application_status: action,
+          reviewer_application_status: statusToUpdate,
           updated_at: new Date().toISOString(),
           // Keep the token for now but invalidate it by marking it as used
           // This preserves the relationship but prevents reuse
