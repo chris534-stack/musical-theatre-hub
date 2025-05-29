@@ -163,7 +163,7 @@ export default function GreenRoomGuild() {
             <div style={{ marginTop: 16 }}>
               <a href="#" style={{ color: '#2e7d32', textDecoration: 'none', marginRight: 16 }}>Email</a>
               <a href="#" style={{ color: '#2e7d32', textDecoration: 'none', marginRight: 16 }}>Instagram</a>
-              <a href="#" style={{ color: '#2e7d32', textDecoration: 'none' }}>Facebook</a>
+              <a href="#" style={{ color: '#2e7d32', textDecoration: 'none', marginRight: 16 }}>Facebook</a>
               <a href="#" style={{ color: '#2e7d32', textDecoration: 'none' }}>Bluesky</a>
             </div>
           </div>
