@@ -4,6 +4,22 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
+// Determine the current host to handle both local and production domains
+const getRedirectTo = () => {
+  // We're in a browser environment
+  if (typeof window !== 'undefined') {
+    // Try to use the current site URL
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    return `${protocol}//${host}/auth/callback`;
+  } else {
+    // Server-side rendering or build time - use env var or default
+    return process.env.NEXT_PUBLIC_BASE_URL ? 
+      `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback` : 
+      'https://ourstageeugene.com/auth/callback';
+  }
+};
+
 // Wrap client creation in try/catch to handle build-time env issues
 // Define a type for our fallback client that matches the minimal interface we need
 type MinimalSupabaseClient = {
@@ -22,7 +38,16 @@ type MinimalSupabaseClient = {
 let supabase: SupabaseClient | MinimalSupabaseClient;
 try {
   if (supabaseUrl && supabaseAnonKey) {
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Create client with dynamic auth redirect configuration
+    supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        // This helps with custom domains by dynamically setting the redirect URL
+        flowType: 'pkce'
+      }
+    });
   } else {
     // Create a dummy client for build-time that will be properly initialized at runtime
     console.warn('Supabase credentials missing at build time - using fallback');

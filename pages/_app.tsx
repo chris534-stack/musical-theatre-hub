@@ -6,10 +6,12 @@ import '../components/Header.module.css';
 import '../components/CalendarView.mobile.css';
 import Header from '../components/Header';
 import dynamic from 'next/dynamic';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
-const MobileNavBar = dynamic(() => import('../components/MobileNavBar'), { ssr: false });
+import MobileNavBar from '../components/MobileNavBar';
+import DomainAuthFix from '../components/DomainAuthFix';
+import '../components/global.css';
 
 // App initialization
 
@@ -64,6 +66,7 @@ function MyApp({ Component, pageProps }: AppProps) {
       <Component {...pageProps} />
       <MobileNavBar />
       <div id="global-portal-root" />
+      <DomainAuthFix />
       <SpeedInsights />
       <Analytics />
     </>
