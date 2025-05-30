@@ -11,7 +11,6 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import MobileNavBar from '../components/MobileNavBar';
 import DomainAuthFix from '../components/DomainAuthFix';
-import '../components/global.css';
 
 // App initialization
 
