@@ -2,12 +2,31 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 
+// Define a type for our debug info state
+type DebugInfoState = {
+  status: string;
+  errorMessage: string | null;
+  hashParams: string | null;
+  urlParams: Record<string, string>;
+  domainInfo: {
+    href: string;
+    host: string;
+    origin: string;
+  } | null;
+  user?: {
+    id: string | undefined;
+    email: string | undefined;
+    authProvider: string | undefined;
+  };
+};
+
 export default function AuthCallback() {
   const router = useRouter();
-  const [debugInfo, setDebugInfo] = useState<any>({
+  const [debugInfo, setDebugInfo] = useState<DebugInfoState>({
     status: 'initializing',
     errorMessage: null,
     hashParams: null,
+    urlParams: {},
     domainInfo: null
   });
 
@@ -15,7 +34,7 @@ export default function AuthCallback() {
     // Capture URL hash for debugging
     const hashParams = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
-    setDebugInfo(prev => ({ 
+    setDebugInfo((prev: DebugInfoState) => ({ 
       ...prev, 
       hashParams, 
       urlParams: Object.fromEntries(urlParams.entries()),
@@ -31,13 +50,13 @@ export default function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         console.log('Auth callback page loaded, processing authentication...');
-        setDebugInfo(prev => ({ ...prev, status: 'processing' }));
+        setDebugInfo((prev: DebugInfoState) => ({ ...prev, status: 'processing' }));
         
         // Check if there's a code or error in the URL that might indicate an issue
         if (urlParams.get('error')) {
           const errorMsg = urlParams.get('error_description') || urlParams.get('error');
           console.error('OAuth error:', errorMsg);
-          setDebugInfo(prev => ({ 
+          setDebugInfo((prev: DebugInfoState) => ({ 
             ...prev, 
             status: 'oauth_error', 
             errorMessage: errorMsg 
@@ -50,7 +69,7 @@ export default function AuthCallback() {
         
         if (error) {
           console.error('Error in auth callback:', error.message);
-          setDebugInfo(prev => ({ 
+          setDebugInfo((prev: DebugInfoState) => ({ 
             ...prev, 
             status: 'session_error', 
             errorMessage: error.message 
@@ -65,7 +84,7 @@ export default function AuthCallback() {
 
         if (session) {
           console.log('Authentication successful, session found');
-          setDebugInfo(prev => ({ 
+          setDebugInfo((prev: DebugInfoState) => ({ 
             ...prev, 
             status: 'authenticated',
             user: {
@@ -85,7 +104,7 @@ export default function AuthCallback() {
           }, 2000);
         } else {
           console.log('No session found');
-          setDebugInfo(prev => ({ ...prev, status: 'no_session' }));
+          setDebugInfo((prev: DebugInfoState) => ({ ...prev, status: 'no_session' }));
           
           // Don't redirect immediately for debugging
           setTimeout(() => {
@@ -94,7 +113,7 @@ export default function AuthCallback() {
         }
       } catch (err: any) {
         console.error('Unexpected error during auth callback:', err);
-        setDebugInfo(prev => ({ 
+        setDebugInfo((prev: DebugInfoState) => ({ 
           ...prev, 
           status: 'unexpected_error', 
           errorMessage: err.message || 'Unknown error' 
