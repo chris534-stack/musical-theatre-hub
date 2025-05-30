@@ -94,8 +94,37 @@ export default function AuthCallback() {
             }
           }));
           
-          // Redirect to the page the user was trying to access or to a default page
-          const redirectTo = localStorage.getItem('redirectTo') || '/';
+          // Check if we were in the reviewer application flow
+          // Parse the URL that initiated the auth flow from the session
+          let redirectTo = '/';
+          try {
+            // First check session for redirectTo info
+            if (session.user?.app_metadata?.provider === 'google' && 
+                session.user?.app_metadata?.redirect_url) {
+              // If we have a stored redirect URL with reviewerSignIn params, use that
+              const storedRedirect = session.user.app_metadata.redirect_url;
+              if (storedRedirect && storedRedirect.includes('reviewerSignIn=true')) {
+                redirectTo = storedRedirect;
+                console.log('Found reviewer redirect URL in session metadata:', redirectTo);
+              }
+            } else {
+              // Otherwise check if we can reconstruct the redirect URL from referrer
+              const referrer = document.referrer;
+              if (referrer && referrer.includes('/get-involved')) {
+                // If we came from the get-involved page, redirect back there with params
+                redirectTo = '/get-involved?justSignedIn=true&reviewerSignIn=true';
+                console.log('Reconstructed redirect URL from referrer:', redirectTo);
+              } else {
+                // Fallback to localStorage or default
+                redirectTo = localStorage.getItem('redirectTo') || '/';
+              }
+            }
+          } catch (e) {
+            console.error('Error determining redirect URL:', e);
+            // Fallback to localStorage or default
+            redirectTo = localStorage.getItem('redirectTo') || '/';
+          }
+          
           localStorage.removeItem('redirectTo'); // Clear the stored redirect
           
           // Short delay to show success before redirecting
