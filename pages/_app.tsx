@@ -11,6 +11,8 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 const MobileNavBar = dynamic(() => import('../components/MobileNavBar'), { ssr: false });
 
+// App initialization
+
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
 

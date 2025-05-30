@@ -52,13 +52,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to generate review token', details: tokenError.message });
     }
 
-    // Create the secure review link using the request's host
+    // Create the direct link to the admin dashboard with the specific application highlighted
     // Get host from headers with fallback to environment variable
     const protocol = req.headers['x-forwarded-proto'] || 'http';
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
     console.log(`[NotifyReviewerApp] Building review link with baseUrl: ${baseUrl}`);
-    const reviewLink = `${baseUrl}/admin/review-application?token=${token}`;
+    
+    // We'll link directly to the admin dashboard with the application ID in the hash
+    // This will use our new deep linking feature to scroll to and highlight the application
+    const adminDashboardLink = `${baseUrl}/admin#application-${userId}`;
 
     console.log('[NotifyReviewerApp] Attempting to send reviewer application email...');
 
@@ -82,10 +85,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       Pronouns: ${pronouns || 'N/A'}
       Email: ${email}
 
-      To review this application, click on the secure link below:
-      ${reviewLink}
+      To review this application in the admin dashboard, click the link below:
+      ${adminDashboardLink}
 
-      This link is unique and secure. Please do not share it.
+      This link will take you directly to the pending application in the admin dashboard.
+      You may need to sign in with your admin account if you're not already authenticated.
     `;
 
     const htmlBody = `
@@ -99,9 +103,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <li><strong>Email:</strong> ${email}</li>
       </ul>
       
-      <p><a href="${reviewLink}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin-top: 20px;">Review Application</a></p>
+      <div style="margin: 30px 0;">
+        <a href="${adminDashboardLink}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">View in Admin Dashboard</a>
+      </div>
       
-      <p style="margin-top: 30px; font-size: 12px; color: #666;">This link is unique and secure. Please do not share it.</p>
+      <p>This link will take you directly to the pending application in the admin dashboard. The specific application will be highlighted for easy identification.</p>
+      
+      <p style="margin-top: 20px; font-size: 12px; color: #666;">You may need to sign in with your admin account if you're not already authenticated.</p>
     `;
 
     const mailOptions = {
