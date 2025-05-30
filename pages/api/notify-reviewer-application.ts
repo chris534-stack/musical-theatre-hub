@@ -104,14 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       </ul>
       
       <div style="margin: 30px 0;">
-        <p><strong>⚠️ Gmail Users:</strong> For best results, right-click the button below and select "Open in new tab/window" or copy-paste the URL into your browser.</p>
-        
-        <a href="${adminDashboardLink}" target="_blank" rel="noopener" style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">View in Admin Dashboard</a>
-      </div>
-      
-      <p style="margin: 15px 0;">Direct link (copy-paste if button doesn't work):</p>
-      <div style="margin: 10px 0; padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; word-break: break-all;">
-        <code>${adminDashboardLink}</code>
+        <a href="${adminDashboardLink}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">View in Admin Dashboard</a>
       </div>
       
       <p>This link will take you directly to the pending application in the admin dashboard. The specific application will be highlighted for easy identification.</p>
