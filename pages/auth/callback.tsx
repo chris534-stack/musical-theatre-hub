@@ -1,45 +1,109 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function AuthCallback() {
   const router = useRouter();
+  const [debugInfo, setDebugInfo] = useState<any>({
+    status: 'initializing',
+    errorMessage: null,
+    hashParams: null,
+    domainInfo: null
+  });
 
   useEffect(() => {
+    // Capture URL hash for debugging
+    const hashParams = window.location.hash;
+    const urlParams = new URLSearchParams(window.location.search);
+    setDebugInfo(prev => ({ 
+      ...prev, 
+      hashParams, 
+      urlParams: Object.fromEntries(urlParams.entries()),
+      domainInfo: {
+        href: window.location.href,
+        host: window.location.host,
+        origin: window.location.origin
+      }
+    }));
+
     // The Supabase client will automatically handle the auth callback
     // by processing the URL hash params
     const handleAuthCallback = async () => {
       try {
-        // Add some logging to help debugging
         console.log('Auth callback page loaded, processing authentication...');
+        setDebugInfo(prev => ({ ...prev, status: 'processing' }));
         
-        // This will handle the PKCE flow
-        // The session will be automatically set in the Supabase client
-        // We just need to redirect the user after it's complete
+        // Check if there's a code or error in the URL that might indicate an issue
+        if (urlParams.get('error')) {
+          const errorMsg = urlParams.get('error_description') || urlParams.get('error');
+          console.error('OAuth error:', errorMsg);
+          setDebugInfo(prev => ({ 
+            ...prev, 
+            status: 'oauth_error', 
+            errorMessage: errorMsg 
+          }));
+          return;
+        }
         
-        // Check if we have a session
+        // Get the current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error in auth callback:', error.message);
-          // Redirect to homepage on error
-          router.push('/');
+          setDebugInfo(prev => ({ 
+            ...prev, 
+            status: 'session_error', 
+            errorMessage: error.message 
+          }));
+          
+          // Don't redirect immediately for debugging
+          setTimeout(() => {
+            router.push('/');
+          }, 10000); // Wait 10 seconds so we can see the debug info
           return;
         }
 
         if (session) {
-          console.log('Authentication successful, redirecting...');
+          console.log('Authentication successful, session found');
+          setDebugInfo(prev => ({ 
+            ...prev, 
+            status: 'authenticated',
+            user: {
+              id: session.user?.id,
+              email: session.user?.email,
+              authProvider: session.user?.app_metadata?.provider
+            }
+          }));
+          
           // Redirect to the page the user was trying to access or to a default page
           const redirectTo = localStorage.getItem('redirectTo') || '/';
           localStorage.removeItem('redirectTo'); // Clear the stored redirect
-          router.push(redirectTo);
+          
+          // Short delay to show success before redirecting
+          setTimeout(() => {
+            router.push(redirectTo);
+          }, 2000);
         } else {
-          console.log('No session found, redirecting to homepage');
-          router.push('/');
+          console.log('No session found');
+          setDebugInfo(prev => ({ ...prev, status: 'no_session' }));
+          
+          // Don't redirect immediately for debugging
+          setTimeout(() => {
+            router.push('/');
+          }, 10000); // Wait 10 seconds so we can see the debug info
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Unexpected error during auth callback:', err);
-        router.push('/');
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          status: 'unexpected_error', 
+          errorMessage: err.message || 'Unknown error' 
+        }));
+        
+        // Don't redirect immediately for debugging
+        setTimeout(() => {
+          router.push('/');
+        }, 10000); // Wait 10 seconds so we can see the debug info
       }
     };
 
@@ -47,17 +111,57 @@ export default function AuthCallback() {
     handleAuthCallback();
   }, [router]);
 
-  // Show a simple loading state while processing
+  // Show a loading state with debug information
   return (
     <div style={{ 
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
       height: '100vh',
-      flexDirection: 'column' 
+      flexDirection: 'column',
+      padding: '20px'
     }}>
-      <h2>Signing you in...</h2>
-      <p>Please wait while we complete the authentication process.</p>
+      <h2>Authentication Status: {debugInfo.status}</h2>
+      
+      {debugInfo.errorMessage && (
+        <div style={{
+          backgroundColor: '#fff0f0',
+          padding: '10px',
+          borderRadius: '5px',
+          marginTop: '20px',
+          maxWidth: '600px'
+        }}>
+          <h3>Error:</h3>
+          <pre style={{whiteSpace: 'pre-wrap'}}>{debugInfo.errorMessage}</pre>
+        </div>
+      )}
+      
+      {debugInfo.status === 'authenticated' && (
+        <div style={{
+          backgroundColor: '#f0fff0',
+          padding: '10px',
+          borderRadius: '5px',
+          marginTop: '20px'
+        }}>
+          <h3>Authentication Successful!</h3>
+          <p>Redirecting you shortly...</p>
+        </div>
+      )}
+      
+      <div style={{
+        backgroundColor: '#f0f0ff',
+        padding: '10px',
+        borderRadius: '5px',
+        marginTop: '20px',
+        fontSize: '14px',
+        maxWidth: '600px',
+        overflow: 'auto'
+      }}>
+        <h3>Debug Information:</h3>
+        <pre style={{whiteSpace: 'pre-wrap'}}>
+          {JSON.stringify(debugInfo, null, 2)}
+        </pre>
+      </div>
     </div>
   );
 }
