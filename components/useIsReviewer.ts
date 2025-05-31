@@ -43,6 +43,8 @@ export default function useIsReviewer(): UseIsReviewerReturn {
     try {
       // Get current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('[useIsReviewer] fetchUserAndReviewerStatus - Session:', session);
+      console.log('[useIsReviewer] fetchUserAndReviewerStatus - Session error:', sessionError);
 
       if (sessionError) {
         throw sessionError;
@@ -50,6 +52,7 @@ export default function useIsReviewer(): UseIsReviewerReturn {
 
       // Update user state
       const currentUser = session?.user ?? null;
+      console.log('[useIsReviewer] fetchUserAndReviewerStatus - Current user:', currentUser);
       if (isMounted.current) {
         setUser(currentUser);
       }
@@ -138,6 +141,8 @@ export default function useIsReviewer(): UseIsReviewerReturn {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('[useIsReviewer] onAuthStateChange - Event:', event);
+        console.log('[useIsReviewer] onAuthStateChange - Session:', session);
         if (!isMounted.current) return;
         
         // Update user state immediately

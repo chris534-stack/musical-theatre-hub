@@ -19,6 +19,8 @@ const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAILS
   : [];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('[API /backup-reviewer-application] Route hit');
+  console.log('[API /backup-reviewer-application] Request body:', req.body);
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -52,12 +54,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supabasePromise = new Promise(async (resolve, reject) => {
       try {
         // Try insertion first
+        console.log('[API /backup-reviewer-application] Attempting to insert application data:', applicationData);
         const { error: insertError } = await supabase
           .from('reviewers')
           .insert(applicationData);
 
         // If duplicate key, try update instead
         if (insertError && insertError.code === '23505') {
+          console.log('[API /backup-reviewer-application] Insert failed due to duplicate key, attempting update. Insert error:', insertError);
+          console.log('[API /backup-reviewer-application] Attempting to update application data:', applicationData);
           const { error: updateError } = await supabase
             .from('reviewers')
             .update(applicationData)
@@ -67,15 +72,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Update successful
             resolve({ success: true, method: 'update' });
           } else {
+            console.log('[API /backup-reviewer-application] Update failed. Update error:', updateError);
             reject(new Error(`Update error: ${updateError.message}`));
           }
         } else if (!insertError) {
           // Insert successful
           resolve({ success: true, method: 'insert' });
         } else {
+          console.log('[API /backup-reviewer-application] Insert failed. Insert error:', insertError);
           reject(new Error(`Insert error: ${insertError.message}`));
         }
       } catch (error) {
+        console.log('[API /backup-reviewer-application] Supabase promise rejected. Error:', error);
         reject(error);
       }
     });
@@ -110,6 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('Supabase submission failed, using backup storage:', error);
       
       // If Supabase fails, store in backup table
+      console.log('[API /backup-reviewer-application] Attempting to save to backup_reviewer_applications table.');
       const { data: backupData, error: backupError } = await supabase
         .from('backup_reviewer_applications')
         .insert({
@@ -126,6 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       if (backupError) {
         console.error('Failed to store in backup table:', backupError);
+        console.log('[API /backup-reviewer-application] Failed to save to backup_reviewer_applications. Backup error:', backupError);
         // Even if backup fails, we'll still pretend success to the user
         // but log the complete failure for admin investigation
         console.error('COMPLETE FAILURE - APPLICATION DATA:', {
@@ -173,6 +183,7 @@ async function sendNotificationEmail(data: {
   submittedToSupabase: boolean;
   backupId?: string;
 }) {
+  console.log('[API /backup-reviewer-application] sendNotificationEmail arguments:', data);
   if (ADMIN_EMAILS.length === 0) {
     console.warn('No admin emails configured for notifications');
     return;

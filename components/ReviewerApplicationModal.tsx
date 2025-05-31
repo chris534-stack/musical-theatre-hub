@@ -223,6 +223,7 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
   
   // Main submit function - direct Supabase submission with improved resilience
   const handleSubmit = async () => {
+    console.log('[ReviewerAppModal] handleSubmit user prop:', user);
     console.log('[ReviewerAppModal] Starting form submission');
     setSubmitError(null);
     
@@ -231,6 +232,8 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
     let userSession = null;
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      console.log('[ReviewerAppModal] handleSubmit getSession data:', sessionData);
+      console.log('[ReviewerAppModal] handleSubmit getSession error:', sessionError);
       if (sessionError) {
         console.error('[ReviewerAppModal] Session check error:', sessionError);
         // Continue anyway - session might still work for database operations
@@ -365,6 +368,7 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
         } catch (attemptError: any) {
           lastError = attemptError;
           console.error(`[ReviewerAppModal] Exception in attempt ${attemptCount}:`, attemptError);
+          console.log(`[ReviewerAppModal] Full attemptError object for attempt ${attemptCount}:`, JSON.stringify(attemptError, Object.getOwnPropertyNames(attemptError)));
           // Wait before retry
           if (attemptCount < maxAttempts) {
             const waitTime = 1000 * attemptCount;
@@ -385,6 +389,7 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
         console.error('[ReviewerAppModal] Last error:', lastError);
         
         // Try the server-side backup as a last resort
+        console.log('[ReviewerAppModal] Calling /api/backup-reviewer-application');
         console.log('[ReviewerAppModal] Attempting server-side backup submission...');
         try {
           const backupResponse = await fetch('/api/backup-reviewer-application', {

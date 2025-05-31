@@ -32,6 +32,7 @@ export default function AuthCallback() {
   });
 
   useEffect(() => {
+    console.log('Full URL:', window.location.href);
     // Capture URL hash for debugging
     const hashParams = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
@@ -67,6 +68,8 @@ export default function AuthCallback() {
         
         // Get the current session
         const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('Session:', session);
+        console.log('Error:', error);
         
         if (error) {
           console.error('Error in auth callback:', error.message);
@@ -164,6 +167,8 @@ export default function AuthCallback() {
           localStorage.removeItem('redirectTo'); // Clear the stored redirect
           
           // Perform a full browser navigation to ensure a clean redirect
+          console.log('Redirecting to:', redirectTo);
+          console.log('User session:', session.user);
           console.log('Redirecting with window.location.assign to:', redirectTo);
           window.location.assign(redirectTo);
         } else {
