@@ -175,16 +175,20 @@ function ReviewerSignInSection() {
   const handleSignIn = async () => {
     setSignInLoading(true);
     try {
-      // Add parameters to the redirect URL to indicate this is a fresh sign-in from reviewer flow
-      const redirectUrl = new URL(window.location.href);
-      redirectUrl.searchParams.set('justSignedIn', 'true');
-      redirectUrl.searchParams.set('reviewerSignIn', 'true'); // Mark that this came from reviewer sign-in
-      console.log("[Reviewer Flow Debug] handleSignIn: Constructed redirectUrl:", redirectUrl.toString());
+      const baseOrigin = window.location.origin;
+      const finalDestinationPath = '/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin';
+      const encodedFinalDestination = encodeURIComponent(finalDestinationPath);
+      const callbackUrl = `${baseOrigin}/auth/callback?next=${encodedFinalDestination}`;
+
+      console.log("[Reviewer Flow Debug] handleSignIn: Base origin:", baseOrigin);
+      console.log("[Reviewer Flow Debug] handleSignIn: Final destination path:", finalDestinationPath);
+      console.log("[Reviewer Flow Debug] handleSignIn: Encoded final destination:", encodedFinalDestination);
+      console.log("[Reviewer Flow Debug] handleSignIn: Constructed callbackUrl for Supabase:", callbackUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl.toString(),
+          redirectTo: callbackUrl,
           queryParams: {
             prompt: 'select_account',
             access_type: 'offline' // Request a refresh token

@@ -88,8 +88,46 @@ export default function AuthCallback() {
 
         if (session) {
           console.log('Authentication successful, session found');
-          // First initialize redirectTo, then use it in the debugInfo
-          let redirectTo = '/';
+          let redirectTo = '/'; // Default redirect
+          const nextParam = urlParams.get('next');
+
+          if (nextParam) {
+            const decodedNextParam = decodeURIComponent(nextParam);
+            // Validate if it's a relative path or same origin
+            if (decodedNextParam.startsWith('/') || decodedNextParam.startsWith(window.location.origin)) {
+              redirectTo = decodedNextParam;
+              console.log('Using "next" query parameter for redirection:', redirectTo);
+            } else {
+              console.warn('Invalid "next" query parameter (not relative or same origin):', decodedNextParam, 'Falling back to default redirection.');
+              // Fallback to existing logic if next param is invalid
+              redirectTo = localStorage.getItem('redirectTo') || '/';
+              console.log('Using fallback redirect (localStorage or /):', redirectTo);
+            }
+          } else {
+            // Existing logic if no 'next' param
+            console.log('No "next" query parameter found. Using existing logic for redirection.');
+            // Check if we were in the reviewer application flow (simplified from previous logic)
+            // This part might need to be adjusted if there are other flows besides reviewer sign-in
+            const storedRedirect = session.user?.app_metadata?.redirect_url; // Supabase might store the original redirect
+            const isReviewerSignInFlow = urlParams.get('reviewerSignIn') === 'true' || (storedRedirect && storedRedirect.includes('reviewerSignIn=true'));
+
+            if (isReviewerSignInFlow) {
+               redirectTo = `${window.location.origin}/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin`;
+               console.log('Reviewer application flow detected, redirecting to:', redirectTo);
+            } else if (storedRedirect) {
+               try {
+                 const parsedUrl = new URL(storedRedirect);
+                 redirectTo = `${window.location.origin}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+                 console.log('Using domain-adjusted redirect_url from session metadata:', redirectTo);
+               } catch (e) {
+                 redirectTo = storedRedirect; // Fallback if parsing fails
+                 console.log('Using raw redirect_url from session metadata (parsing failed):', redirectTo);
+               }
+            } else {
+              redirectTo = localStorage.getItem('redirectTo') || '/';
+              console.log('Using fallback redirect (localStorage or /):', redirectTo);
+            }
+          }
           
           setDebugInfo((prev: DebugInfoState) => ({ 
             ...prev, 
@@ -98,77 +136,15 @@ export default function AuthCallback() {
               id: session.user?.id,
               email: session.user?.email,
               authProvider: session.user?.app_metadata?.provider
-            }
-            // Will set redirectTo later once determined
+            },
+            redirectTo // Update debug info with the final redirectTo
           }));
           
-          // Check if we were in the reviewer application flow
-          // Parse the URL that initiated the auth flow from the session
-          try {
-            console.log('Auth callback - Checking redirect sources');
-            console.log('Auth provider:', session.user?.app_metadata?.provider);
-            console.log('Auth metadata:', JSON.stringify(session.user?.app_metadata || {}));
-            console.log('Referrer:', document.referrer);
-            console.log('Current URL:', window.location.href);
-            console.log('Current origin:', window.location.origin);
-            
-            // Simple but effective approach to handle domain differences
-            if (session.user?.app_metadata?.provider === 'google') {
-              // Get current domain
-              const currentOrigin = window.location.origin;
-              
-              // Check if this was a reviewer application
-              const storedRedirect = session.user?.app_metadata?.redirect_url;
-              const hasReviewerParams = storedRedirect && storedRedirect.includes('reviewerSignIn=true');
-              const referrer = document.referrer;
-              const fromGetInvolved = referrer && referrer.toLowerCase().includes('/get-involved');
-              
-              if (hasReviewerParams || fromGetInvolved) {
-                // This is a reviewer application flow - create a domain-aware redirect URL
-                redirectTo = `${currentOrigin}/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin`;
-                console.log('Reviewer application detected, redirecting to:', redirectTo);
-              } else if (storedRedirect) {
-                // Try to use stored redirect but ensure it's on the current domain
-                try {
-                  const parsedUrl = new URL(storedRedirect);
-                  // Create new URL with current origin but same path
-                  redirectTo = `${currentOrigin}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-                  console.log('Using domain-adjusted redirect URL:', redirectTo);
-                } catch (e) {
-                  // If URL parsing fails, use stored redirect as-is
-                  redirectTo = storedRedirect;
-                  // Otherwise check if we can reconstruct the redirect URL from referrer
-                  if (referrer && referrer.includes('/get-involved')) {
-                    // If we came from the get-involved page, redirect back there with params
-                    // Add the hash fragment to ensure the modal shows
-                    redirectTo = '/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin';
-                    console.log('Enhanced redirect URL with hash fragment:', redirectTo);
-                  } else {
-                    // Fallback to localStorage or default
-                    redirectTo = localStorage.getItem('redirectTo') || '/';
-                  }
-                }
-              } else {
-                // No specific redirect, use localStorage fallback or homepage
-                redirectTo = localStorage.getItem('redirectTo') || '/';
-                console.log('Using fallback redirect:', redirectTo);
-              }
-            } else {
-              // Not a Google auth, use standard redirect
-              redirectTo = localStorage.getItem('redirectTo') || '/';
-              console.log('Non-Google auth, using standard redirect:', redirectTo);
-            }
-          } catch (e) {
-            console.error('Error determining redirect URL:', e);
-            // Fallback to localStorage or default
-            redirectTo = localStorage.getItem('redirectTo') || '/';
-          }
-          
-          localStorage.removeItem('redirectTo'); // Clear the stored redirect
+          localStorage.removeItem('redirectTo'); // Clear the stored redirect in case it was used by fallback
           
           // Perform a full browser navigation to ensure a clean redirect
-          console.log('Redirecting to:', redirectTo);
-          console.log('User session:', session.user);
+          console.log('Final redirectTo value:', redirectTo);
+          console.log('User session (for context):', session.user);
           console.log('Redirecting with window.location.assign to:', redirectTo);
           window.location.assign(redirectTo);
         } else {
