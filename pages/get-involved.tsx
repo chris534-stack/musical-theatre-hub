@@ -450,11 +450,7 @@ export default function GetInvolved() {
             <p>
               Want to help shape the conversation? Apply to join our reviewer community and share your thoughts on performances.
             </p>
-            <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-              <p className="text-blue-700 text-sm font-medium">
-                Coming Soon! Our reviewer system is being upgraded.
-              </p>
-            </div>
+            <ReviewerSignInSection />
           </div>
           <div className="callout-card">
             <h3>Volunteer With Us</h3>
