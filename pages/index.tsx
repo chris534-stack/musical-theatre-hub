@@ -2,7 +2,8 @@ import Head from 'next/head';
 import Link from 'next/link';
 import styles from '../styles/Home.module.css';
 import useSWR from 'swr';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -73,6 +74,45 @@ function getUpcomingUniqueEvents(events: any[], now: Date, days: number) {
 export default function Home() {
   const { data: events, error, isLoading } = useSWR('/api/events', fetcher, { revalidateOnMount: true });
   const now = useMemo(() => new Date(), []);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  // Check if user is admin
+  useEffect(() => {
+    async function checkAdminStatus() {
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user?.email) {
+          // Check against admin emails from environment variable
+          const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS
+            ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase())
+            : [];
+            
+          if (adminEmails.includes(session.user.email.toLowerCase())) {
+            setIsAdmin(true);
+          } else {
+            // Try to check admin status in database as fallback
+            const { data } = await supabase
+              .from('admin_users')
+              .select('id')
+              .eq('id', session.user.id)
+              .single();
+              
+            setIsAdmin(!!data);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      } finally {
+        setIsLoaded(true);
+      }
+    }
+    
+    checkAdminStatus();
+  }, []);
+  
   const flatEvents = useMemo(() => {
     if (!Array.isArray(events)) return [];
     return events.flatMap((e: any) => (
@@ -144,6 +184,47 @@ export default function Home() {
             <Link href="/about" className={styles.linkCard}>About Us</Link>
           </div>
         </section>
+        
+        {/* Admin Dashboard Link - Only visible to admin users */}
+        {isAdmin && isLoaded && (
+          <section className={styles.adminSection} style={{ 
+            marginTop: '2rem', 
+            padding: '1rem',
+            background: '#f8f9fa',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ marginBottom: '0.5rem', color: '#4a5568' }}>Admin Controls</h3>
+            <p style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Access administrative tools and manage pending applications</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+              <Link href="/admin/pending-applications" style={{
+                display: 'inline-block',
+                background: '#4a5568',
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                textDecoration: 'none',
+                transition: 'background 0.3s ease'
+              }}>
+                View Pending Applications
+              </Link>
+              <Link href="/admin" style={{
+                display: 'inline-block',
+                background: '#718096',
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                textDecoration: 'none',
+                transition: 'background 0.3s ease'
+              }}>
+                Admin Dashboard
+              </Link>
+            </div>
+          </section>
+        )}
       </main>
     </>
   );

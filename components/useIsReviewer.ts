@@ -57,39 +57,41 @@ export default function useIsReviewer(): UseIsReviewerReturn {
       // If there's a logged-in user, check reviewer status
       if (currentUser) {
         try {
+          console.log('[useIsReviewer] Fetching reviewer data for user:', currentUser.id);
+          // Fix 406 error by using filter-then-maybeSingle pattern instead of eq+single
           const { data, error: reviewerError } = await supabase
             .from('reviewers')
             .select('*')
-            .eq('id', currentUser.id)
-            .single(); // Use single() as 'id' is PK and should be unique
+            .filter('id', 'eq', currentUser.id)
+            .maybeSingle() // Use maybeSingle instead of single to avoid errors when no rows found
 
+          // With maybeSingle(), we don't get PGRST116 errors anymore for no rows
+          // Instead, data will be null when no rows are found
           if (reviewerError) {
-            // PGRST116: 'No rows found'. This is not an error in this context,
-            // it just means the user is not in the reviewers table.
-            if (reviewerError.code === 'PGRST116') {
-              // No rows found - user is not a reviewer
-              if (isMounted.current) {
-                setReviewerProfile(null);
-                setIsReviewer(false);
-              }
-            } else {
-              // Other error - combine approaches from both branches
-              console.error('Error fetching reviewer status:', reviewerError);
-              if (isMounted.current) {
-                setError({
-                  message: 'Error fetching reviewer status',
-                  code: reviewerError.code || 'UNKNOWN',
-                  details: reviewerError.message || 'Unknown error'
-                });
-                setReviewerProfile(null);
-                setIsReviewer(false);
-              }
+            // Real database or API error
+            console.error('[useIsReviewer] Error fetching reviewer status:', reviewerError);
+            if (isMounted.current) {
+              setError({
+                message: 'Error fetching reviewer status',
+                code: reviewerError.code || 'UNKNOWN',
+                details: reviewerError.message || 'Unknown error'
+              });
+              setReviewerProfile(null);
+              setIsReviewer(false);
             }
           } else if (data) {
             // User has a reviewer profile
+            console.log('[useIsReviewer] Found reviewer profile:', data ? data.reviewer_application_status : 'none');
             if (isMounted.current) {
               setReviewerProfile(data as ReviewerProfile);
               setIsReviewer(data.reviewer_application_status === 'approved');
+            }
+          } else {
+            // No reviewer profile found (data is null)
+            console.log('[useIsReviewer] No reviewer profile found for user');
+            if (isMounted.current) {
+              setReviewerProfile(null);
+              setIsReviewer(false);
             }
           }
         } catch (e: any) {

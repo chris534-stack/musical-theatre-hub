@@ -20,31 +20,84 @@ import useIsReviewer from '../components/useIsReviewer'; // Import the hook
 import Link from 'next/link'; // Import Link for navigation
 
 function ReviewerSignInSection() {
+  console.log("[DEBUG] ReviewerSignInSection starting render");
   const { user, isReviewer, reviewerProfile, loading: reviewerLoading, error: reviewerError, refetch: refetchReviewer } = useIsReviewer();
   const [showModal, setShowModal] = useState(false);
   const [thankYou, setThankYou] = useState(false);
   const [signInLoading, setSignInLoading] = useState(false);
   const [justSignedIn, setJustSignedIn] = useState(false);
+  
+  console.log("[DEBUG] Initial state:", { 
+    user: user ? "exists" : "null", 
+    isReviewer, 
+    reviewerProfile: reviewerProfile ? "exists" : "null",
+    reviewerLoading, 
+    reviewerError: reviewerError ? reviewerError.message : "none",
+    showModal,
+    thankYou,
+    signInLoading,
+    justSignedIn,
+    url: typeof window !== 'undefined' ? window.location.href : "server-side",
+    hash: typeof window !== 'undefined' ? window.location.hash : "none" 
+  });
 
+  // EMERGENCY DIRECT MODAL CONTROL
+  useEffect(() => {
+    // If the URL has code and reviewerSignIn parameters, immediately show the modal
+    // This is a direct approach to ensure the modal shows regardless of other conditions
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('code') && params.has('reviewerSignIn')) {
+        console.log("[DEBUG] EMERGENCY FIX: Directly showing modal due to code+reviewerSignIn params");
+        // Force modal to show immediately
+        setTimeout(() => {
+          trackedSetShowModal(true);
+        }, 500); // Small delay to ensure component is fully mounted
+      }
+    }
+  }, []); // Empty deps array - run once on mount
+  
   // Check if the user just came back from OAuth sign-in
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Check if we have the context parameter indicating a reviewer application flow
       const urlParams = new URLSearchParams(window.location.search);
+
+      // If 'code' param is present from OAuth, and we're in the reviewer sign-in flow, remove 'code' immediately.
+      // This is to prevent it from interfering with Supabase client on this page.
+      if (urlParams.has('code') && (urlParams.get('reviewerSignIn') === 'true' || window.location.hash === '#reviewer-signin')) {
+        console.log("[Reviewer Flow Debug] useEffect1: 'code' parameter found with reviewer sign-in indicators. Removing 'code'. Current URL:", window.location.href);
+        const currentUrlObject = new URL(window.location.href);
+        currentUrlObject.searchParams.delete('code');
+        window.history.replaceState({}, '', currentUrlObject.toString());
+        console.log("[Reviewer Flow Debug] useEffect1: 'code' parameter removed. New URL:", currentUrlObject.toString());
+        // Update urlParams as it has changed, though 'code' is the only thing we removed that we might have cared about here.
+        // For safety, re-parsing: (Note: this might not be strictly necessary if 'code' is not used further in this block)
+        // urlParams = new URLSearchParams(currentUrlObject.search);
+      }
+
       const fromReviewerSignInParam = urlParams.get('reviewerSignIn');
       const justSignedInParam = urlParams.get('justSignedIn');
+      const hasReviewerHash = window.location.hash === '#reviewer-signin';
+      
       console.log("[Reviewer Flow Debug] useEffect1: reviewerSignIn param:", fromReviewerSignInParam);
       console.log("[Reviewer Flow Debug] useEffect1: justSignedIn param:", justSignedInParam);
+      console.log("[Reviewer Flow Debug] useEffect1: hasReviewerHash:", hasReviewerHash);
+      console.log("[Reviewer Flow Debug] useEffect1: Hash is:", window.location.hash);
 
+      // Enhanced detection - if ANY of these indicators are present, we should show the modal
       const fromReviewerSignIn = fromReviewerSignInParam === 'true';
       const freshSignIn = justSignedInParam === 'true';
       
-      // Only set justSignedIn if we came from the reviewer application flow
-      if (freshSignIn && fromReviewerSignIn) {
-        console.log("[Reviewer Flow Debug] useEffect1: Calling setJustSignedIn(true)");
+      // Show modal if we have URL parameters OR the hash is present
+      const shouldShowModal = (freshSignIn && fromReviewerSignIn) || hasReviewerHash;
+      
+      if (shouldShowModal) {
+        console.log("[Reviewer Flow Debug] useEffect1: Modal triggers detected - setting justSignedIn to true");
         setJustSignedIn(true);
+        trackedSetShowModal(true); // Directly set show modal to ensure it appears
         
-        // Clean up URL parameters
+        // Clean up URL parameters but keep hash for scrolling
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete('justSignedIn');
         newUrl.searchParams.delete('reviewerSignIn');
@@ -52,6 +105,12 @@ function ReviewerSignInSection() {
       }
     }
   }, []);
+
+  // Add explicit logging when setShowModal is called
+  const trackedSetShowModal = (value: boolean) => {
+    console.log(`[DEBUG] Setting showModal to ${value}`);
+    setShowModal(value);
+  };
 
   useEffect(() => {
     // This useEffect determines if the application modal should be shown.
@@ -151,15 +210,18 @@ function ReviewerSignInSection() {
     }
   };
 
-  if (reviewerLoading || signInLoading) {
+  if (!justSignedIn && (reviewerLoading || signInLoading)) {
+    console.log("[DEBUG] Rendering: Loading state (reviewerLoading/signInLoading)");
     return <div style={{ marginTop: 8, color: '#2d6cdf' }}>Loading...</div>;
   }
 
   if (reviewerError) {
+    console.log("[DEBUG] Rendering: Error state", reviewerError);
     return <div style={{ marginTop: 8, color: 'red' }}>Error: {reviewerError.message}</div>;
   }
 
-  if (!user) {
+  if (!justSignedIn && !user) {
+    console.log("[DEBUG] Rendering: No user, showing sign-in button");
     return (
       <div>
         <button
@@ -214,6 +276,7 @@ function ReviewerSignInSection() {
   }
 
   if (isReviewer) {
+    console.log("[DEBUG] Rendering: User is already a reviewer");
     return (
       <div style={{ marginTop: 8, color: '#2d6cdf' }}>
         <p>You are an approved reviewer.</p>
@@ -233,7 +296,8 @@ function ReviewerSignInSection() {
     reviewerProfile.first_name && 
     reviewerProfile.last_name;
 
-  if (thankYou || hasCompletePendingApplication) {
+  if (!justSignedIn && (thankYou || hasCompletePendingApplication)) {
+    console.log("[DEBUG] Rendering: Thank you message (thankYou or hasCompletePendingApplication)");
     return <div style={{marginTop: 8, color: '#2d6cdf'}}>Thank you for applying! We'll review your application soon.</div>;
   }
 
@@ -246,20 +310,25 @@ function ReviewerSignInSection() {
   return (
     <>
       <div style={{marginTop: 8, color: '#2d6cdf'}}>
-        Signed in as <b>{user.user_metadata?.full_name || user.email}</b>
+        {user ? 
+          `Signed in as ${user.user_metadata?.full_name || user.email}` : 
+          'Signed in' /* Fallback if user object isn't loaded yet */
+        }
       </div>
       {/* The ReviewerApplicationModal is shown/hidden based on showModal state controlled by useEffect */}
       <ReviewerApplicationModal
         isOpen={showModal}
         onClose={() => {
-          setShowModal(false);
+          console.log("[DEBUG] Modal closed by user");
+          trackedSetShowModal(false);
           // If they close the modal without submitting, and they don't have a profile,
           // we might want to avoid immediately re-showing it. This depends on desired UX.
           // For now, just closing it. If they have a partial profile, it might re-trigger.
         }}
         user={user} 
         onSubmitted={() => { 
-          setShowModal(false); 
+          console.log("[DEBUG] Modal submitted by user");
+          trackedSetShowModal(false); 
           setThankYou(true); 
           // The useIsReviewer hook will automatically pick up the profile change
           // due to its onAuthStateChange listener re-fetching, or if we force a re-fetch.
@@ -373,11 +442,6 @@ export default function GetInvolved() {
   }}
 >View Auditions</button>
           </div>
-          <div className="callout-card">
-            <h3>Volunteer With Us</h3>
-            <p>Help make the magic happen backstage or front-of-house. Your talents are needed!</p>
-            <button onClick={() => document.getElementById('volunteers-section')?.scrollIntoView({behavior: 'smooth'})}>Volunteer Now</button>
-          </div>
           <div
             id="reviewer-signin"
             className={`callout-card${shouldHighlightReviewer ? ' highlight-reviewer-card' : ''}`}
@@ -386,7 +450,16 @@ export default function GetInvolved() {
             <p>
               Want to help shape the conversation? Apply to join our reviewer community and share your thoughts on performances.
             </p>
-            <ReviewerSignInSection />
+            <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+              <p className="text-blue-700 text-sm font-medium">
+                Coming Soon! Our reviewer system is being upgraded.
+              </p>
+            </div>
+          </div>
+          <div className="callout-card">
+            <h3>Volunteer With Us</h3>
+            <p>Help make the magic happen backstage or front-of-house. Your talents are needed!</p>
+            <button onClick={() => document.getElementById('volunteers-section')?.scrollIntoView({behavior: 'smooth'})}>Volunteer Now</button>
           </div>
           <div className="callout-card">
             <h3>Suggest an Idea</h3>
