@@ -1,10 +1,10 @@
 // Shared fuzzy grouping logic for venues
 
-export function normalizeVenue(venue: string) {
+function normalizeVenue(venue: string) {
   return venue.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ');
 }
 
-export function levenshtein(a: string, b: string): number {
+function levenshtein(a: string, b: string): number {
   const matrix = [];
   for (let i = 0; i <= b.length; i++) {
     matrix[i] = [i];
@@ -29,7 +29,7 @@ export function levenshtein(a: string, b: string): number {
 }
 
 // Returns: Array of groups, each group is an array of similar venues
-export function groupSimilarVenuesFull(venues: string[]): string[][] {
+function groupSimilarVenuesFull(venues: string[]): string[][] {
   const groups: string[][] = [];
   venues.forEach((venue) => {
     const norm = normalizeVenue(venue);
