@@ -78,7 +78,7 @@ function ReviewerSignInSection() {
       // will be displayed, so don't show the modal.
       newShowModalValue = false;
     } else if (justSignedIn) {
-      // Just came from auth signin with the intention to become a reviewer - 
+      // Just came from auth signin with the intention to become a reviewer -
       // show the modal immediately regardless of fragment identifier
       newShowModalValue = true;
     } else {
@@ -88,13 +88,13 @@ function ReviewerSignInSection() {
       if (!isReviewerSection) {
         newShowModalValue = false;
       } else {
-        // At this point: 
+        // At this point:
         // - User is in reviewer section (#reviewer-signin)
         // - User is signed in
         // - User is not an approved reviewer
         // - User hasn't just submitted the form
         // - User is not in a pending complete application state
-        
+
         // If they have no profile at all or an incomplete profile, show the modal
         //    (even if status is 'pending' but names are missing, modal should show to complete it).
         if (reviewerProfile === null || !reviewerProfile.first_name || !reviewerProfile.last_name) {
@@ -107,7 +107,7 @@ function ReviewerSignInSection() {
         }
       }
     }
-    
+
     console.log("[Reviewer Flow Debug] useEffect2: Final showModal value before set:", newShowModalValue);
     setShowModal(newShowModalValue);
 

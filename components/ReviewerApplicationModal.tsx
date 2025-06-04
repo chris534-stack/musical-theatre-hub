@@ -87,7 +87,6 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
           preferredName: preferredName.trim(),
           pronouns: pronouns.trim(),
           email: user.email,
-          userId: user.id, // Include the user ID for token generation
         }),
       })
       .then(async response => {
@@ -102,7 +101,7 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
       .catch(networkError => {
         console.error('[ReviewerModalNotify] Network error sending notification email:', networkError);
       });
-      
+
       setSuccessMessage('Application submitted successfully!');
       setTimeout(() => {
         setSuccessMessage(null);
