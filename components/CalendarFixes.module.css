@@ -74,3 +74,37 @@
     box-sizing: border-box !important;
   }
 }
+
+/* Align day numbers properly within their cells */
+.monthView :global(.rbc-date-cell) {
+  text-align: right !important; /* Align numbers to the right */
+  padding-right: 5px !important; /* Add some padding from the edge */
+  /* Ensure default vertical alignment is not disrupted */
+  line-height: normal !important;
+  padding-top: 2px !important; /* Adjust as needed for vertical centering */
+}
+
+/* If day numbers are links, apply similar styling */
+.monthView :global(.rbc-date-cell a) {
+  display: inline-block; /* Ensure padding and alignment apply correctly */
+  text-align: right !important;
+  padding-right: 5px !important;
+  line-height: normal !important;
+  padding-top: 2px !important;
+  color: inherit !important; /* Ensure link color doesn't override default text color */
+  text-decoration: none !important; /* Remove underline if not desired */
+}
+
+/* Specific fix for rbc-off-range numbers to ensure they are also aligned */
+.monthView :global(.rbc-off-range .rbc-date-cell a),
+.monthView :global(.rbc-off-range .rbc-date-cell) {
+  text-align: right !important;
+  padding-right: 5px !important;
+}
+
+/* Ensure 'today' style doesn't break alignment */
+.monthView :global(.rbc-today .rbc-date-cell a),
+.monthView :global(.rbc-today .rbc-date-cell) {
+  text-align: right !important;
+  padding-right: 5px !important; /* Ensure padding is consistent */
+}
