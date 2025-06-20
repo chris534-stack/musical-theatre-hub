@@ -9,6 +9,9 @@ interface ReviewerApplicationModalProps {
   onSubmitted?: () => void;
 }
 
+const LOCAL_STORAGE_KEY = 'pendingReviewerApplication';
+const RETRY_FLAG_KEY = 'retryAfterRefresh';
+
 export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubmitted }: ReviewerApplicationModalProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -17,65 +20,38 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'untested' | 'ok' | 'error' | 'warning'>('untested');
+  // Connection status: 'untested' on open, switches to 'ok' or 'error' after quick heuristic check
+const [connectionStatus, setConnectionStatus] = useState<'untested' | 'ok' | 'error'>('untested');
 
-  // Test Supabase connection function with more resilience
-  const testConnection = async () => {
-    console.log('[ReviewerAppModal] Testing database connection...');
+  // -----------------------------------------------------------------------------
+// Quick connection test – we just verify Supabase env vars & client presence.
+// Long-running network pings were causing timeouts & false negatives.
+// -----------------------------------------------------------------------------
+const testConnection = () => {
+    console.log('[ReviewerAppModal] Quick Supabase connection check...');
     
-    // Default connection status to warning - we'll proceed even if test fails
-    setConnectionStatus('warning');
+    // Start from untested state
+  setConnectionStatus('untested');
     
-    // Create a race between the database test and a timeout
-    const testPromise = new Promise<boolean>(async (resolve) => {
-      try {
-        // Simple ping test to Supabase - just check if we can connect
-        const startTime = performance.now();
-        // Use a simpler test query with smaller result set
-        const { data, error } = await supabase.from('reviewers').select('id', { head: true }).limit(1);
-        const endTime = performance.now();
-        const responseTime = Math.round(endTime - startTime);
-        
-        if (error) {
-          console.error(`[ReviewerAppModal] Database connection test failed (${responseTime}ms):`, error);
-          setConnectionStatus('warning'); // Use warning instead of error to allow submission
-          resolve(false);
-        } else {
-          console.log(`[ReviewerAppModal] Database connection test successful (${responseTime}ms)`);
-          setConnectionStatus('ok');
-          resolve(true);
-        }
-      } catch (error) {
-        console.error('[ReviewerAppModal] Database connection test exception:', error);
-        setConnectionStatus('warning'); // Use warning instead of error to allow submission
-        resolve(false);
+    // Basic heuristics: if env vars are present & client has from() we deem connection ok.
+    try {
+      if (supabase && typeof supabase.from === 'function' &&
+        !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        setConnectionStatus('ok');
+      } else {
+        setConnectionStatus('error');
       }
-    });
-    
-    const timeoutPromise = new Promise<boolean>((resolve) => {
-      setTimeout(() => {
-        console.error('[ReviewerAppModal] Database connection test timed out after 8 seconds');
-        // Try alternative connection test method
-        console.log('[ReviewerAppModal] Attempting alternative connection test...');
-        try {
-          // Fallback to checking if Supabase is initialized properly
-          if (supabase && typeof supabase.from === 'function') {
-            console.log('[ReviewerAppModal] Supabase client is initialized properly');
-            setConnectionStatus('warning'); // Continue with warning
-          }
-        } catch (e) {
-          console.error('[ReviewerAppModal] Alternative test failed:', e);
-        }
-        resolve(false);
-      }, 8000); // Longer 8 second timeout
-    });
-    
-    // Always resolve to true to allow form submission to proceed
-    const result = await Promise.race([testPromise, timeoutPromise]);
-    return true; // Always return true to allow submission to proceed
+    } catch (error) {
+      console.error('[ReviewerAppModal] Database connection test exception:', error);
+      setConnectionStatus('error');
+    }
+    return true;
   };
   
-  // Log the current Supabase configuration (without exposing secrets)
+  // -----------------------------------------------------------------------------
+// Log the current Supabase configuration (without exposing secrets)
+// -----------------------------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
       console.log('[ReviewerAppModal] Supabase URL configured:', !!process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -84,6 +60,27 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
   }, [isOpen]);
 
   useEffect(() => {
+    // Auto-retry flow: if we just reloaded after a timeout, repopulate and auto-submit
+    if (isOpen && localStorage.getItem(RETRY_FLAG_KEY) === '1') {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || 'null');
+        if (saved) {
+          setFirstName(saved.firstName || '');
+          setLastName(saved.lastName || '');
+          setPreferredName(saved.preferredName || '');
+          setPronouns(saved.pronouns || '');
+          console.log('[ReviewerAppModal] Restored form data after refresh, auto-submitting');
+          // Clear the flag before submitting to avoid loops
+          localStorage.removeItem(RETRY_FLAG_KEY);
+          // Small delay so state updates propagate
+          setTimeout(() => handleSubmitWithWorkaround(), 300);
+        }
+      } catch (e) {
+        console.error('[ReviewerAppModal] Failed to restore data after refresh:', e);
+        localStorage.removeItem(RETRY_FLAG_KEY);
+      }
+    }
+
     if (isOpen && user) {
       // Test connection when modal opens
       testConnection();
@@ -108,6 +105,10 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
       setSubmitError(null);
       setLoading(false);
       setSuccessMessage(null);
+    }
+      // Reset connection status when modal closes / opens
+    if (isOpen) {
+      setConnectionStatus('untested');
     }
   }, [isOpen, user]);
 
@@ -230,7 +231,28 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
     console.log('[ReviewerAppModal] Verifying authentication status...');
     let userSession = null;
     try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      // Race session retrieval against a 5-second timeout to avoid hanging
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<{ data: any; error: any }>((resolve) => setTimeout(() => resolve({ data: null, error: new Error('Session timeout') }), 5000))
+      ]);
+      const { data: sessionData, error: sessionError } = sessionResult as any;
+      if (sessionError && String(sessionError).includes('Session timeout')) {
+        console.warn('[ReviewerAppModal] Session retrieval timed out – persisting form & reloading');
+        try {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+            firstName,
+            lastName,
+            preferredName,
+            pronouns
+          }));
+          localStorage.setItem(RETRY_FLAG_KEY, '1');
+        } catch(e) {
+          console.error('[ReviewerAppModal] Failed to persist form data:', e);
+        }
+        window.location.reload();
+        return; // abort further logic
+      }
       if (sessionError) {
         console.error('[ReviewerAppModal] Session check error:', sessionError);
         // Continue anyway - session might still work for database operations
@@ -295,7 +317,7 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
         last_name: lastName.trim(),
         preferred_name: preferredName?.trim() || null,
         pronouns: pronouns?.trim() || null,
-        reviewer_application_status: 'applied',
+        reviewer_application_status: 'pending',
         applied_at: new Date().toISOString()
       };
       
@@ -380,8 +402,9 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
       console.log(`[ReviewerAppModal] Submission completed in ${totalTime}ms after ${attemptCount} attempts`);
       
       if (!successful) {
-        // All attempts failed
+        // All attempts failed - show user-friendly message
         console.error('[ReviewerAppModal] All submission attempts failed');
+        setSubmitError('Submission failed. Please try again.');
         console.error('[ReviewerAppModal] Last error:', lastError);
         
         // Try the server-side backup as a last resort
@@ -412,7 +435,8 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
           }
         } catch (backupError) {
           console.error('[ReviewerAppModal] Backup submission exception:', backupError);
-          throw new Error('All submission methods failed');
+          setSubmitError('Submission failed. Please try again.');
+            throw new Error('All submission methods failed');
         }
       } else {
         // Direct Supabase submission worked
@@ -420,6 +444,8 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
       }
       
       // Successful operation
+      setConnectionStatus('ok');
+      setSuccessMessage('Application submitted! Thank you – we\'ll review it soon.');
       console.log('[ReviewerAppModal] Database operation completed successfully')
 
       // Notify admin after successful database update - make this completely non-blocking
@@ -583,7 +609,7 @@ export default function ReviewerApplicationModal({ isOpen, onClose, user, onSubm
               </div>
             )}
             {submitError && <div style={{ color: 'red', marginBottom: 8 }}>{submitError}</div>}
-            {successMessage && <div style={{ color: 'green', marginBottom: 8 }}>{successMessage}</div>}
+            {successMessage && <div style={{ color: '#2f855a', fontWeight: 600, marginBottom: 8 }}>{successMessage}</div>}
           </div>
         </div>
         <footer className={styles.customModalFooter}>
