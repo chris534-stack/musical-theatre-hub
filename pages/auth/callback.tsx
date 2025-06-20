@@ -2,199 +2,107 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 
-// Define a type for our debug info state
-type DebugInfoState = {
-  status: string;
-  errorMessage: string | null;
-  hashParams: string | null;
-  urlParams: Record<string, string>;
-  domainInfo: {
-    href: string;
-    host: string;
-    origin: string;
-  } | null;
-  user?: {
-    id: string | undefined;
-    email: string | undefined;
-    authProvider: string | undefined;
-  };
-  redirectTo?: string; // Add redirectTo to debug info
-};
-
 export default function AuthCallback() {
   const router = useRouter();
-  const [debugInfo, setDebugInfo] = useState<DebugInfoState>({
-    status: 'initializing',
-    errorMessage: null,
-    hashParams: null,
-    urlParams: {},
-    domainInfo: null
-  });
+  const [statusMessage, setStatusMessage] = useState('Processing authentication...');
 
   useEffect(() => {
-    // Capture URL hash for debugging
-    const hashParams = window.location.hash;
-    const urlParams = new URLSearchParams(window.location.search);
-    setDebugInfo((prev: DebugInfoState) => ({ 
-      ...prev, 
-      hashParams, 
-      urlParams: Object.fromEntries(urlParams.entries()),
-      domainInfo: {
-        href: window.location.href,
-        host: window.location.host,
-        origin: window.location.origin
-      }
-    }));
-
-    // The Supabase client will automatically handle the auth callback
-    // by processing the URL hash params
     const handleAuthCallback = async () => {
+      console.log('[AuthCallback] Processing authentication...');
+      setStatusMessage('Verifying session...');
+
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('error')) {
+        const errorMsg = urlParams.get('error_description') || urlParams.get('error');
+        console.error('[AuthCallback] OAuth error:', errorMsg);
+        setStatusMessage(`Authentication failed: ${errorMsg}`);
+        router.push('/'); // Redirect immediately on OAuth error
+        return;
+      }
+
       try {
-        console.log('Auth callback page loaded, processing authentication...');
-        setDebugInfo((prev: DebugInfoState) => ({ ...prev, status: 'processing' }));
-        
-        // Check if there's a code or error in the URL that might indicate an issue
-        if (urlParams.get('error')) {
-          const errorMsg = urlParams.get('error_description') || urlParams.get('error');
-          console.error('OAuth error:', errorMsg);
-          setDebugInfo((prev: DebugInfoState) => ({ 
-            ...prev, 
-            status: 'oauth_error', 
-            errorMessage: errorMsg 
-          }));
-          return;
-        }
-        
-        // Get the current session
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
-          console.error('Error in auth callback:', error.message);
-          setDebugInfo((prev: DebugInfoState) => ({ 
-            ...prev, 
-            status: 'session_error', 
-            errorMessage: error.message 
-          }));
-          
-          // Don't redirect immediately for debugging
-          setTimeout(() => {
-            router.push('/');
-          }, 10000); // Wait 10 seconds so we can see the debug info
+          console.error('[AuthCallback] Error getting session:', error.message);
+          setStatusMessage('Error verifying session. Redirecting...');
+          router.push('/'); // Redirect immediately on session error
           return;
         }
 
         if (session) {
-          console.log('Authentication successful, session found');
-          // First initialize redirectTo, then use it in the debugInfo
-          let redirectTo = '/';
-          
-          setDebugInfo((prev: DebugInfoState) => ({ 
-            ...prev, 
-            status: 'authenticated',
-            user: {
-              id: session.user?.id,
-              email: session.user?.email,
-              authProvider: session.user?.app_metadata?.provider
-            }
-            // Will set redirectTo later once determined
-          }));
-          
-          // Check if we were in the reviewer application flow
-          // Parse the URL that initiated the auth flow from the session
-          try {
-            console.log('Auth callback - Checking redirect sources');
-            console.log('Auth provider:', session.user?.app_metadata?.provider);
-            console.log('Auth metadata:', JSON.stringify(session.user?.app_metadata || {}));
-            console.log('Referrer:', document.referrer);
-            console.log('Current URL:', window.location.href);
-            console.log('Current origin:', window.location.origin);
-            
-            // Simple but effective approach to handle domain differences
-            if (session.user?.app_metadata?.provider === 'google') {
-              // Get current domain
-              const currentOrigin = window.location.origin;
-              
-              // Check if this was a reviewer application
-              const storedRedirect = session.user?.app_metadata?.redirect_url;
-              const hasReviewerParams = storedRedirect && storedRedirect.includes('reviewerSignIn=true');
-              const referrer = document.referrer;
-              const fromGetInvolved = referrer && referrer.toLowerCase().includes('/get-involved');
-              
-              if (hasReviewerParams || fromGetInvolved) {
-                // This is a reviewer application flow - create a domain-aware redirect URL
-                redirectTo = `${currentOrigin}/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin`;
-                console.log('Reviewer application detected, redirecting to:', redirectTo);
-              } else if (storedRedirect) {
-                // Try to use stored redirect but ensure it's on the current domain
-                try {
-                  const parsedUrl = new URL(storedRedirect);
-                  // Create new URL with current origin but same path
-                  redirectTo = `${currentOrigin}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-                  console.log('Using domain-adjusted redirect URL:', redirectTo);
-                } catch (e) {
-                  // If URL parsing fails, use stored redirect as-is
-                  redirectTo = storedRedirect;
-                  // Otherwise check if we can reconstruct the redirect URL from referrer
-                  if (referrer && referrer.includes('/get-involved')) {
-                    // If we came from the get-involved page, redirect back there with params
-                    // Add the hash fragment to ensure the modal shows
-                    redirectTo = '/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin';
-                    console.log('Enhanced redirect URL with hash fragment:', redirectTo);
-                  } else {
-                    // Fallback to localStorage or default
-                    redirectTo = localStorage.getItem('redirectTo') || '/';
-                  }
-                }
+          console.log('[AuthCallback] Session found. Determining redirect path...');
+          setStatusMessage('Authentication successful. Redirecting...');
+
+          let redirectTo = '/'; // Default redirect
+          const currentOrigin = window.location.origin;
+
+          // Priority: Reviewer sign-in flow
+          const appMetadataRedirectUrl = session.user?.app_metadata?.redirect_url as string | undefined;
+          const isReviewerSignInByMetadata = appMetadataRedirectUrl?.includes('reviewerSignIn=true');
+          // document.referrer can be unreliable, but used as a fallback for reviewer flow detection
+          const isReviewerSignInByReferrer = document.referrer?.toLowerCase().includes('/get-involved');
+
+          if (session.user?.app_metadata?.provider === 'google' && (isReviewerSignInByMetadata || isReviewerSignInByReferrer)) {
+            redirectTo = `${currentOrigin}/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin`;
+            console.log(`[AuthCallback] Reviewer flow detected. Redirecting to: ${redirectTo}`);
+          } else if (appMetadataRedirectUrl) {
+            // Use app_metadata.redirect_url if available, ensuring it's on the current domain
+            try {
+              const parsedUrl = new URL(appMetadataRedirectUrl);
+              // Only allow redirects to the same origin for security
+              if (parsedUrl.origin === currentOrigin || appMetadataRedirectUrl.startsWith('/')) {
+                redirectTo = appMetadataRedirectUrl.startsWith('/')
+                  ? `${currentOrigin}${appMetadataRedirectUrl}`
+                  : appMetadataRedirectUrl;
+                console.log(`[AuthCallback] Using app_metadata.redirect_url (domain-adjusted): ${redirectTo}`);
               } else {
-                // No specific redirect, use localStorage fallback or homepage
-                redirectTo = localStorage.getItem('redirectTo') || '/';
-                console.log('Using fallback redirect:', redirectTo);
+                console.warn(`[AuthCallback] app_metadata.redirect_url (${appMetadataRedirectUrl}) is for a different origin. Falling back to default.`);
+                // redirectTo remains '/'
+              }
+            } catch (e) {
+              console.warn(`[AuthCallback] Error parsing app_metadata.redirect_url (${appMetadataRedirectUrl}). Falling back. Error: ${e}`);
+              // redirectTo remains '/' or could use localStorage as a next fallback if desired
+            }
+          } else {
+            // Fallback to localStorage or default
+            const storedRedirect = localStorage.getItem('redirectTo');
+            if (storedRedirect) {
+              // Ensure localStorage redirect is also same-origin or relative
+              if (storedRedirect.startsWith('/') || new URL(storedRedirect).origin === currentOrigin) {
+                 redirectTo = storedRedirect.startsWith('/') ? `${currentOrigin}${storedRedirect}` : storedRedirect;
+                 console.log(`[AuthCallback] Using localStorage redirect: ${redirectTo}`);
+              } else {
+                console.warn(`[AuthCallback] localStorage redirect (${storedRedirect}) is for a different origin. Falling back to default.`);
+                // redirectTo remains '/'
               }
             } else {
-              // Not a Google auth, use standard redirect
-              redirectTo = localStorage.getItem('redirectTo') || '/';
-              console.log('Non-Google auth, using standard redirect:', redirectTo);
+              console.log('[AuthCallback] No specific redirect found. Using default:', redirectTo);
             }
-          } catch (e) {
-            console.error('Error determining redirect URL:', e);
-            // Fallback to localStorage or default
-            redirectTo = localStorage.getItem('redirectTo') || '/';
           }
           
-          localStorage.removeItem('redirectTo'); // Clear the stored redirect
+          if (localStorage.getItem('redirectTo')) {
+            localStorage.removeItem('redirectTo'); // Clean up localStorage
+          }
           
-          // Perform a full browser navigation to ensure a clean redirect
-          console.log('Redirecting with window.location.assign to:', redirectTo);
+          // Using window.location.assign for a full navigation, which can be cleaner after auth.
           window.location.assign(redirectTo);
+
         } else {
-          console.log('No session found');
-          setDebugInfo((prev: DebugInfoState) => ({ ...prev, status: 'no_session' }));
-          
-          // Don't redirect immediately for debugging
-          setTimeout(() => {
-            router.push('/');
-          }, 10000); // Wait 10 seconds so we can see the debug info
+          console.log('[AuthCallback] No session found after callback processing. Redirecting to home.');
+          setStatusMessage('No active session. Redirecting...');
+          router.push('/'); // Redirect immediately if no session
         }
       } catch (err: any) {
-        console.error('Unexpected error during auth callback:', err);
-        setDebugInfo((prev: DebugInfoState) => ({ 
-          ...prev, 
-          status: 'unexpected_error', 
-          errorMessage: err.message || 'Unknown error' 
-        }));
-        
-        // Don't redirect immediately for debugging
-        setTimeout(() => {
-          router.push('/');
-        }, 10000); // Wait 10 seconds so we can see the debug info
+        console.error('[AuthCallback] Unexpected error during auth callback:', err.message);
+        setStatusMessage('An unexpected error occurred. Redirecting...');
+        router.push('/'); // Redirect immediately on unexpected error
       }
     };
 
-    // Run the callback handler
     handleAuthCallback();
-  }, [router]);
+  }, [router]); // router dependency for router.push
 
-  // Show a loading state with debug information
   return (
     <div style={{ 
       display: 'flex', 
@@ -202,49 +110,13 @@ export default function AuthCallback() {
       alignItems: 'center', 
       height: '100vh',
       flexDirection: 'column',
-      padding: '20px'
+      padding: '20px',
+      fontFamily: 'Arial, sans-serif',
+      textAlign: 'center'
     }}>
-      <h2>Authentication Status: {debugInfo.status}</h2>
-      
-      {debugInfo.errorMessage && (
-        <div style={{
-          backgroundColor: '#fff0f0',
-          padding: '10px',
-          borderRadius: '5px',
-          marginTop: '20px',
-          maxWidth: '600px'
-        }}>
-          <h3>Error:</h3>
-          <pre style={{whiteSpace: 'pre-wrap'}}>{debugInfo.errorMessage}</pre>
-        </div>
-      )}
-      
-      {debugInfo.status === 'authenticated' && (
-        <div style={{
-          backgroundColor: '#f0fff0',
-          padding: '10px',
-          borderRadius: '5px',
-          marginTop: '20px'
-        }}>
-          <h3>Authentication Successful!</h3>
-          <p>Redirecting you shortly...</p>
-        </div>
-      )}
-      
-      <div style={{
-        backgroundColor: '#f0f0ff',
-        padding: '10px',
-        borderRadius: '5px',
-        marginTop: '20px',
-        fontSize: '14px',
-        maxWidth: '600px',
-        overflow: 'auto'
-      }}>
-        <h3>Debug Information:</h3>
-        <pre style={{whiteSpace: 'pre-wrap'}}>
-          {JSON.stringify(debugInfo, null, 2)}
-        </pre>
-      </div>
+      <h2>Authenticating...</h2>
+      <p>{statusMessage}</p>
+      {/* Minimal UI, no debug info directly on page */}
     </div>
   );
 }

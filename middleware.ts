@@ -1,38 +1,56 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
-// This middleware can help diagnose Supabase connection issues
-export function middleware(request: NextRequest) {
-  // Extract the path from the request URL
-  const path = request.nextUrl.pathname;
-  
-  // Add debugging header to responses for certain paths
+export async function middleware(request: NextRequest) {
+  const response = NextResponse.next(); // Prepare response object
+
+  // Log Supabase environment variable presence (can be conditional for dev)
+  // This logging was moved up to be less conditional than before,
+  // and to run before potential redirects.
   if (process.env.NODE_ENV === 'development') {
-    const response = NextResponse.next();
-    
-    // Add diagnostic headers that can help identify issues
-    response.headers.set('X-Debug-Middleware', 'active');
-    
-    // Record API calls that might involve Supabase
-    if (path.startsWith('/api/')) {
-      console.log(`[Middleware] API request to ${path}`);
-      
-      // Log Supabase environment variable presence (just checking if defined, not logging values)
-      const hasSupabaseUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const hasSupabaseKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      console.log(`[Middleware] Supabase env vars: URL=${hasSupabaseUrl ? 'set' : 'missing'}, KEY=${hasSupabaseKey ? 'set' : 'missing'}`);
-    }
-    
-    return response;
+    const hasSupabaseUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hasSupabaseKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    console.log(`[Middleware] Supabase env vars: URL=${hasSupabaseUrl ? 'set' : 'missing'}, KEY=${hasSupabaseKey ? 'set' : 'missing'}`);
   }
-  
-  return NextResponse.next();
+
+  const protectedPaths = ['/reviewer', '/admin'];
+  const currentPath = request.nextUrl.pathname;
+
+  // Route protection logic
+  if (protectedPaths.some(path => currentPath.startsWith(path))) {
+    // For protected routes, create a Supabase client.
+    // We need to pass `request` and `response` to `createPagesServerClient`.
+    const supabase = createPagesServerClient({ req: request, res: response });
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      const loginUrl = new URL('/get-involved#reviewer-signin', request.url);
+      console.log(`[Middleware] No session for protected route ${currentPath}. Redirecting to ${loginUrl.toString()}`);
+      return NextResponse.redirect(loginUrl);
+    }
+    // Optional: Log successful access for authenticated user
+    // console.log(`[Middleware] Valid session for ${currentPath}. User: ${session.user.email}`);
+  }
+
+  // Existing debug headers and API logging
+  // This part is mostly preserved but adapted to use the `response` object
+  // initialized at the beginning of the function.
+  if (process.env.NODE_ENV === 'development') {
+    response.headers.set('X-Debug-Middleware', 'active');
+    if (currentPath.startsWith('/api/')) {
+      console.log(`[Middleware] API request to ${currentPath}`);
+      // Supabase env var logging is already done above for all dev requests.
+    }
+  }
+
+  return response;
 }
 
-// Only run middleware on specific paths where we want to monitor for Supabase issues
 export const config = {
   matcher: [
-    '/api/:path*',
+    '/reviewer/:path*',
     '/admin/:path*',
+    '/api/:path*', // Included as per instructions
   ],
 };
