@@ -1,0 +1,67 @@
+/* Enhanced mobile calendar styles for EventIndicator component */
+
+/* Base styling for event indicators in calendar */
+.rbc-month-view .rbc-event {
+  min-height: 20px !important;
+  height: auto !important;
+  margin: 1px 0 !important;
+  padding: 1px 2px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 6px rgba(35,57,93,0.15) !important;
+  overflow: visible !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.rbc-month-view .rbc-event-content {
+  height: auto !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+/* Event wrapper proper spacing */
+.rbc-event-content > div {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 700px) {
+  .rbc-month-view .rbc-event {
+    min-height: 16px !important;
+    height: auto !important;
+    margin: 1px 0 !important;
+    padding: 0 !important;
+  }
+  
+  .rbc-month-view .rbc-row-segment {
+    padding: 0 !important;
+    margin: 1px 0 !important;
+  }
+  
+  /* Allow more space for events in each cell */
+  .rbc-month-row {
+    min-height: 5em !important;
+    padding: 2px 0 !important;
+  }
+  
+  /* Better tap targets */
+  .rbc-date-cell {
+    padding: 2px !important;
+  }
+  
+  /* Hide show more button since we have custom indicators */
+  .rbc-show-more {
+    display: none !important;
+  }
+}
+
+/* Active/hover states for better feedback */
+.rbc-month-view .rbc-event:active,
+.rbc-month-view .rbc-event:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 10px rgba(35,57,93,0.2) !important;
+}

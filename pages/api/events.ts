@@ -36,18 +36,30 @@ interface FormattedEvent extends Omit<Event, 'venues' | 'dates'> {
 
 // Debugging logs for Supabase env variables
 console.log('---[Supabase Debug]---');
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
-console.log('SUPABASE_SERVICE_ROLE_KEY length:', process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY.length : 'undefined');
+// First check server-side variables
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'defined' : 'undefined');
+console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'defined' : 'undefined');
+// Fallback to client-side variables
+console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'defined' : 'undefined');
+console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'defined' : 'undefined');
 console.log('----------------------');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Try to use server-side admin credentials first (service role key has RLS bypass)
+let supabaseUrl = process.env.SUPABASE_URL;
+let supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
+// If server-side credentials are missing, fall back to client-side credentials
+if (!supabaseUrl || !supabaseKey) {
+  console.log('[API] Using fallback client credentials for Supabase');
+  supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+}
+
+if (!supabaseUrl || !supabaseKey) {
   throw new Error('Supabase credentials are not set in environment variables.');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const start = Date.now();

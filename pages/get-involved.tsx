@@ -18,6 +18,7 @@ interface Event {
 import ReviewerApplicationModal from '../components/ReviewerApplicationModal';
 import useIsReviewer from '../components/useIsReviewer'; // Import the hook
 import Link from 'next/link'; // Import Link for navigation
+import IdeaSubmissionModal from '../components/IdeaSubmissionModal'; // Import the idea submission modal
 
 function ReviewerSignInSection() {
   console.log("[DEBUG] ReviewerSignInSection starting render");
@@ -342,6 +343,7 @@ function ReviewerSignInSection() {
 
 export default function GetInvolved() {
   const [shouldHighlightReviewer, setShouldHighlightReviewer] = useState(false);
+  const [showIdeaModal, setShowIdeaModal] = useState(false);
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hash === '#reviewer-signin') {
       const card = document.getElementById('reviewer-signin');
@@ -429,15 +431,11 @@ export default function GetInvolved() {
     const el = document.getElementById('auditions-section');
     if (el) {
       const isMobile = window.innerWidth < 700;
-      if (isMobile) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } else {
-        const rect = el.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const offset = 64;
-        const top = rect.top + scrollTop - offset;
-        window.scrollTo({ top, behavior: 'smooth' });
-      }
+      // Use block: 'center' to center the element in the viewport
+      el.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
     }
   }}
 >View Auditions</button>
@@ -464,7 +462,7 @@ export default function GetInvolved() {
           <div className="callout-card">
             <h3>Suggest an Idea</h3>
             <p>Have a project, show, or workshop idea? Let us know and help shape our season!</p>
-            <button onClick={() => alert('Idea submission coming soon!')}>Submit Idea</button>
+            <button onClick={() => setShowIdeaModal(true)}>Submit Idea</button>
           </div>
         </div>
         <section id="auditions-section" style={{marginTop: 48}}>
@@ -545,6 +543,13 @@ export default function GetInvolved() {
           )}
         </section>
       </main>
+
+      {/* Idea Submission Modal */}
+      <IdeaSubmissionModal 
+        isOpen={showIdeaModal} 
+        onClose={() => setShowIdeaModal(false)} 
+      />
+
       <style jsx>{`
         .hero {
           text-align: center;

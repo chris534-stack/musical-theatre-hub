@@ -10,6 +10,7 @@ import styles from './CalendarView.module.css';
 import calendarFixStyles from './CalendarFixes.module.css';
 import DayEventsModal from './DayEventsModal';
 import { useSwipeable } from 'react-swipeable';
+import EventIndicator from './EventIndicator';
 
 // --- Fetch events from API ---
 function useGroupedEvents(): GroupedEvent[] {
@@ -518,20 +519,44 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events }) => {
           components={{
             toolbar: () => null,
             event: (props: any) => {
-              // On mobile month view, render the marquee with NO tap handler
               const isMobile = useMobileOrAdjacent();
-              const calendarView = document.querySelector('.rbc-month-view');
-              const inMonthView = !!calendarView;
-              if (isMobile && inMonthView) {
-                return <EventTitleMarquee title={props.title} hideText small />;
+              
+              if (isMobile) {
+                const venue = props.event?.resource?.venue || '';
+                const { bg, border, text } = getVenueColorSet(venue);
+                
+                // Always use EventIndicator on mobile, never use marquee
+                return (
+                  <EventIndicator 
+                    title={props.title} 
+                    bgColor={bg}
+                    borderColor={border}
+                    textColor={text}
+                  />
+                );
               }
+              
+              // Only use marquee on desktop
               return <EventTitleMarquee title={props.title} />;
             },
             month: {
               event: (props: any) => {
                 const isMobile = useMobileOrAdjacent();
                 if (isMobile) {
-                  return <EventTitleMarquee title={props.title} hideText small />;
+                  const venue = props.event?.resource?.venue || '';
+                  const category = props.event?.resource?.category || '';
+                  const { bg, border, text } = getVenueColorSet(venue);
+                  
+                  return (
+                    <EventIndicator 
+                      title={props.title} 
+                      category={category}
+                      bgColor={bg}
+                      borderColor={border}
+                      textColor={text}
+                      showDetails={false}
+                    />
+                  );
                 }
                 return <EventTitleMarquee title={props.title} />;
               },
