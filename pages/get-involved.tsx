@@ -16,6 +16,7 @@ interface Event {
 }
 
 import ReviewerApplicationModal from '../components/ReviewerApplicationModal';
+import ReviewerApplicationOverlay from '../components/ReviewerApplicationOverlay';
 import useIsReviewer from '../components/useIsReviewer'; // Import the hook
 import Link from 'next/link'; // Import Link for navigation
 import IdeaSubmissionModal from '../components/IdeaSubmissionModal'; // Import the idea submission modal
@@ -310,38 +311,38 @@ function ReviewerSignInSection() {
   // Or user is logged in, but needs to complete application (showModal will be true)
   return (
     <>
-      <div style={{marginTop: 8, color: '#2d6cdf'}}>
-        {user ? 
-          `Signed in as ${user.user_metadata?.full_name || user.email}` : 
-          'Signed in' /* Fallback if user object isn't loaded yet */
-        }
+      <div style={{ marginTop: 8, color: '#2d6cdf' }}>
+        {user ? `Signed in as ${user.user_metadata?.full_name || user.email}` : 'Signed in'}
       </div>
-      {/* The ReviewerApplicationModal is shown/hidden based on showModal state controlled by useEffect */}
-      <ReviewerApplicationModal
-        isOpen={showModal}
-        onClose={() => {
-          console.log("[DEBUG] Modal closed by user");
-          trackedSetShowModal(false);
-          // If they close the modal without submitting, and they don't have a profile,
-          // we might want to avoid immediately re-showing it. This depends on desired UX.
-          // For now, just closing it. If they have a partial profile, it might re-trigger.
-        }}
-        user={user} 
-        onSubmitted={() => { 
-          console.log("[DEBUG] Modal submitted by user");
-          trackedSetShowModal(false); 
-          setThankYou(true); 
-          // The useIsReviewer hook will automatically pick up the profile change
-          // due to its onAuthStateChange listener re-fetching, or if we force a re-fetch.
-          // For an immediate update, we could trigger a re-fetch here if the hook doesn't do it fast enough.
-          // However, the `thankYou` state will cover the immediate UI change.
-        }}
-      />
+      {process.env.NEXT_PUBLIC_NEW_REVIEWER_FLOW === 'true' ? (
+        showModal && (
+          <ReviewerApplicationOverlay
+            onClose={() => trackedSetShowModal(false)}
+            onSubmitted={() => {
+              setThankYou(true);
+            }}
+          />
+        )
+      ) : (
+        <ReviewerApplicationModal
+          isOpen={showModal}
+          onClose={() => {
+            console.log('[DEBUG] Modal closed by user');
+            trackedSetShowModal(false);
+          }}
+          user={user}
+          onSubmitted={() => {
+            console.log('[DEBUG] Modal submitted by user');
+            trackedSetShowModal(false);
+            setThankYou(true);
+          }}
+        />
+      )}
     </>
-  );
-}
-
-export default function GetInvolved() {
+   );
+ }
+ 
+ export default function GetInvolved() {
   const [shouldHighlightReviewer, setShouldHighlightReviewer] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
   useEffect(() => {
