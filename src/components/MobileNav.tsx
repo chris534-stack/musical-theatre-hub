@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, UserPlus, Newspaper } from 'lucide-react';
+import { Home, CalendarDays, UserPlus, Newspaper, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/involved', label: 'Involved', icon: UserPlus },
   { href: '/news', label: 'News', icon: Newspaper },
+  { href: '/profile', label: 'Profile', icon: User },
 ];
 
 export function MobileNav() {
@@ -26,7 +27,7 @@ export function MobileNav() {
               key={item.label}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center text-center px-0 py-2 rounded-md transition-colors w-1/4',
+                'flex flex-col items-center justify-center text-center px-0 py-2 rounded-md transition-colors',
                 isActive ? 'text-accent' : 'text-primary-foreground/70 hover:text-primary-foreground'
               )}
             >
