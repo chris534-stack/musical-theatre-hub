@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { DayProps } from 'react-day-picker';
+import type { DayContentProps } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -102,57 +102,45 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     );
   };
 
-  const FullCalendarDay = (props: DayProps) => {
-    const { date } = props;
-    const { selected, today, disabled, outside } = props.activeModifiers;
+  const FullCalendarDayContent = (props: DayContentProps) => {
+    const { date, activeModifiers } = props;
+    const { selected, today, outside } = activeModifiers;
     const dateString = date.toISOString().split('T')[0];
     const dayEvents = eventsByDate.get(dateString) || [];
 
     return (
         <div
             className={cn(
-                'h-full w-full relative transition-colors rounded-md',
-                !disabled && !selected && 'hover:bg-accent/50',
-                (selected) && 'bg-primary text-primary-foreground',
+                'w-full h-full p-2 text-left align-top flex flex-col',
+                outside && 'text-muted-foreground opacity-50'
             )}
         >
-            <button
-                type="button"
-                disabled={disabled}
-                onClick={e => props.onClick?.(date, props.activeModifiers, e)}
-                className={cn(
-                    'w-full h-full p-2 text-left align-top flex flex-col',
-                    'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md',
-                    outside && 'text-muted-foreground opacity-50 cursor-default'
-                )}
-            >
-                <div className={cn(
-                    'font-medium',
-                    today && !selected && 'bg-accent text-accent-foreground rounded-full h-6 w-6 flex items-center justify-center'
-                )}>
-                    {date.getDate()}
+            <div className={cn(
+                'font-medium',
+                today && !selected && 'bg-accent text-accent-foreground rounded-full h-6 w-6 flex items-center justify-center'
+            )}>
+                {date.getDate()}
+            </div>
+            {!outside && (
+                <div className="flex-1 w-full mt-1 space-y-1 overflow-y-auto text-xs">
+                    {dayEvents.slice(0, 2).map(event => (
+                        <div
+                            key={event.id}
+                            className="p-1 rounded-sm truncate"
+                            style={{
+                                backgroundColor: selected ? 'rgba(255,255,255,0.2)' : (event.venue?.color || 'hsl(var(--primary))'),
+                                color: selected ? 'var(--primary-foreground)' : getContrastingTextColor(event.venue?.color || '')
+                            }}
+                            title={event.title}
+                        >
+                            {event.title}
+                        </div>
+                    ))}
+                    {dayEvents.length > 2 && (
+                        <div className={cn("text-center text-xs", selected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>+ {dayEvents.length - 2} more</div>
+                    )}
                 </div>
-                {!outside && (
-                    <div className="flex-1 w-full mt-1 space-y-1 overflow-y-auto text-xs">
-                        {dayEvents.slice(0, 2).map(event => (
-                            <div
-                                key={event.id}
-                                className="p-1 rounded-sm truncate"
-                                style={{
-                                    backgroundColor: selected ? 'rgba(255,255,255,0.2)' : (event.venue?.color || 'hsl(var(--primary))'),
-                                    color: selected ? 'var(--primary-foreground)' : getContrastingTextColor(event.venue?.color || '')
-                                }}
-                                title={event.title}
-                            >
-                                {event.title}
-                            </div>
-                        ))}
-                        {dayEvents.length > 2 && (
-                            <div className={cn("text-center text-xs", selected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>+ {dayEvents.length - 2} more</div>
-                        )}
-                    </div>
-                )}
-            </button>
+            )}
         </div>
     );
   };
@@ -169,16 +157,19 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
               className="w-full hidden sm:block"
               classNames={{
                 cell: 'h-32 p-0 border-r border-b',
-                day: 'w-full h-full p-0',
+                day: 'w-full h-full p-0 relative focus-within:relative focus-within:z-20',
                 head_cell: 'w-full text-center font-normal text-muted-foreground border-b p-2',
                 row: 'flex w-full mt-0',
                 month: 'space-y-0 border-l border-t rounded-lg overflow-hidden',
                 table: 'w-full border-collapse',
                 caption_label: 'text-xl font-headline',
                 caption: 'text-center relative py-4',
+                day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
+                day_today: 'bg-accent text-accent-foreground',
+                day_outside: 'text-muted-foreground opacity-50',
               }}
               components={{
-                Day: FullCalendarDay,
+                DayContent: FullCalendarDayContent,
               }}
             />
              <Calendar
