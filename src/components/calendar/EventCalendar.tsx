@@ -125,7 +125,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
   
   const weekDayNames = useMemo(() => {
     const start = startOfWeek(new Date());
-    return eachDayOfInterval({ start, end: endOfWeek(new Date()) }).map(d => format(d, 'EEEE'));
+    return eachDayOfInterval({ start, end: endOfWeek(new Date()) }).map(d => format(d, 'EE'));
   }, []);
 
 
@@ -146,7 +146,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
       <div className="grid grid-cols-7 border-t border-b text-center text-sm font-semibold text-muted-foreground">
         {weekDayNames.map(day => <div key={day} className="py-2">{day}</div>)}
       </div>
-      <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-px bg-border">
+      <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-px bg-border min-h-[720px]">
         {calendarDays.map((day) => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const dayEvents = eventsByDate.get(dateKey) || [];
@@ -168,7 +168,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
                 {format(day, 'd')}
               </span>
               <div className="flex-1 mt-1 space-y-1 overflow-y-auto text-xs">
-                  {dayEvents.map(event => (
+                  {dayEvents.slice(0, 4).map(event => (
                       <div
                           key={event.id}
                           className="p-1 rounded-sm truncate text-white"
@@ -181,6 +181,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
                           {event.title}
                       </div>
                   ))}
+                  {dayEvents.length > 4 && <div className="text-xs text-muted-foreground pt-1">... and {dayEvents.length - 4} more</div>}
               </div>
             </div>
           );
@@ -189,20 +190,59 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     </Card>
   );
 
+  const daysWithEvents = useMemo(() => {
+    return Array.from(eventsByDate.keys()).map(dateStr => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    });
+  }, [eventsByDate]);
+
+  const MobileCalendar = () => (
+    <>
+      <style>{`
+        .has-event button {
+          position: relative;
+        }
+        .has-event button::after {
+          content: '';
+          position: absolute;
+          bottom: 4px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background-color: hsl(var(--accent));
+        }
+        .has-event button.day_today::after {
+          background-color: hsl(var(--accent-foreground));
+        }
+        .has-event button.day_selected::after,
+        .has-event button.day_selected:hover::after,
+        .has-event button.day_selected:focus::after {
+          background-color: hsl(var(--primary-foreground));
+        }
+      `}</style>
+      <Card>
+        <CardContent className="p-0 sm:p-2">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            className="w-full"
+            modifiers={{ hasEvent: daysWithEvents }}
+            modifiersClassNames={{ hasEvent: 'has-event' }}
+          />
+        </CardContent>
+      </Card>
+    </>
+  );
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
       <div className="lg:col-span-2">
         {isClient && (isMobile ? (
-          <Card>
-            <CardContent className="p-0 sm:p-2">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                className="w-full"
-              />
-            </CardContent>
-          </Card>
+          <MobileCalendar />
         ) : (
           <DesktopCalendar />
         ))}
@@ -265,11 +305,14 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground mb-4">{event.description}</p>
-                  <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                    <a href={event.url} target="_blank" rel="noopener noreferrer">
-                      Visit Website <ExternalLink className="ml-2 h-3 w-3" />
-                    </a>
-                  </Button>
+
+                  {event.url && (
+                    <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                      <a href={event.url} target="_blank" rel="noopener noreferrer">
+                        Visit Website <ExternalLink className="ml-2 h-3 w-3" />
+                      </a>
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))
@@ -285,5 +328,3 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     </div>
   );
 }
-
-    
