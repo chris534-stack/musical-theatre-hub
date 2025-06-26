@@ -35,7 +35,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col">
-      <section className="w-full py-12 md:py-20 lg:py-24">
+      <section className="w-full py-8 md:py-12">
         <div className="container px-4 md:px-6">
           <div className="mx-auto max-w-4xl rounded-2xl bg-primary p-8 md:p-12 text-center text-primary-foreground shadow-2xl">
             <div className="inline-block">
@@ -54,7 +54,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="py-16 md:py-24 bg-background">
+      <section className="py-8 md:py-12 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold font-headline text-primary">Featured This Month</h2>
