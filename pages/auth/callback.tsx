@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../lib/supabaseClient';
+import { getAuth, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
+import { firebaseApp } from '../../lib/firebaseClient'; // Import Firebase app instance
 
-// Define a type for our debug info state
+// Define a type for debug info state
 type DebugInfoState = {
   status: string;
   errorMessage: string | null;
@@ -24,6 +25,7 @@ type DebugInfoState = {
 export default function AuthCallback() {
   const router = useRouter();
   const [debugInfo, setDebugInfo] = useState<DebugInfoState>({
+    // Initial state
     status: 'initializing',
     errorMessage: null,
     hashParams: null,
@@ -32,6 +34,7 @@ export default function AuthCallback() {
   });
 
   useEffect(() => {
+    const auth = getAuth(firebaseApp); // Get Firebase Auth instance
     // Capture URL hash for debugging
     const hashParams = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
@@ -46,9 +49,8 @@ export default function AuthCallback() {
       }
     }));
 
-    // The Supabase client will automatically handle the auth callback
-    // by processing the URL hash params
     const handleAuthCallback = async () => {
+      console.log('Auth callback page loaded, processing authentication...');
       try {
         console.log('Auth callback page loaded, processing authentication...');
         setDebugInfo((prev: DebugInfoState) => ({ ...prev, status: 'processing' }));
@@ -65,8 +67,9 @@ export default function AuthCallback() {
           return;
         }
         
-        // Get the current session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Use Firebase to handle the redirect result
+        const result = await getRedirectResult(auth);
+        const user = result?.user || auth.currentUser; // Get user from result or current state
         
         if (error) {
           console.error('Error in auth callback:', error.message);
@@ -83,61 +86,52 @@ export default function AuthCallback() {
           return;
         }
 
-        if (session) {
+        if (user) {
           console.log('Authentication successful, session found');
           // First initialize redirectTo, then use it in the debugInfo
           let redirectTo = '/';
           
           setDebugInfo((prev: DebugInfoState) => ({ 
             ...prev, 
-            status: 'authenticated',
+            status: 'authenticated', // Update status
             user: {
-              id: session.user?.id,
-              email: session.user?.email,
-              authProvider: session.user?.app_metadata?.provider
+              id: user.uid, // Use Firebase user ID
+              email: user.email || 'N/A', // Use Firebase user email
+              authProvider: user.providerData?.[0]?.providerId || 'N/A' // Get provider ID
             }
             // Will set redirectTo later once determined
           }));
           
           // Check if we were in the reviewer application flow
-          // Parse the URL that initiated the auth flow from the session
           try {
             console.log('Auth callback - Checking redirect sources');
-            console.log('Auth provider:', session.user?.app_metadata?.provider);
-            console.log('Auth metadata:', JSON.stringify(session.user?.app_metadata || {}));
+            console.log('Firebase Auth provider:', user.providerData?.[0]?.providerId);
             console.log('Referrer:', document.referrer);
             console.log('Current URL:', window.location.href);
             console.log('Current origin:', window.location.origin);
             
-            // Simple but effective approach to handle domain differences
-            if (session.user?.app_metadata?.provider === 'google') {
-              // Get current domain
-              const currentOrigin = window.location.origin;
-              
-              // Check if this was a reviewer application
-              const storedRedirect = session.user?.app_metadata?.redirect_url;
-              const hasReviewerParams = storedRedirect && storedRedirect.includes('reviewerSignIn=true');
-              const referrer = document.referrer;
-              const fromGetInvolved = referrer && referrer.toLowerCase().includes('/get-involved');
-              
-              if (hasReviewerParams || fromGetInvolved) {
-                // This is a reviewer application flow - create a domain-aware redirect URL
+            // Use localStorage to retrieve the intended redirect URL
+            const storedRedirect = localStorage.getItem('redirectTo');
+            const referrer = document.referrer;
+            const currentOrigin = window.location.origin;
+
+            if (storedRedirect) {
+              // Check if the stored redirect includes reviewer flow parameters
+              const hasReviewerParams = storedRedirect.includes('reviewerSignIn=true');
+
+              if (hasReviewerParams) {
+                // If reviewer flow, ensure redirect is to the current origin's get-involved page
                 redirectTo = `${currentOrigin}/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin`;
-                console.log('Reviewer application detected, redirecting to:', redirectTo);
-              } else if (storedRedirect) {
-                // Try to use stored redirect but ensure it's on the current domain
+                console.log('Reviewer application flow detected from stored redirect, redirecting to:', redirectTo);
+              } else {
+                // For other stored redirects, try to use it directly or adjust origin
                 try {
-                  const parsedUrl = new URL(storedRedirect);
-                  // Create new URL with current origin but same path
-                  redirectTo = `${currentOrigin}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-                  console.log('Using domain-adjusted redirect URL:', redirectTo);
+                   const parsedUrl = new URL(storedRedirect);
+                   // Create new URL with current origin but same path, search, and hash
+                   redirectTo = `${currentOrigin}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+                   console.log('Using domain-adjusted stored redirect URL:', redirectTo);
                 } catch (e) {
-                  // If URL parsing fails, use stored redirect as-is
-                  redirectTo = storedRedirect;
-                  // Otherwise check if we can reconstruct the redirect URL from referrer
-                  if (referrer && referrer.includes('/get-involved')) {
-                    // If we came from the get-involved page, redirect back there with params
-                    // Add the hash fragment to ensure the modal shows
+                    // If URL parsing fails or it's an external URL, fall back
                     redirectTo = '/get-involved?justSignedIn=true&reviewerSignIn=true#reviewer-signin';
                     console.log('Enhanced redirect URL with hash fragment:', redirectTo);
                   } else {

@@ -4,7 +4,9 @@ import styles from '../styles/Home.module.css';
 import useSWR from 'swr';
 import { useMemo, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-
+import { auth as firebaseAuth } from '../lib/firebaseClient'; // Import firebaseAuth
+import { onAuthStateChanged } from 'firebase/auth'; // Import onAuthStateChanged
+import { getFirestore, doc, getDoc } from 'firebase/firestore'; // Import Firestore methods
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 function parseEventDate(dateStr: string): Date | null {
@@ -79,39 +81,37 @@ export default function Home() {
   
   // Check if user is admin
   useEffect(() => {
-    async function checkAdminStatus() {
-      try {
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user?.email) {
-          // Check against admin emails from environment variable
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => { // Using firebaseAuth
+      setIsLoaded(false); // Set loading to false at the start of the auth state change on each auth state change
+      
+ try {
+ if (user && user.email) {
+ // Check against admin emails from environment variable first
           const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS
             ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase())
             : [];
-            
-          if (adminEmails.includes(session.user.email.toLowerCase())) {
+          
+          if (adminEmails.includes(user.email.toLowerCase())) {
             setIsAdmin(true);
           } else {
-            // Try to check admin status in database as fallback
-            const { data } = await supabase
-              .from('admin_users')
-              .select('id')
-              .eq('id', session.user.id)
-              .single();
-              
-            setIsAdmin(!!data);
+ // Fallback: Check admin status in Firestore collection 'admin_users' by user UID
+            const db = getFirestore();
+            const adminDocRef = doc(db, 'admin_users', user.uid);
+            const adminDocSnap = await getDoc(adminDocRef);
+            setIsAdmin(adminDocSnap.exists()); // User is admin if a document with their UID exists in 'admin_users'
           }
+        } else {
+ setIsAdmin(false); // No user is signed in
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
-      } finally {
+ setIsAdmin(false); // Assume not admin on error
+      } finally { // Close try-catch-finally block
         setIsLoaded(true);
       }
-    }
-    
-    checkAdminStatus();
-  }, []);
+    }); // Close onAuthStateChanged function
+    return () => unsubscribe(); // Clean up the listener on unmount
+    }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
   
   const flatEvents = useMemo(() => {
     if (!Array.isArray(events)) return [];
@@ -225,7 +225,7 @@ export default function Home() {
             </div>
           </section>
         )}
-      </main>
-    </>
+ </main>
+ </>
   );
 }

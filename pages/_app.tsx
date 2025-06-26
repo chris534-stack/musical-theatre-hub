@@ -7,7 +7,8 @@ import '../components/CalendarView.mobile.css';
 import Header from '../components/Header';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, Router } from 'next/router';
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { supabase } from '../lib/supabaseClient';
 import MobileNavBar from '../components/MobileNavBar';
 import DomainAuthFix from '../components/DomainAuthFix';
@@ -19,16 +20,15 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     const logSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      const { data: userData } = await supabase.auth.getUser();
-      console.log('[Global Supabase Session]', session);
-      console.log('[Global Supabase User]', userData?.user);
-      if (error) console.error('[Supabase getSession error]', error);
+      const auth = getAuth();
+      onAuthStateChanged(auth, (user) => {
+        console.log('[Global Firebase User]', user);
+      });
     };
     logSession();
-    router.events?.on('routeChangeComplete', logSession);
+    Router.events.on('routeChangeComplete', logSession);
     return () => {
-      router.events?.off('routeChangeComplete', logSession);
+      Router.events.off('routeChangeComplete', logSession);
     };
   }, [router]);
   
@@ -51,7 +51,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     
     if (wasReviewerSignIn) {
       // Update URL to remove OAuth hash but preserve reviewer context
-      const cleanUrl = new URL(currentUrl);
+      const cleanUrl = new URL(window.location.origin + currentUrl.pathname); // Use window.location.origin for base
       cleanUrl.searchParams.set('justSignedIn', 'true');
       
       // Use router.replace to avoid adding to history stack

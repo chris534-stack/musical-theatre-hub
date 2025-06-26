@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getAuth, signOut } from 'firebase/auth';
 import Head from 'next/head';
 
 type Reviewer = {
@@ -415,7 +415,8 @@ export default function AdminDashboard() {
       <div style={{ marginTop: '2rem' }}>
         <button
           onClick={async () => {
-            await supabase.auth.signOut();
+            const auth = getAuth();
+            await signOut(auth);
             window.location.reload();
           }}
           style={{

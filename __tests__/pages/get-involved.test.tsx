@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import { useRouter } from 'next/router';
 import GetInvolved, { ReviewerSignInSection } from '../../pages/get-involved'; // Adjusted import path
 import { useIsReviewer } from '../../components/useIsReviewer'; // Adjusted import path
-import { supabase } from '../../lib/supabaseClient'; // Adjusted import path
+import { auth } from '../../lib/firebaseClient'; // Import Firebase auth
 import ReviewerApplicationModal from '../../components/ReviewerApplicationModal'; // Adjusted import path
 
 // Mock Next.js router
@@ -15,8 +15,8 @@ jest.mock('next/router', () => ({
 // Mock useIsReviewer hook
 jest.mock('../../components/useIsReviewer'); // Adjusted import path
 
-// Mock Supabase client
-jest.mock('../../lib/supabaseClient'); // Adjusted import path
+// Mock Firebase client
+jest.mock('../../lib/firebaseClient'); // Adjusted import path
 
 // Mock ReviewerApplicationModal
 jest.mock('../../components/ReviewerApplicationModal', () => ({ // Adjusted import path
@@ -56,8 +56,15 @@ describe('GetInvolved Page', () => {
       basePath: '',
       isPreview: false,
     });
-    (supabase.auth.signInWithOAuth as jest.Mock).mockResolvedValue({ data: {url: 'http://localhost:3000'}, error: null });
-    (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+    // Mock Firebase signInWithPopup and signOut
+    // signInWithPopup for Google should resolve with a mock user credential
+    (auth.signInWithPopup as jest.Mock).mockResolvedValue({
+      user: { uid: 'firebase-user-id', email: 'test@example.com', displayName: 'Test User' },
+      credential: {},
+      operationType: 'signIn',
+      providerId: 'google.com',
+    });
+    (auth.signOut as jest.Mock).mockResolvedValue(undefined); // Firebase signOut resolves with undefined
 
 
     // Reset mocks for ReviewerApplicationModal if needed or ensure it's fresh

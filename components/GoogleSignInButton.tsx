@@ -1,23 +1,21 @@
 import React from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth } from '../lib/firebaseClient'; // Assuming you export 'auth' from firebaseClient.ts
 
 export default function GoogleSignInButton({ onSignedIn }: { onSignedIn?: (user: any) => void }) {
   const handleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-    if (error) {
-      alert('Sign in failed: ' + error.message);
-    } else {
-      // Supabase handles redirect and session automatically.
-      // Optionally, you can listen for auth state changes elsewhere to get the user.
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      // The signed-in user info.
+      const user = result.user;
       if (onSignedIn) {
-        // You may want to fetch the user from supabase.auth.getUser() here if needed.
-        const { data: { user } } = await supabase.auth.getUser();
         onSignedIn(user);
       }
+    } catch (error: any) {
+      alert('Sign in failed: ' + error.message);
     }
   };
-
-
   return (
     <button onClick={handleSignIn} style={{
       background: '#fff',
