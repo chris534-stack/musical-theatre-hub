@@ -7,7 +7,6 @@ export function Header() {
       <div className="container mx-auto flex justify-between items-center">
         <Logo />
         <nav className="flex items-center space-x-6 text-sm font-medium">
-          <Link href="/" className="hover:text-accent transition-colors">Home</Link>
           <Link href="/calendar" className="hover:text-accent transition-colors">Calendar</Link>
           <Link href="#" className="hover:text-accent transition-colors">Involved</Link>
           <Link href="#" className="hover:text-accent transition-colors">News</Link>
