@@ -2,11 +2,11 @@ import type { Event, Venue } from './types';
 
 // Using a Map for easier CRUD operations in our "mock database"
 export const venues: Map<string, Venue> = new Map([
-  ['vlt', { id: 'vlt', name: 'Very Little Theatre', color: 'hsl(120, 100%, 25%)' }],
-  ['oct', { id: 'oct', name: 'Oregon Contemporary Theatre', color: 'hsl(248, 39%, 39%)' }],
-  ['hult', { id: 'hult', name: 'Hult Center', color: 'hsl(45, 74%, 49%)' }],
-  ['shedd', { id: 'shedd', name: 'The Shedd Institute', color: 'hsl(282, 58%, 52%)' }],
-  ['ace', { id: 'ace', name: 'Actors Cabaret of Eugene', color: 'hsl(0, 100%, 27%)' }],
+  ['vlt', { id: 'vlt', name: 'Very Little Theatre', color: 'hsl(225, 73%, 57%)' }],
+  ['oct', { id: 'oct', name: 'Oregon Contemporary Theatre', color: 'hsl(51, 100%, 50%)' }],
+  ['hult', { id: 'hult', name: 'Hult Center', color: 'hsl(215.4, 16.3%, 46.9%)' }],
+  ['shedd', { id: 'shedd', name: 'The Shedd Institute', color: 'hsl(0, 84.2%, 60.2%)' }],
+  ['ace', { id: 'ace', name: 'Actors Cabaret of Eugene', color: 'hsl(222.2, 84%, 4.9%)' }],
 ]);
 
 // Helper to get a date in the future for mock data
