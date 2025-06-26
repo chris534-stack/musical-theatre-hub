@@ -104,6 +104,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
 
   const FullCalendarDayContent = (props: DayContentProps) => {
     const { date, activeModifiers } = props;
+    if (!activeModifiers) return <></>; // Guard clause
     const { selected, today, outside } = activeModifiers;
     const dateString = date.toISOString().split('T')[0];
     const dayEvents = eventsByDate.get(dateString) || [];
@@ -123,7 +124,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
             </div>
             {!outside && (
                 <div className="flex-1 w-full mt-1 space-y-1 overflow-y-auto text-xs">
-                    {dayEvents.slice(0, 2).map(event => (
+                    {dayEvents.slice(0, 4).map(event => (
                         <div
                             key={event.id}
                             className="p-1 rounded-sm truncate"
@@ -136,8 +137,8 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
                             {event.title}
                         </div>
                     ))}
-                    {dayEvents.length > 2 && (
-                        <div className={cn("text-center text-xs", selected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>+ {dayEvents.length - 2} more</div>
+                    {dayEvents.length > 4 && (
+                        <div className={cn("text-center text-xs", selected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>+ {dayEvents.length - 4} more</div>
                     )}
                 </div>
             )}
@@ -146,8 +147,8 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-      <div className="lg:col-span-3 xl:col-span-4">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="lg:col-span-3">
         <Card>
           <CardContent className="p-0 sm:p-2">
             <Calendar
@@ -156,7 +157,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
               onSelect={setSelectedDate}
               className="w-full hidden sm:block"
               classNames={{
-                cell: 'h-32 p-0 border-r border-b',
+                cell: 'h-40 p-0 border-r border-b',
                 day: 'w-full h-full p-0 relative focus-within:relative focus-within:z-20',
                 head_cell: 'w-full text-center font-normal text-muted-foreground border-b p-2',
                 row: 'flex w-full mt-0',
@@ -181,7 +182,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
           </CardContent>
         </Card>
       </div>
-      <div className="max-h-[80vh] flex flex-col">
+      <div className="lg:col-span-1 max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <h2 className="text-2xl font-headline">
             {isClient && selectedDate ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'Events'}
