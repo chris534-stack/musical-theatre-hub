@@ -23,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { Event, Venue, EventType } from '@/lib/types';
-import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type EventWithVenue = Event & { venue?: Venue };
@@ -212,7 +212,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
           width: 5px;
           height: 5px;
           border-radius: 50%;
-          background-color: hsl(var(--accent));
+          background-color: hsl(var(--primary));
         }
         .has-event button.day_today::after {
           background-color: hsl(var(--accent-foreground));
