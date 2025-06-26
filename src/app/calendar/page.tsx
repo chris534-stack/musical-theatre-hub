@@ -18,7 +18,7 @@ export default async function CalendarPage() {
   const allVenues = Array.from(venues.values());
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-8">
+    <div className="px-4 sm:px-6 lg:px-8 py-4 md:py-8">
       <EventCalendar events={approvedEvents} venues={allVenues} />
     </div>
   );

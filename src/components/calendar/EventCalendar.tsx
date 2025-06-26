@@ -223,18 +223,14 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
           background-color: hsl(var(--primary-foreground));
         }
       `}</style>
-      <Card>
-        <CardContent className="p-0 sm:p-2">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            className="w-full"
-            modifiers={{ hasEvent: daysWithEvents }}
-            modifiersClassNames={{ hasEvent: 'has-event' }}
-          />
-        </CardContent>
-      </Card>
+      <Calendar
+        mode="single"
+        selected={selectedDate}
+        onSelect={setSelectedDate}
+        className="w-full rounded-md border"
+        modifiers={{ hasEvent: daysWithEvents }}
+        modifiersClassNames={{ hasEvent: 'has-event' }}
+      />
     </>
   );
 
@@ -249,7 +245,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
       </div>
       <div className="lg:col-span-1 max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
-          <h2 className="text-2xl font-headline">
+          <h2 className="text-xl md:text-2xl font-headline">
             {isClient && selectedDate ? format(selectedDate, 'MMMM d') : 'Events'}
           </h2>
           <Popover>
@@ -317,10 +313,10 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
               </Card>
             ))
           ) : (
-            <div className="text-center py-10 text-muted-foreground h-full flex flex-col items-center justify-center bg-gray-50 rounded-lg">
-              <CalendarDays className="h-12 w-12 mb-4 text-gray-400" />
-              <p className="font-semibold">No events scheduled for this day.</p>
-              <p className="text-sm">Try clearing filters or selecting another date.</p>
+            <div className="text-center pt-10 text-muted-foreground h-full flex flex-col items-center justify-center rounded-lg">
+              <CalendarDays className="h-10 w-10 mb-3 text-muted-foreground/50" />
+              <p className="font-semibold text-sm">No events scheduled.</p>
+              <p className="text-xs">Select another day or clear filters.</p>
             </div>
           )}
         </div>
