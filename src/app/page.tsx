@@ -39,12 +39,12 @@ export default async function Home() {
         <div className="container px-4 md:px-6">
           <div className="mx-auto max-w-4xl rounded-2xl bg-primary p-8 md:p-12 text-center text-primary-foreground shadow-2xl">
             <div className="inline-block">
-                <h1 className="text-4xl md:text-6xl font-bold font-headline mb-4">
-                Our Stage, Eugene
+                <h1 className="text-4xl md:text-6xl font-bold font-headline mb-4 leading-tight">
+                Our Stage,<br />Eugene
                 </h1>
                 <div className="h-1.5 bg-accent w-1/2 mx-auto"></div>
             </div>
-            <p className="text-lg md:text-xl text-accent max-w-2xl mx-auto my-6">
+            <p className="text-md md:text-xl text-accent max-w-2xl mx-auto my-6">
               Your one-stop resource for performances, auditions, workshops, and community connections in Eugene, Oregon.
             </p>
             <Button size="lg" asChild className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-md px-10 py-6 text-lg font-bold">
