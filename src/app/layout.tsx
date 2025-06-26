@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { MobileNav } from '@/components/MobileNav';
 
 export const metadata: Metadata = {
   title: 'Our Stage, Eugene',
@@ -24,9 +25,10 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <div className="relative flex min-h-screen flex-col bg-background">
           <Header />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 pb-20 md:pb-0">{children}</main>
           <Footer />
         </div>
+        <MobileNav />
         <Toaster />
       </body>
     </html>
