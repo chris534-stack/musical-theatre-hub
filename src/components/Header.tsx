@@ -1,22 +1,18 @@
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
-import { Button } from '@/components/ui/button';
 
 export function Header() {
   return (
-    <header className="py-4 px-4 sm:px-6 lg:px-8 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <header className="py-4 px-4 sm:px-6 lg:px-8 bg-primary text-primary-foreground">
       <div className="container mx-auto flex justify-between items-center">
         <Logo />
-        <nav className="hidden md:flex items-center gap-1">
-          <Button variant="ghost" asChild>
-            <Link href="/">Home</Link>
-          </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/calendar">Calendar</Link>
-          </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/admin">Admin</Link>
-          </Button>
+        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+          <Link href="/calendar" className="hover:text-accent transition-colors">Calendar</Link>
+          <Link href="#" className="hover:text-accent transition-colors">Get Involved</Link>
+          <Link href="#" className="hover:text-accent transition-colors">Community</Link>
+          <Link href="#" className="hover:text-accent transition-colors">News</Link>
+          <Link href="#" className="hover:text-accent transition-colors">About Us</Link>
+          <Link href="/admin" className="hover:text-accent transition-colors opacity-70 hover:opacity-100">Admin</Link>
         </nav>
       </div>
     </header>

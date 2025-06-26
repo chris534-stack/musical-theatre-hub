@@ -1,81 +1,77 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Theater, Calendar, Sparkles } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { events, venues } from '@/lib/data';
+import type { Event, Venue } from '@/lib/types';
+import { format } from 'date-fns';
 
-export default function Home() {
+type EventWithVenue = Event & { venue?: Venue };
+
+async function getFeaturedEvents(): Promise<EventWithVenue[]> {
+  // In a real app, this would be a more sophisticated query,
+  // e.g., fetching events for the current month.
+  const allEvents = Array.from(events.values());
+  const approvedEvents = allEvents.filter(event => event.status === 'approved');
+  
+  const featured = approvedEvents.slice(0, 3).map(event => ({
+    ...event,
+    venue: venues.get(event.venueId)
+  }));
+  
+  return featured;
+}
+
+function formatDate(dateString: string, timeString: string) {
+    try {
+        const date = new Date(`${dateString}T${timeString}`);
+        return format(date, "MMMM d, yyyy 'at' hh:mm a");
+    } catch (e) {
+        return `${dateString} at ${timeString}`;
+    }
+}
+
+export default async function Home() {
+  const featuredEvents = await getFeaturedEvents();
+
   return (
     <div className="flex flex-col">
-      <section className="py-20 md:py-32 bg-primary/5">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold font-headline text-primary mb-4 animate-fade-in-down">
-            All the World's a Stage... in Eugene
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 animate-fade-in-up">
-            Our Stage, Eugene is your definitive guide to the vibrant and diverse theatre scene in Eugene, Oregon. Discover plays, musicals, and performances all in one place.
-          </p>
-          <Button size="lg" asChild className="animate-fade-in bg-accent text-accent-foreground hover:bg-accent/90">
-            <Link href="/calendar">View The Event Calendar</Link>
-          </Button>
+      <section className="w-full py-12 md:py-20 lg:py-24">
+        <div className="container px-4 md:px-6">
+          <div className="mx-auto max-w-4xl rounded-2xl bg-primary p-8 md:p-12 text-center text-primary-foreground shadow-2xl">
+            <div className="inline-block">
+                <h1 className="text-4xl md:text-6xl font-bold font-headline mb-4">
+                Our Stage, Eugene
+                </h1>
+                <div className="h-1.5 bg-accent w-1/2 mx-auto"></div>
+            </div>
+            <p className="text-lg md:text-xl text-accent max-w-2xl mx-auto my-6">
+              Your one-stop resource for performances, auditions, workshops, and community connections in Eugene, Oregon.
+            </p>
+            <Button size="lg" asChild className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-md px-10 py-6 text-lg font-bold">
+              <Link href="/calendar">View Upcoming Events</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
       <section className="py-16 md:py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold font-headline">Why Our Stage?</h2>
-            <p className="text-muted-foreground mt-2">One platform to find every performance.</p>
+            <h2 className="text-3xl md:text-4xl font-bold font-headline text-primary">Featured This Month</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="text-center border-t-4 border-primary pt-6">
-              <CardHeader>
-                <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit">
-                  <Calendar className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="font-headline mt-4">Centralized Calendar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">No more jumping between websites. Find all of Eugene's theatre events in our comprehensive, easy-to-use calendar.</p>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-t-4 border-primary pt-6">
-              <CardHeader>
-                <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit">
-                  <Theater className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="font-headline mt-4">Discover Local Venues</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">From the Hult Center to the Very Little Theatre, we cover venues big and small. Filter events by your favorite stages.</p>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-t-4 border-primary pt-6">
-              <CardHeader>
-                <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit">
-                  <Sparkles className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="font-headline mt-4">AI-Powered Updates</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Our smart scraper automatically keeps the calendar up-to-date, so you're always in the know about the latest shows.</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-      
-      <section className="bg-primary/5">
-        <div className="container mx-auto px-4 py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
-          <div>
-             <h2 className="text-3xl md:text-4xl font-bold font-headline">Support Local Theatre</h2>
-             <p className="text-muted-foreground mt-4 mb-6">Every ticket purchased supports the artists, technicians, and storytellers that make our community a more creative and connected place. We make it easy to find shows and purchase tickets directly from the venues.</p>
-             <Button asChild>
-                <Link href="/calendar">Find a Show</Link>
-             </Button>
-          </div>
-          <div className="relative h-80 rounded-lg overflow-hidden shadow-xl">
-             <Image src="https://placehold.co/600x400.png" data-ai-hint="theatre stage" alt="Theatre Stage" layout="fill" objectFit="cover" />
+            {featuredEvents.map(event => (
+              <Card key={event.id} className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <CardContent className="p-6">
+                  <h3 className="font-headline text-2xl font-bold text-primary">{event.title}</h3>
+                  <p className="text-muted-foreground mt-2">{event.venue?.name}</p>
+                  <p className="text-muted-foreground text-sm mt-1">{formatDate(event.date, event.time)}</p>
+                  <Button variant="link" asChild className="mt-4">
+                    <Link href={event.url || '#'}>Details</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
