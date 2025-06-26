@@ -10,7 +10,6 @@ export function Header() {
           <Link href="/" className="hover:text-accent transition-colors">Home</Link>
           <Link href="/calendar" className="hover:text-accent transition-colors">Calendar</Link>
           <Link href="#" className="hover:text-accent transition-colors">Involved</Link>
-          <Link href="#" className="hover:text-accent transition-colors">Community</Link>
           <Link href="#" className="hover:text-accent transition-colors">News</Link>
           <Link href="#" className="hover:text-accent transition-colors">About Us</Link>
           <Link href="/admin" className="hover:text-accent transition-colors opacity-70 hover:opacity-100">Admin</Link>
