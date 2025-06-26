@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import type { DayProps } from 'react-day-picker';
+import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +14,43 @@ import type { Event, Venue, EventType } from '@/lib/types';
 import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays } from 'lucide-react';
 
 type EventWithVenue = Event & { venue?: Venue };
+
+function getContrastingTextColor(hsl: string): string {
+    if (!hsl) return '#ffffff';
+    const result = /hsl\((\d+),\s*([\d.]+)%,\s*([\d.]+)%\)/.exec(hsl);
+    if (!result) return '#ffffff';
+    let h = parseInt(result[1]);
+    let s = parseFloat(result[2]) / 100;
+    let l = parseFloat(result[3]) / 100;
+    
+    let c = (1 - Math.abs(2 * l - 1)) * s,
+        x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+        m = l - c/2,
+        r = 0,
+        g = 0,
+        b = 0;
+
+    if (0 <= h && h < 60) {
+        r = c; g = x; b = 0;
+    } else if (60 <= h && h < 120) {
+        r = x; g = c; b = 0;
+    } else if (120 <= h && h < 180) {
+        r = 0; g = c; b = x;
+    } else if (180 <= h && h < 240) {
+        r = 0; g = x; b = c;
+    } else if (240 <= h && h < 300) {
+        r = x; g = 0; b = c;
+    } else if (300 <= h && h < 360) {
+        r = c; g = 0; b = x;
+    }
+    r = Math.round((r + m) * 255);
+    g = Math.round((g + m) * 255);
+    b = Math.round((b + m) * 255);
+    
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+}
 
 export function EventCalendar({ events, venues }: { events: EventWithVenue[], venues: Venue[] }) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -44,10 +83,6 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     });
     return map;
   }, [filteredEvents]);
-
-  const eventDays = useMemo(() => {
-    return Array.from(eventsByDate.keys()).map(dateStr => new Date(dateStr + 'T12:00:00Z'));
-  }, [eventsByDate]);
   
   const selectedDayEvents = useMemo(() => {
     if (!selectedDate) return [];
@@ -67,43 +102,95 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     );
   };
 
-  const DayWithDots: React.FC<{ date: Date }> = ({ date }) => {
+  const FullCalendarDay = (props: DayProps) => {
+    const { date } = props;
+    const { selected, today, disabled, outside } = props.activeModifiers;
     const dateString = date.toISOString().split('T')[0];
-    const dayEvents = eventsByDate.get(dateString);
+    const dayEvents = eventsByDate.get(dateString) || [];
+
     return (
-      <div className="relative h-full w-full flex items-center justify-center">
-        {date.getDate()}
-        {dayEvents && dayEvents.length > 0 && (
-          <div className="absolute bottom-1.5 flex space-x-1">
-            {dayEvents.slice(0, 4).map(event => (
-              <div key={event.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: event.venue?.color }}></div>
-            ))}
-          </div>
-        )}
-      </div>
+        <div
+            className={cn(
+                'h-full w-full relative transition-colors rounded-md',
+                !disabled && !selected && 'hover:bg-accent/50',
+                (selected) && 'bg-primary text-primary-foreground',
+            )}
+        >
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={e => props.onClick?.(date, props.activeModifiers, e)}
+                className={cn(
+                    'w-full h-full p-2 text-left align-top flex flex-col',
+                    'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md',
+                    outside && 'text-muted-foreground opacity-50 cursor-default'
+                )}
+            >
+                <div className={cn(
+                    'font-medium',
+                    today && !selected && 'bg-accent text-accent-foreground rounded-full h-6 w-6 flex items-center justify-center'
+                )}>
+                    {date.getDate()}
+                </div>
+                {!outside && (
+                    <div className="flex-1 w-full mt-1 space-y-1 overflow-y-auto text-xs">
+                        {dayEvents.slice(0, 2).map(event => (
+                            <div
+                                key={event.id}
+                                className="p-1 rounded-sm truncate"
+                                style={{
+                                    backgroundColor: selected ? 'rgba(255,255,255,0.2)' : (event.venue?.color || 'hsl(var(--primary))'),
+                                    color: selected ? 'var(--primary-foreground)' : getContrastingTextColor(event.venue?.color || '')
+                                }}
+                                title={event.title}
+                            >
+                                {event.title}
+                            </div>
+                        ))}
+                        {dayEvents.length > 2 && (
+                            <div className={cn("text-center text-xs", selected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>+ {dayEvents.length - 2} more</div>
+                        )}
+                    </div>
+                )}
+            </button>
+        </div>
     );
   };
 
   return (
-    <div className="grid md:grid-cols-3 gap-8">
-      <div className="md:col-span-2">
+    <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+      <div className="lg:col-span-3 xl:col-span-4">
         <Card>
-          <CardContent className="p-2">
+          <CardContent className="p-0 sm:p-2">
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className="w-full"
-              modifiers={{ hasEvent: eventDays }}
-              modifiersClassNames={{ hasEvent: "font-bold" }}
-              components={{
-                Day: ({ date }) => <DayWithDots date={date} />
+              className="w-full hidden sm:block"
+              classNames={{
+                cell: 'h-32 p-0 border-r border-b',
+                day: 'w-full h-full p-0',
+                head_cell: 'w-full text-center font-normal text-muted-foreground border-b p-2',
+                row: 'flex w-full mt-0',
+                month: 'space-y-0 border-l border-t rounded-lg overflow-hidden',
+                table: 'w-full border-collapse',
+                caption_label: 'text-xl font-headline',
+                caption: 'text-center relative py-4',
               }}
+              components={{
+                Day: FullCalendarDay,
+              }}
+            />
+             <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="w-full sm:hidden"
             />
           </CardContent>
         </Card>
       </div>
-      <div className="max-h-[70vh] flex flex-col">
+      <div className="max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <h2 className="text-2xl font-headline">
             {isClient && selectedDate ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'Events'}
