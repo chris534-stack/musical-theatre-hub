@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import type { Event, Venue, EventType } from '@/lib/types';
 import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type EventWithVenue = Event & { venue?: Venue };
 
@@ -128,6 +129,18 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     return eachDayOfInterval({ start, end: endOfWeek(new Date()) }).map(d => format(d, 'EE'));
   }, []);
 
+  if (!isClient) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
+        <div className="lg:col-span-2">
+          <Skeleton className="w-full h-full min-h-[720px]" />
+        </div>
+        <div className="lg:col-span-1">
+          <Skeleton className="w-full h-full min-h-[80vh]" />
+        </div>
+      </div>
+    )
+  }
 
   const DesktopCalendar = () => (
     <Card className="h-full flex flex-col">
@@ -237,16 +250,12 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
       <div className="lg:col-span-2">
-        {isClient && (isMobile ? (
-          <MobileCalendar />
-        ) : (
-          <DesktopCalendar />
-        ))}
+        {isMobile ? <MobileCalendar /> : <DesktopCalendar />}
       </div>
       <div className="lg:col-span-1 max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <h2 className="text-xl md:text-2xl font-headline">
-            {isClient && selectedDate ? format(selectedDate, 'MMMM d') : 'Events'}
+            {selectedDate ? format(selectedDate, 'MMMM d') : 'Events'}
           </h2>
           <Popover>
             <PopoverTrigger asChild>
