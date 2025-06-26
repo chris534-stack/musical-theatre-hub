@@ -60,7 +60,7 @@ export function Logo() {
           textAnchor="middle"
           fill="currentColor"
           className="font-body tracking-widest"
-          style={{ fontSize: '20px' }}
+          style={{ fontSize: '20px', fontWeight: 'bold' }}
         >
           EUGENE
         </text>
