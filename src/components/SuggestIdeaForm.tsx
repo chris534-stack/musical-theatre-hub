@@ -1,17 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { db } from '@/lib/firebase'; // Assuming db is exported from your firebase config
+import { db } from '@/lib/firebase';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import SignInPromptModal from '@/components/SignInPromptModal';
+import { useToast } from '@/hooks/use-toast';
 
-export default function SuggestIdeaForm() {
+interface SuggestIdeaFormProps {
+  closeModal: () => void;
+}
+
+export default function SuggestIdeaForm({ closeModal }: SuggestIdeaFormProps) {
   const [formData, setFormData] = useState({
     idea: '',
     showType: '',
@@ -20,8 +24,8 @@ export default function SuggestIdeaForm() {
   });
 
   const [showSignInModal, setShowSignInModal] = useState(false);
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -41,23 +45,35 @@ export default function SuggestIdeaForm() {
     try {
       await addDoc(collection(db, 'ideas'), {
         ...formData,
-        timestamp: new Date(), // Optional: add a timestamp
+        userId: user.uid,
+        userName: user.displayName,
+        userEmail: user.email,
+        timestamp: new Date(),
       });
-      console.log('Idea submitted successfully!');
+      toast({
+        title: 'Idea Submitted!',
+        description: 'Thank you for your suggestion.',
+      });
+      setFormData({
+        idea: '',
+        showType: '',
+        targetAudience: '',
+        communityFit: '',
+      });
+      closeModal();
     } catch (error) {
       console.error('Error submitting idea:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Submission Failed',
+        description: 'There was a problem submitting your idea. Please try again.',
+      });
     }
-    setFormData({
-      idea: '',
-      showType: '',
-      targetAudience: '',
-      communityFit: '',
-    });
   };
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="grid gap-4">
+      <form onSubmit={handleSubmit} className="grid gap-4 py-4">
         <div className="grid gap-2">
           <Label htmlFor="idea">What is your idea?</Label>
           <Textarea id="idea" placeholder="Describe your idea here..." value={formData.idea} onChange={handleChange} required />
