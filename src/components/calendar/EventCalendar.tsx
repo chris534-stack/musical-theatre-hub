@@ -1,7 +1,19 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { DayContentProps } from 'react-day-picker';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isToday,
+  addMonths,
+  subMonths,
+  isSameDay
+} from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +23,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { Event, Venue, EventType } from '@/lib/types';
-import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays } from 'lucide-react';
+import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type EventWithVenue = Event & { venue?: Venue };
 
@@ -54,14 +67,16 @@ function getContrastingTextColor(hsl: string): string {
 
 export function EventCalendar({ events, venues }: { events: EventWithVenue[], venues: Venue[] }) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
-
+  
   const eventTypes = useMemo(() => Array.from(new Set(events.map(e => e.type))) as EventType[], [events]);
 
   const filteredEvents = useMemo(() => {
@@ -75,7 +90,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
   const eventsByDate = useMemo(() => {
     const map = new Map<string, EventWithVenue[]>();
     filteredEvents.forEach(event => {
-      const dateKey = new Date(event.date).toISOString().split('T')[0];
+      const dateKey = format(new Date(event.date), 'yyyy-MM-dd');
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
@@ -86,7 +101,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
   
   const selectedDayEvents = useMemo(() => {
     if (!selectedDate) return [];
-    const dateString = selectedDate.toISOString().split('T')[0];
+    const dateString = format(selectedDate, 'yyyy-MM-dd');
     return eventsByDate.get(dateString) || [];
   }, [selectedDate, eventsByDate]);
 
@@ -102,90 +117,100 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     );
   };
 
-  const FullCalendarDayContent = (props: DayContentProps) => {
-    const { date, activeModifiers } = props;
-    if (!activeModifiers) return <></>; // Guard clause
-    const { selected, today, outside } = activeModifiers;
-    const dateString = date.toISOString().split('T')[0];
-    const dayEvents = eventsByDate.get(dateString) || [];
+  const calendarDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(currentMonth));
+    const end = endOfWeek(endOfMonth(currentMonth));
+    return eachDayOfInterval({ start, end });
+  }, [currentMonth]);
+  
+  const weekDayNames = useMemo(() => {
+    const start = startOfWeek(new Date());
+    return eachDayOfInterval({ start, end: endOfWeek(new Date()) }).map(d => format(d, 'EEEE'));
+  }, []);
 
-    return (
-        <div
-            className={cn(
-                'w-full h-full p-2 text-left align-top flex flex-col',
-                outside && 'text-muted-foreground opacity-50'
-            )}
-        >
-            <div className={cn(
-                'font-medium',
-                today && !selected && 'bg-accent text-accent-foreground rounded-full h-6 w-6 flex items-center justify-center'
-            )}>
-                {date.getDate()}
-            </div>
-            {!outside && (
-                <div className="flex-1 w-full mt-1 space-y-1 overflow-y-auto text-xs">
-                    {dayEvents.slice(0, 4).map(event => (
-                        <div
-                            key={event.id}
-                            className="p-1 rounded-sm truncate"
-                            style={{
-                                backgroundColor: selected ? 'rgba(255,255,255,0.2)' : (event.venue?.color || 'hsl(var(--primary))'),
-                                color: selected ? 'var(--primary-foreground)' : getContrastingTextColor(event.venue?.color || '')
-                            }}
-                            title={event.title}
-                        >
-                            {event.title}
-                        </div>
-                    ))}
-                    {dayEvents.length > 4 && (
-                        <div className={cn("text-center text-xs", selected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>+ {dayEvents.length - 4} more</div>
-                    )}
-                </div>
-            )}
+
+  const DesktopCalendar = () => (
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between py-4">
+        <CardTitle className="font-headline text-2xl">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>Today</Button>
+          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-    );
-  };
+      </CardHeader>
+      <div className="grid grid-cols-7 border-t border-b text-center text-sm font-semibold text-muted-foreground">
+        {weekDayNames.map(day => <div key={day} className="py-2">{day}</div>)}
+      </div>
+      <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-px bg-border">
+        {calendarDays.map((day) => {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const dayEvents = eventsByDate.get(dateKey) || [];
+          return (
+            <div
+              key={day.toString()}
+              onClick={() => setSelectedDate(day)}
+              className={cn(
+                'p-2 bg-background hover:bg-muted/50 cursor-pointer flex flex-col overflow-hidden',
+                !isSameMonth(day, currentMonth) && 'bg-muted/30 text-muted-foreground',
+                isSameDay(day, selectedDate || new Date(0)) && 'bg-primary/10 ring-2 ring-primary z-10'
+              )}
+            >
+              <span className={cn(
+                'font-medium self-start',
+                isToday(day) && 'bg-accent text-accent-foreground rounded-full h-6 w-6 flex items-center justify-center',
+                isSameDay(day, selectedDate || new Date(0)) && isToday(day) && 'bg-primary text-primary-foreground'
+              )}>
+                {format(day, 'd')}
+              </span>
+              <div className="flex-1 mt-1 space-y-1 overflow-y-auto text-xs">
+                  {dayEvents.map(event => (
+                      <div
+                          key={event.id}
+                          className="p-1 rounded-sm truncate text-white"
+                          style={{
+                              backgroundColor: event.venue?.color || 'hsl(var(--primary))',
+                              color: getContrastingTextColor(event.venue?.color || '')
+                          }}
+                          title={event.title}
+                      >
+                          {event.title}
+                      </div>
+                  ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
-        <Card>
-          <CardContent className="p-0 sm:p-2">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="w-full hidden sm:block"
-              classNames={{
-                cell: 'h-56 p-0 border-r border-b',
-                day: 'w-full h-full p-0 relative focus-within:relative focus-within:z-20',
-                head_cell: 'w-full text-center font-normal text-muted-foreground border-b p-2',
-                row: 'flex w-full mt-0',
-                month: 'space-y-0 border-l border-t rounded-lg overflow-hidden',
-                table: 'w-full border-collapse',
-                caption_label: 'text-xl font-headline',
-                caption: 'text-center relative py-4',
-                day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
-                day_today: 'bg-accent text-accent-foreground',
-                day_outside: 'text-muted-foreground opacity-50',
-              }}
-              components={{
-                DayContent: FullCalendarDayContent,
-              }}
-            />
-             <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="w-full sm:hidden"
-            />
-          </CardContent>
-        </Card>
+        {isClient && (isMobile ? (
+          <Card>
+            <CardContent className="p-0 sm:p-2">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="w-full"
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <DesktopCalendar />
+        ))}
       </div>
       <div className="lg:col-span-1 max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <h2 className="text-2xl font-headline">
-            {isClient && selectedDate ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'Events'}
+            {isClient && selectedDate ? format(selectedDate, 'MMMM d') : 'Events'}
           </h2>
           <Popover>
             <PopoverTrigger asChild>
@@ -214,7 +239,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
                     {eventTypes.map(type => (
                       <div key={type} className="flex items-center space-x-2">
                         <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
-                        <Label htmlFor={`type-${type}`} className="cursor-pointer">{type}</Label>
+                        <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{type.replace('-', ' ')}</Label>
                       </div>
                     ))}
                   </div>
@@ -234,7 +259,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
                       <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <Ticket className="h-4 w-4 flex-shrink-0" /> <span>{event.type} at {event.time}</span>
+                      <Ticket className="h-4 w-4 flex-shrink-0" /> <span className="capitalize">{event.type.replace('-', ' ')} at {event.time}</span>
                     </div>
                   </CardDescription>
                 </CardHeader>
@@ -260,3 +285,5 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     </div>
   );
 }
+
+    
