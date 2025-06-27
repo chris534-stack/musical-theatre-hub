@@ -50,9 +50,7 @@ export async function scrapeEventAction(url: string) {
     const newEvent: Omit<Event, 'id'> = {
       title: scrapedData.title,
       description: scrapedData.description,
-      // Basic date parsing, assuming a parsable format. A real app would need more robust parsing.
-      date: new Date(scrapedData.date).toISOString().split('T')[0],
-      time: scrapedData.time,
+      occurrences: scrapedData.occurrences,
       venueId: venueId,
       type: 'Special Event', // Default type, admin can change it later
       status: 'pending',

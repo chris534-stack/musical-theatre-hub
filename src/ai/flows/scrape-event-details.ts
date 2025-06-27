@@ -8,7 +8,7 @@
  *
  * @file scrapeEventDetails - A function that scrapes event details from a given URL.
  * @file ScrapeEventDetailsInput - The input type for the scrapeEventDetails function, which is a URL string.
- * @file ScrapeEventDetailsOutput - The output type for the scrapeEventDetails function, containing event details like title, date, time, venue, and description.
+ * @file ScrapeEventDetailsOutput - The output type for the scrapeEventDetails function, containing event details like title, all occurrences, venue, and description.
  */
 
 import {ai} from '@/ai/genkit';
@@ -21,8 +21,10 @@ export type ScrapeEventDetailsInput = z.infer<typeof ScrapeEventDetailsInputSche
 
 const ScrapeEventDetailsOutputSchema = z.object({
   title: z.string().describe('The title of the event.'),
-  date: z.string().describe('The date of the event.'),
-  time: z.string().describe('The time of the event.'),
+  occurrences: z.array(z.object({
+      date: z.string().describe("The date of the performance in YYYY-MM-DD format."),
+      time: z.string().describe("The time of the performance in HH:mm 24-hour format."),
+  })).describe('A list of all dates and times for the event performances.'),
   venue: z.string().describe('The venue of the event.'),
   description: z.string().describe('A detailed description of the event.'),
 });
@@ -55,8 +57,7 @@ const scrapeEventDetailsPrompt = ai.definePrompt({
 
   Given the URL for an event, extract the following details:
   - Title: The title of the event.
-  - Date: The date of the event.
-  - Time: The time of the event.
+  - Occurrences: A list of all performance dates and times for the event. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual date.
   - Venue: The venue of the event. Use the determineVenueRelevance tool to validate the venue.
   - Description: A detailed description of the event.
 

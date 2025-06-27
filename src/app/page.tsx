@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getFeaturedEventsFirestore, getAllVenues } from '@/lib/data';
-import type { Event, Venue } from '@/lib/types';
+import type { Event, Venue, EventOccurrence } from '@/lib/types';
 import { format } from 'date-fns';
 
 type EventWithVenue = Event & { venue?: Venue };
@@ -18,12 +18,12 @@ async function getFeaturedEvents(): Promise<EventWithVenue[]> {
   }));
 }
 
-function formatDate(dateString: string, timeString: string) {
+function formatOccurrence(occurrence: EventOccurrence) {
     try {
-        const date = new Date(`${dateString}T${timeString}`);
-        return format(date, "MMMM d, yyyy 'at' hh:mm a");
+        const date = new Date(`${occurrence.date}T${occurrence.time}`);
+        return format(date, "MMMM d, yyyy 'at' h:mm a");
     } catch (e) {
-        return `${dateString} at ${timeString}`;
+        return `${occurrence.date} at ${occurrence.time}`;
     }
 }
 
@@ -62,7 +62,9 @@ export default async function Home() {
                 <CardContent className="p-6">
                   <h3 className="font-headline text-2xl font-bold text-primary">{event.title}</h3>
                   <p className="text-muted-foreground mt-2">{event.venue?.name}</p>
-                  <p className="text-muted-foreground text-sm mt-1">{formatDate(event.date, event.time)}</p>
+                  {event.occurrences && event.occurrences.length > 0 && (
+                    <p className="text-muted-foreground text-sm mt-1">{formatOccurrence(event.occurrences[0])}</p>
+                  )}
                   <Button variant="link" asChild className="mt-4">
                     <Link href={event.url || '#'}>Details</Link>
                   </Button>

@@ -33,40 +33,73 @@ export async function getVenue(id: string): Promise<Venue | undefined> {
 // --- Event Functions ---
 
 export async function getAllEvents(): Promise<Event[]> {
-  const snapshot = await getDocs(query(eventsCollection, orderBy("date", "desc")));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+  const snapshot = await getDocs(eventsCollection);
+  const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+  
+  // Sort events by the date of their first occurrence
+  events.sort((a, b) => {
+    if (!a.occurrences || a.occurrences.length === 0) return 1;
+    if (!b.occurrences || b.occurrences.length === 0) return -1;
+    const dateA = parseDateString(a.occurrences[0].date);
+    const dateB = parseDateString(b.occurrences[0].date);
+    return dateA.getTime() - dateB.getTime();
+  });
+
+  return events;
 }
 
 export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
     const allEvents = await getAllEvents();
-    const filteredByStatus = allEvents.filter(event => event.status === status);
-    // We need to re-sort to maintain the ascending order for the calendar view.
-    return filteredByStatus.sort((a, b) => parseDateString(a.date).getTime() - parseDateString(b.date).getTime());
+    return allEvents.filter(event => event.status === status);
 }
 
 export async function getFeaturedEventsFirestore(count: number): Promise<Event[]> {
     const allEvents = await getAllEvents();
     const approvedEvents = allEvents.filter(event => event.status === "approved");
-    
-    // Sort events by date ascending to get the soonest first
-    const sortedEvents = approvedEvents.sort((a, b) => parseDateString(a.date).getTime() - parseDateString(b.date).getTime());
 
     const today = startOfToday();
     const thirtyDaysFromNow = addDays(today, 30);
 
-    const featuredEvents = sortedEvents.filter(event => {
-        try {
-            const eventDate = parseDateString(event.date);
+    const eventsWithUpcomingOccurrences = approvedEvents
+        .map(event => {
+            if (!event.occurrences || event.occurrences.length === 0) {
+                return null;
+            }
             
-            // Check if the event date is between today and 30 days from now.
-            return eventDate >= today && eventDate <= thirtyDaysFromNow;
-        } catch (e) {
-            console.error(`Invalid date format for event ${event.id}: ${event.date}`);
-            return false;
-        }
+            const upcomingOccurrences = event.occurrences.filter(occ => {
+                try {
+                    const eventDate = parseDateString(occ.date);
+                    return eventDate >= today && eventDate <= thirtyDaysFromNow;
+                } catch (e) {
+                    return false;
+                }
+            });
+
+            if (upcomingOccurrences.length > 0) {
+                // Sort the occurrences for this event to find the soonest one
+                upcomingOccurrences.sort((a, b) => {
+                    const timeA = parseDateString(a.date).getTime();
+                    const timeB = parseDateString(b.date).getTime();
+                    if (timeA === timeB) {
+                        return a.time.localeCompare(b.time);
+                    }
+                    return timeA - timeB;
+                });
+                // Return a new event object with only the upcoming occurrences
+                return { ...event, occurrences: upcomingOccurrences };
+            }
+            return null;
+        })
+        .filter((event): event is Event => event !== null);
+
+    // Sort the events themselves by their soonest upcoming occurrence
+    eventsWithUpcomingOccurrences.sort((a, b) => {
+        const firstDateA = parseDateString(a.occurrences[0].date);
+        const firstDateB = parseDateString(b.occurrences[0].date);
+        return firstDateA.getTime() - firstDateB.getTime();
     });
 
-    return featuredEvents.slice(0, count);
+    return eventsWithUpcomingOccurrences.slice(0, count);
 }
 
 

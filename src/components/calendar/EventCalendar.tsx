@@ -1,5 +1,6 @@
 'use client';
 
+import type { ExpandedCalendarEvent } from '@/app/calendar/page';
 import { useState, useMemo, useEffect } from 'react';
 import {
   format,
@@ -22,12 +23,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import type { Event, Venue, EventType } from '@/lib/types';
+import type { Venue, EventType } from '@/lib/types';
 import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
-
-type EventWithVenue = Event & { venue?: Venue };
 
 function getContrastingTextColor(hsl: string): string {
     if (!hsl) return '#ffffff';
@@ -44,10 +43,8 @@ function getContrastingTextColor(hsl: string): string {
         g = 0,
         b = 0;
 
-    if (0 <= h && h < 60) {
+    if (0 <= h && h < 120) {
         r = c; g = x; b = 0;
-    } else if (60 <= h && h < 120) {
-        r = x; g = c; b = 0;
     } else if (120 <= h && h < 180) {
         r = 0; g = c; b = x;
     } else if (180 <= h && h < 240) {
@@ -66,17 +63,18 @@ function getContrastingTextColor(hsl: string): string {
     return luminance > 0.5 ? '#000000' : '#ffffff';
 }
 
-export function EventCalendar({ events, venues }: { events: EventWithVenue[], venues: Venue[] }) {
+export function EventCalendar({ events, venues }: { events: ExpandedCalendarEvent[], venues: Venue[] }) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const isMobile = useIsMobile();
-
+  
   useEffect(() => {
     setIsClient(true);
   }, []);
+  
+  const isMobile = useIsMobile();
   
   const eventTypes = useMemo(() => Array.from(new Set(events.map(e => e.type))) as EventType[], [events]);
 
@@ -89,7 +87,7 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
   }, [events, selectedVenues, selectedTypes]);
   
   const eventsByDate = useMemo(() => {
-    const map = new Map<string, EventWithVenue[]>();
+    const map = new Map<string, ExpandedCalendarEvent[]>();
     filteredEvents.forEach(event => {
       const dateKey = format(new Date(event.date), 'yyyy-MM-dd');
       if (!map.has(dateKey)) {
@@ -129,6 +127,14 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
     return eachDayOfInterval({ start, end: endOfWeek(new Date()) }).map(d => format(d, 'EE'));
   }, []);
 
+  const daysWithEvents = useMemo(() => {
+    return Array.from(eventsByDate.keys()).map(dateStr => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    });
+  }, [eventsByDate]);
+
+  // FIX: Early return for server-side rendering moved here, after all hooks have been called.
   if (!isClient) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
@@ -202,13 +208,6 @@ export function EventCalendar({ events, venues }: { events: EventWithVenue[], ve
       </div>
     </Card>
   );
-
-  const daysWithEvents = useMemo(() => {
-    return Array.from(eventsByDate.keys()).map(dateStr => {
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day);
-    });
-  }, [eventsByDate]);
 
   const MobileCalendar = () => (
     <>

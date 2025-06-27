@@ -8,12 +8,16 @@ export type EventStatus = 'pending' | 'approved' | 'denied';
 
 export type EventType = 'Play' | 'Musical' | 'Improv' | 'Special Event' | string; // Allow string for migrated data
 
+export type EventOccurrence = {
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+};
+
 export type Event = {
   id: string;
   title: string;
   description: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM
+  occurrences: EventOccurrence[];
   venueId: string;
   type: EventType;
   status: EventStatus;

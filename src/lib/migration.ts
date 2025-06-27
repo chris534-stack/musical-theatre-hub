@@ -104,57 +104,52 @@ async function migrateVenues() {
 }
 
 /**
- * Migrates events from Supabase to Firestore, flattening occurrences.
+ * Migrates events from Supabase to Firestore, grouping occurrences.
  */
 async function migrateEvents() {
-    const events = await fetchFromSupabase('events');
-    const collectionRef = firestore.collection('events');
-    const batch = firestore.batch();
-    let firestoreEventCount = 0;
+  const events = await fetchFromSupabase('events');
+  const collectionRef = firestore.collection('events');
+  const batch = firestore.batch();
+  let firestoreEventCount = 0;
 
-    console.log(`Transforming and batching ${events.length} event records for Firestore...`);
+  console.log(`Transforming and batching ${events.length} event records for Firestore...`);
 
-    for (const event of events) {
-        // Fallback to 'dates' if 'event_occurrences' is null/empty
-        const occurrences = event.event_occurrences || event.dates;
+  for (const event of events) {
+    const occurrencesSource = event.event_occurrences || event.dates || [];
+    
+    const occurrences = occurrencesSource.map((occ: any) => {
+        let date = '';
+        try {
+            date = occ.date ? new Date(occ.date).toISOString().split('T')[0] : '';
+        } catch(e) { /* ignore invalid dates */ }
 
-        if (occurrences && Array.isArray(occurrences)) {
-            for (const occurrence of occurrences) {
-                // Ensure we can parse the date and time
-                if (occurrence.date && occurrence.time) {
-                    const newDocRef = collectionRef.doc(); // Firestore generates a new unique ID
-                    
-                    // Basic validation/parsing for date and time
-                    let eventDate = '';
-                    try {
-                        eventDate = new Date(occurrence.date).toISOString().split('T')[0];
-                    } catch (e) {
-                        console.warn(`Skipping occurrence with invalid date for event '${event.title}':`, occurrence.date);
-                        continue;
-                    }
-
-                    const firestoreEvent = {
-                        id: newDocRef.id,
-                        title: event.title,
-                        description: event.description || '',
-                        date: eventDate, // Format: YYYY-MM-DD
-                        time: occurrence.time, // Format: HH:MM
-                        venueId: String(event.venue_id),
-                        type: event.category || 'Special Event',
-                        status: 'approved', // Default old events to approved
-                        url: event.ticket_link || '',
-                    };
-                    batch.set(newDocRef, firestoreEvent);
-                    firestoreEventCount++;
-                } else {
-                     console.warn(`Skipping occurrence with missing date/time for event '${event.title}':`, occurrence);
-                }
-            }
+        return {
+            date: date,
+            time: occ.time || ''
         }
-    }
+    }).filter((occ: any) => occ.date && occ.time);
 
-    await batch.commit();
-    console.log(`Successfully wrote ${firestoreEventCount} flattened event records to Firestore 'events' collection.`);
+    if (occurrences.length > 0) {
+        const newDocRef = collectionRef.doc(); // Firestore generates a new unique ID
+        const firestoreEvent = {
+            id: newDocRef.id,
+            title: event.title,
+            description: event.description || '',
+            occurrences: occurrences,
+            venueId: String(event.venue_id),
+            type: event.category || 'Special Event',
+            status: 'approved', // Default old events to approved
+            url: event.ticket_link || '',
+        };
+        batch.set(newDocRef, firestoreEvent);
+        firestoreEventCount++;
+    } else {
+        console.warn(`Skipping event '${event.title}' with no valid occurrences.`);
+    }
+  }
+
+  await batch.commit();
+  console.log(`Successfully wrote ${firestoreEventCount} event records to Firestore 'events' collection.`);
 }
 
 

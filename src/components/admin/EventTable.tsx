@@ -24,8 +24,21 @@ import type { Event, Venue, EventStatus } from '@/lib/types';
 import { updateEventStatusAction } from '@/lib/actions';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 type EventWithVenue = Event & { venue?: Venue };
+
+function formatFirstOccurrence(event: Event): string {
+    if (!event.occurrences || event.occurrences.length === 0) {
+        return 'No performances';
+    }
+    const firstDate = new Date(event.occurrences[0].date);
+    const datePart = format(firstDate, 'MMM d, yyyy');
+    if (event.occurrences.length > 1) {
+        return `Starts ${datePart} (${event.occurrences.length} total)`;
+    }
+    return `${datePart} at ${event.occurrences[0].time}`;
+}
 
 export function EventTable({ events, venues }: { events: EventWithVenue[], venues: Venue[] }) {
   const [isPending, startTransition] = useTransition();
@@ -69,7 +82,7 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Venue</TableHead>
-              <TableHead>Date & Time</TableHead>
+              <TableHead>Performances</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right w-[100px]">Actions</TableHead>
             </TableRow>
@@ -79,7 +92,7 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
               <TableRow key={event.id}>
                 <TableCell className="font-medium">{event.title}</TableCell>
                 <TableCell>{event.venue?.name || 'N/A'}</TableCell>
-                <TableCell>{event.date} at {event.time}</TableCell>
+                <TableCell>{formatFirstOccurrence(event)}</TableCell>
                 <TableCell>{getStatusBadge(event.status)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
