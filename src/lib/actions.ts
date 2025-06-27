@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -12,7 +13,7 @@ export async function revalidateAdminPaths() {
   revalidatePath('/');
 }
 
-export async function scrapeEventAction(url: string, screenshotDataUri: string) {
+export async function scrapeEventAction(url: string | undefined, screenshotDataUri: string) {
   try {
     const scrapedData = await scrapeEventDetails({ url, screenshotDataUri });
 

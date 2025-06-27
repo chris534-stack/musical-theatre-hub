@@ -13,7 +13,7 @@ import { Loader2, Paperclip, ClipboardPaste } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
-  url: z.string().url({ message: 'Please enter a valid URL.' }),
+  url: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
   screenshot: z.any()
     .refine((files) => files?.length == 1, "A screenshot image is required.")
     .refine((files) => files?.[0]?.type.startsWith("image/"), "Only image files are accepted."),
@@ -41,7 +41,7 @@ export function ScraperForm({ onSuccess }: { onSuccess?: () => void }) {
     });
 
     startTransition(async () => {
-      const result = await scrapeEventAction(values.url, screenshotDataUri);
+      const result = await scrapeEventAction(values.url || undefined, screenshotDataUri);
       if (result.success) {
         toast({
           title: 'Scraping successful',
@@ -87,7 +87,7 @@ export function ScraperForm({ onSuccess }: { onSuccess?: () => void }) {
           name="url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Event Source URL</FormLabel>
+              <FormLabel>Event Source URL (Optional)</FormLabel>
               <FormControl>
                 <Input placeholder="https://example.com/events/the-new-play" {...field} />
               </FormControl>
