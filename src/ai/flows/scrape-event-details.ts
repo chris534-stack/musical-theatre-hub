@@ -13,6 +13,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getAllVenues } from '@/lib/data';
 
 const ScrapeEventDetailsInputSchema = z.object({
   url: z.string().url().describe('The URL of the event page to scrape.'),
@@ -24,8 +25,8 @@ const ScrapeEventDetailsOutputSchema = z.object({
   occurrences: z.array(z.object({
       date: z.string().describe("The date of the performance in YYYY-MM-DD format."),
       time: z.string().describe("The time of the performance in HH:mm 24-hour format."),
-  })).describe('A list of all dates and times for the event performances.'),
-  venue: z.string().describe('The venue of the event.'),
+  })).describe('A list of all dates and times for the event performances. Only include performances that have not yet occurred.'),
+  venue: z.string().describe('The venue of the event. Must match a name from the getKnownVenues tool.'),
   description: z.string().describe('A detailed description of the event.'),
 });
 export type ScrapeEventDetailsOutput = z.infer<typeof ScrapeEventDetailsOutputSchema>;
@@ -34,36 +35,35 @@ export async function scrapeEventDetails(input: ScrapeEventDetailsInput): Promis
   return scrapeEventDetailsFlow(input);
 }
 
-const determineVenueRelevanceTool = ai.defineTool({
-  name: 'determineVenueRelevance',
-  description: 'Determines if the venue information on a page is relevant to the event being scraped.',
-  inputSchema: z.object({
-    venueName: z.string().describe('The name of the venue extracted from the page.'),
-    pageContent: z.string().describe('A snippet of the page content containing the venue information.'),
-  }),
-  outputSchema: z.boolean().describe('True if the venue is relevant to the event, false otherwise.'),
-}, async (input) => {
-  // TODO: Implement the logic to determine venue relevance. This could involve checking keywords, proximity to event details, etc.
-  // For now, always return true.
-  return true;
+const getKnownVenuesTool = ai.defineTool({
+  name: 'getKnownVenues',
+  description: 'Gets a list of all known theatre venues that the website tracks.',
+  inputSchema: z.object({}),
+  outputSchema: z.array(z.string()).describe('An array of known venue names.'),
+}, async () => {
+  const venues = await getAllVenues();
+  return venues.map(v => v.name);
 });
 
 const scrapeEventDetailsPrompt = ai.definePrompt({
   name: 'scrapeEventDetailsPrompt',
   input: {schema: ScrapeEventDetailsInputSchema},
   output: {schema: ScrapeEventDetailsOutputSchema},
-  tools: [determineVenueRelevanceTool],
-  prompt: `You are an expert event detail extractor.
+  tools: [getKnownVenuesTool],
+  prompt: `You are an expert event detail extractor for the 'Our Stage, Eugene' website.
+Your goal is to analyze the provided URL and determine if there are upcoming, relevant events to add to the website's calendar.
 
-  Given the URL for an event, extract the following details:
-  - Title: The title of the event.
-  - Occurrences: A list of all performance dates and times for the event. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual date.
-  - Venue: The venue of the event. Use the determineVenueRelevance tool to validate the venue.
-  - Description: A detailed description of the event.
+Here are the steps you must follow:
+1.  Use the getKnownVenues tool to get a list of all theatre venues the website is interested in.
+2.  Analyze the content of the page at the URL: {{{url}}}.
+3.  Based on the content, extract the following details for any valid, upcoming events.
+    - Title: The title of the event.
+    - Occurrences: A list of all performance dates and times. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
+    - Venue: The name of the event's venue. This MUST EXACTLY match one of the venue names provided by the getKnownVenues tool.
+    - Description: A detailed description of the event.
+4.  If the page does not contain information about an event at one of the known venues, or if all events listed are in the past, you should return the 'title' and 'description' as empty strings and 'occurrences' as an empty array.
 
-  URL: {{{url}}}
-
-  Return the extracted details in JSON format.
+Return the extracted details in the specified JSON format.
   `,
 });
 

@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, limit, orderBy, getCountFromServer } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Event, Venue, EventStatus } from './types';
 import { startOfToday, addDays } from 'date-fns';
@@ -128,4 +128,17 @@ export async function updateEvent(id: string, updates: Partial<Event>): Promise<
 export async function deleteEvent(id: string): Promise<void> {
   const eventDoc = doc(db, 'events', id);
   await deleteDoc(eventDoc);
+}
+
+export async function eventExists(title: string, venueId: string): Promise<boolean> {
+  if (!venueId) return false;
+
+  const q = query(
+    eventsCollection,
+    where('title', '==', title),
+    where('venueId', '==', venueId)
+  );
+  
+  const snapshot = await getCountFromServer(q);
+  return snapshot.data().count > 0;
 }
