@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AddEventButton } from '@/components/admin/AddEventButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { EventEditorModal } from '@/components/admin/EventEditorModal';
+import type { DayContentProps } from 'react-day-picker';
 
 function getContrastingTextColor(color: string): string {
     if (!color) return '#ffffff';
@@ -190,14 +191,6 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     return eachDayOfInterval({ start, end: endOfWeek(new Date()) }).map(d => format(d, 'EE'));
   }, []);
 
-  const daysWithEvents = useMemo(() => {
-    return Array.from(eventsByDate.keys()).map(dateStr => {
-        // Construct a new Date in the local timezone to avoid date shifts
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day);
-    });
-  }, [eventsByDate]);
-
   if (!isClient) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
@@ -275,42 +268,43 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     </Card>
   );
 
-  const MobileCalendar = () => (
-    <>
-      <style>{`
-        .has-event button {
-          position: relative;
-        }
-        .has-event button::after {
-          content: '';
-          position: absolute;
-          bottom: 4px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background-color: hsl(var(--primary));
-        }
-        .has-event button.day_today::after {
-          background-color: hsl(var(--accent-foreground));
-        }
-        .has-event button.day_selected::after,
-        .has-event button.day_selected:hover::after,
-        .has-event button.day_selected:focus::after {
-          background-color: hsl(var(--primary-foreground));
-        }
-      `}</style>
+  const MobileCalendar = () => {
+    function CustomDayContent(props: DayContentProps) {
+      const { date } = props;
+      const dateKey = format(date, 'yyyy-MM-dd');
+      const dayEvents = eventsByDate.get(dateKey) || [];
+      const uniqueVenueColors = Array.from(
+        new Set(dayEvents.map((e) => e.venue?.color).filter(Boolean) as string[])
+      );
+
+      return (
+        <>
+          {format(date, 'd')}
+          {uniqueVenueColors.length > 0 && (
+            <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center space-x-1">
+              {uniqueVenueColors.slice(0, 3).map((color, index) => (
+                <span
+                  key={index}
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }
+    
+    return (
       <Calendar
         mode="single"
         selected={selectedDate}
         onSelect={setSelectedDate}
         className="w-full rounded-md border"
-        modifiers={{ hasEvent: daysWithEvents }}
-        modifiersClassNames={{ hasEvent: 'has-event' }}
+        components={{ DayContent: CustomDayContent }}
       />
-    </>
-  );
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
