@@ -321,7 +321,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 onClick={() => handleCardClick(event.id)}
                 className={cn(
                   "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden relative",
-                  isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-44"
+                  isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-48"
                 )}
                 style={{ borderLeft: `4px solid ${event.venue?.color || 'transparent'}` }}
               >
