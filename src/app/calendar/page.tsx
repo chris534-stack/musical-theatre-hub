@@ -14,8 +14,11 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
   const allVenues = await getAllVenues();
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
   
-  const expandedEvents: ExpandedCalendarEvent[] = approvedEvents.flatMap(event => 
-    event.occurrences.map(occurrence => {
+  const expandedEvents: ExpandedCalendarEvent[] = approvedEvents.flatMap(event => {
+    if (!event.occurrences) {
+      return [];
+    }
+    return event.occurrences.map(occurrence => {
         const { occurrences, ...restOfEvent } = event;
         return {
             ...restOfEvent,
@@ -26,7 +29,7 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
             venue: venuesMap.get(event.venueId)
         };
     })
-  );
+  });
 
   // Sort all occurrences chronologically for the event list view
   expandedEvents.sort((a, b) => {
