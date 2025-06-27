@@ -1,18 +1,23 @@
 'use client';
 
 // This is a workaround for a known issue with react-beautiful-dnd and React 18 Strict Mode.
-// See: https://github.com/atlassian/react-beautiful-dnd/issues/2396
+// See: https://github.com/atlassian/react-beautiful-dnd/issues/2396#issuecomment-1195648513
 import { useEffect, useState } from 'react';
 import { Droppable, type DroppableProps } from 'react-beautiful-dnd';
 
 export const StrictModeDroppable = ({ children, ...props }: DroppableProps) => {
-  const [isMounted, setIsMounted] = useState(false);
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    const animation = requestAnimationFrame(() => setEnabled(true));
+
+    return () => {
+      cancelAnimationFrame(animation);
+      setEnabled(false);
+    };
   }, []);
 
-  if (!isMounted) {
+  if (!enabled) {
     return null;
   }
   
