@@ -12,11 +12,10 @@ export async function takeScreenshot(url: string): Promise<string> {
   let browser;
   try {
     // Launch puppeteer. The 'new' headless mode is more modern.
-    // --no-sandbox and --disable-setuid-sandbox are often required in containerized environments.
+    // --no-sandbox, --disable-setuid-sandbox and --disable-gpu are often required in containerized environments.
     browser = await puppeteer.launch({
       headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      channel: 'chrome-headless-shell',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
     });
 
     const page = await browser.newPage();
