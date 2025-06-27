@@ -20,8 +20,17 @@ async function getFeaturedEvents(): Promise<EventWithVenue[]> {
 
 function formatOccurrence(occurrence: EventOccurrence) {
     try {
-        const date = new Date(`${occurrence.date}T${occurrence.time}`);
-        return format(date, "MMMM d, yyyy 'at' h:mm a");
+        // Manually parse date components to avoid timezone shift issues.
+        // new Date('YYYY-MM-DD') can be interpreted as UTC midnight.
+        const [year, month, day] = occurrence.date.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+
+        if (occurrence.time) {
+            const [hour, minute] = occurrence.time.split(':').map(Number);
+            date.setHours(hour, minute);
+            return format(date, "MMMM d, yyyy 'at' h:mm a");
+        }
+        return format(date, "MMMM d, yyyy");
     } catch (e) {
         return `${occurrence.date} at ${occurrence.time}`;
     }

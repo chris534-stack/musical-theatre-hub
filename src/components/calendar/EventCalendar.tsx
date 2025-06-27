@@ -89,7 +89,9 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const eventsByDate = useMemo(() => {
     const map = new Map<string, ExpandedCalendarEvent[]>();
     filteredEvents.forEach(event => {
-      const dateKey = format(new Date(event.date), 'yyyy-MM-dd');
+      // Use the 'YYYY-MM-DD' string directly as the key.
+      // Parsing it with `new Date()` can cause timezone shifts.
+      const dateKey = event.date;
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
@@ -129,12 +131,12 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
 
   const daysWithEvents = useMemo(() => {
     return Array.from(eventsByDate.keys()).map(dateStr => {
+        // Construct a new Date in the local timezone to avoid date shifts
         const [year, month, day] = dateStr.split('-').map(Number);
         return new Date(year, month - 1, day);
     });
   }, [eventsByDate]);
 
-  // FIX: Early return for server-side rendering moved here, after all hooks have been called.
   if (!isClient) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">

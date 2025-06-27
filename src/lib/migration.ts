@@ -77,14 +77,14 @@ async function migrateVenues() {
   const batch = firestore.batch();
 
   const venueColors = [
-    'hsl(262, 47%, 50%)', // Muted Purple
-    'hsl(217, 56%, 51%)', // Strong Blue
-    'hsl(170, 45%, 45%)', // Teal
-    'hsl(350, 60%, 55%)', // Muted Red/Pink
-    'hsl(24, 84%, 55%)',  // Orange
-    'hsl(195, 53%, 45%)', // Cerulean
-    'hsl(100, 35%, 45%)', // Muted Green
-    'hsl(30, 55%, 50%)'   // Brownish Orange
+      'hsl(262, 47%, 50%)', // Muted Purple
+      'hsl(217, 56%, 51%)', // Strong Blue
+      'hsl(170, 45%, 45%)', // Teal
+      'hsl(350, 60%, 55%)', // Muted Red/Pink
+      'hsl(24, 84%, 55%)',  // Orange
+      'hsl(195, 53%, 45%)', // Cerulean
+      'hsl(100, 35%, 45%)', // Muted Green
+      'hsl(30, 55%, 50%)'   // Brownish Orange
   ];
   let colorIndex = 0;
 
@@ -95,7 +95,7 @@ async function migrateVenues() {
       id: String(venue.id),
       name: venue.name,
       // address and contact_email are ignored as they are not in the new schema.
-      // A random color is added as it's required by the new UI.
+      // A specific color is added as it's required by the new UI.
       color: venueColors[colorIndex % venueColors.length],
     };
     batch.set(docRef, firestoreVenue);
@@ -123,14 +123,19 @@ async function migrateEvents() {
     const occurrences = occurrencesSource.map((occ: any) => {
         let date = '';
         try {
-            date = occ.date ? new Date(occ.date).toISOString().split('T')[0] : '';
+            if (occ.date) {
+                const d = new Date(occ.date);
+                if (!isNaN(d.getTime())) { // Check if date is valid
+                     date = d.toISOString().split('T')[0];
+                }
+            }
         } catch(e) { /* ignore invalid dates */ }
 
         return {
             date: date,
             time: occ.time || ''
         }
-    }).filter((occ: any) => occ.date);
+    }).filter((occ: any) => occ.date); // Only keep occurrences that have a valid date
 
     if (occurrences.length > 0) {
         const newDocRef = collectionRef.doc(); // Firestore generates a new unique ID
@@ -155,38 +160,6 @@ async function migrateEvents() {
   console.log(`Successfully wrote ${firestoreEventCount} event records to Firestore 'events' collection.`);
 }
 
-
-/**
- * Migrates ideas from Supabase to Firestore.
- */
-async function migrateIdeas() {
-  const ideas = await fetchFromSupabase('ideas');
-  const collectionRef = firestore.collection('ideas');
-  const batch = firestore.batch();
-
-  console.log(`Transforming and batching ${ideas.length} idea records for Firestore...`);
-  ideas.forEach(idea => {
-    // Use the Supabase UUID as the Firestore document ID
-    const docRef = collectionRef.doc(idea.id);
-    const firestoreIdea = {
-      id: idea.id,
-      idea: idea.title || '',
-      showType: idea.idea_type || '',
-      targetAudience: '', // Not available in Supabase data
-      communityFit: idea.description || '', // Mapping description to communityFit
-      userName: idea.name,
-      userEmail: idea.email,
-      timestamp: admin.firestore.Timestamp.fromDate(new Date(idea.created_at)),
-      // userId is not available in Supabase data
-    };
-    batch.set(docRef, firestoreIdea);
-  });
-
-  await batch.commit();
-  console.log(`Successfully wrote ${ideas.length} records to Firestore 'ideas' collection.`);
-}
-
-
 /**
  * Main migration function.
  * IMPORTANT: This script is now configured to ONLY migrate events.
@@ -195,8 +168,8 @@ async function migrateIdeas() {
 async function migrate() {
   console.log("Starting Supabase to Firestore migration...");
   try {
-    console.log("Migrating venues with new colors...");
-    await migrateVenues();
+    // console.log("Migrating venues with new colors...");
+    // await migrateVenues();
     
     console.log("Migrating events with updated occurrence logic...");
     await migrateEvents();
