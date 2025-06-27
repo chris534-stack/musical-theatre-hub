@@ -39,7 +39,7 @@ async function runScraperTest(url: string) {
     console.log(JSON.stringify(scrapedData, null, 2));
     console.log('--------------------------------------------------');
 
-    if (!scrapedData.title || scrapedData.occurrences.length === 0) {
+    if (!scrapedData.title || !scrapedData.occurrences || scrapedData.occurrences.length === 0) {
       console.log('🏁 RESULT: No upcoming events found at that URL for a known venue. Halting.');
       return;
     }
@@ -66,7 +66,7 @@ async function runScraperTest(url: string) {
     console.log('📝 [4/4] Preparing to write to Firestore...');
     const newEvent: Omit<Event, 'id'> = {
       title: scrapedData.title,
-      description: scrapedData.description,
+      description: scrapedData.description || '',
       occurrences: scrapedData.occurrences,
       venueId: venue.id,
       type: 'Special Event', // Default type for scraped events

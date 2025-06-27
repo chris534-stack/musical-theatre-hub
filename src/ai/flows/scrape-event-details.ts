@@ -21,13 +21,13 @@ const ScrapeEventDetailsInputSchema = z.object({
 export type ScrapeEventDetailsInput = z.infer<typeof ScrapeEventDetailsInputSchema>;
 
 const ScrapeEventDetailsOutputSchema = z.object({
-  title: z.string().describe('The title of the event.'),
+  title: z.string().optional().describe('The title of the event.'),
   occurrences: z.array(z.object({
       date: z.string().describe("The date of the performance in YYYY-MM-DD format."),
       time: z.string().describe("The time of the performance in HH:mm 24-hour format."),
-  })).describe('A list of all dates and times for the event performances. Only include performances that have not yet occurred.'),
-  venue: z.string().describe('The venue of the event. Must match a name from the getKnownVenues tool.'),
-  description: z.string().describe('A detailed description of the event.'),
+  })).optional().describe('A list of all dates and times for the event performances. Only include performances that have not yet occurred.'),
+  venue: z.string().optional().describe('The venue of the event. Must match a name from the getKnownVenues tool.'),
+  description: z.string().optional().describe('A detailed description of the event.'),
 });
 export type ScrapeEventDetailsOutput = z.infer<typeof ScrapeEventDetailsOutputSchema>;
 
@@ -61,7 +61,7 @@ Here are the steps you must follow:
     - Occurrences: A list of all performance dates and times. Pay close attention to dates and times mentioned in text and **dates and times displayed in images**. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
     - Venue: The name of the event's venue. This MUST EXACTLY match one of the venue names provided by the getKnownVenues tool. Look for venue names in text and **potentially in images (e.g., venue logos or names on posters)**.
     - Description: A detailed description of the event. Combine information from text and any descriptive text found in images.
-4.  If the page does not contain information about an event at one of the known venues, or if all events listed are in the past, you should return an object with empty strings for 'title' and 'description', and an empty array for 'occurrences'.
+4.  If the page does not contain information about an event at one of the known venues, or if all events listed are in the past, you must return an empty object: {}.
   `,
 });
 

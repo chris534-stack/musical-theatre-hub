@@ -16,7 +16,7 @@ export async function scrapeEventAction(url: string) {
   try {
     const scrapedData = await scrapeEventDetails({ url });
 
-    if (!scrapedData.title || scrapedData.occurrences.length === 0) {
+    if (!scrapedData.title || !scrapedData.occurrences || scrapedData.occurrences.length === 0) {
       return { success: false, message: 'No upcoming events found at that URL for a known venue.' };
     }
 
@@ -36,7 +36,7 @@ export async function scrapeEventAction(url: string) {
 
     const newEvent: Omit<Event, 'id'> = {
       title: scrapedData.title,
-      description: scrapedData.description,
+      description: scrapedData.description || '',
       occurrences: scrapedData.occurrences,
       venueId: venueId,
       type: 'Special Event',
