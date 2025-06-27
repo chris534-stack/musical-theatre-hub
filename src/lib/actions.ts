@@ -144,3 +144,28 @@ export async function updateNewsArticleOrderAction(orderedArticleIds: string[]) 
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
+export async function addListingRequestAction(data: {
+    organizationName: string;
+    contactName: string;
+    contactEmail: string;
+    websiteUrl?: string;
+    message?: string;
+}) {
+    try {
+        const requestData = {
+            ...data,
+            status: 'new',
+            createdAt: new Date(),
+        };
+
+        await adminDb.collection('listingRequests').add(requestData);
+        
+        return { success: true, message: 'Request submitted successfully.' };
+
+    } catch (error) {
+        console.error('Failed to submit listing request:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
