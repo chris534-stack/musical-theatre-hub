@@ -55,7 +55,7 @@ Your goal is to analyze the provided URL and determine if there are upcoming, re
 
 Here are the steps you must follow:
 1.  Use the getKnownVenues tool to get a list of all theatre venues the website is interested in.
-2.  Analyze the content of the page at the URL: {{{url}}}.
+2.  Thoroughly browse and analyze the entire content of the page at the provided URL to find event information. URL: {{url}}
 3.  Based on the content, extract the following details for any valid, upcoming events.
     - Title: The title of the event.
     - Occurrences: A list of all performance dates and times. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
