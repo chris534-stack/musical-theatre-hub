@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getFeaturedEventsFirestore, getAllVenues } from '@/lib/data';
 import type { Event, Venue, EventOccurrence } from '@/lib/types';
 import { format } from 'date-fns';
@@ -67,17 +67,21 @@ export default async function Home() {
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {featuredEvents.map(event => (
-              <Card key={event.id} className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
-                <CardContent className="p-6">
-                  <h3 className="font-headline text-2xl font-bold text-primary">{event.title}</h3>
-                  <p className="text-muted-foreground mt-2">{event.venue?.name}</p>
-                  {event.occurrences && event.occurrences.length > 0 && (
-                    <p className="text-muted-foreground text-sm mt-1">{formatOccurrence(event.occurrences[0])}</p>
-                  )}
-                  <Button variant="link" asChild className="mt-4">
+              <Card key={event.id} className="flex flex-col text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <CardHeader className="flex-grow flex flex-col justify-center">
+                  <CardTitle className="font-headline font-bold text-primary">{event.title}</CardTitle>
+                  <CardDescription>
+                    {event.venue?.name}
+                    {event.occurrences && event.occurrences.length > 0 && (
+                      <p className="mt-2">{formatOccurrence(event.occurrences[0])}</p>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter className="justify-center pt-0">
+                  <Button variant="link" asChild>
                     <Link href={event.url || '#'}>Details</Link>
                   </Button>
-                </CardContent>
+                </CardFooter>
               </Card>
             ))}
           </div>
