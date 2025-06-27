@@ -11,9 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { addEventFromFormAction } from '@/lib/actions';
+import { addEventFromFormAction, updateEventAction } from '@/lib/actions';
 import type { ScrapeEventDetailsOutput } from '@/ai/flows/scrape-event-details';
-import type { Venue } from '@/lib/types';
+import type { Venue, Event } from '@/lib/types';
 import { Loader2, PlusCircle, XCircle } from 'lucide-react';
 
 const eventFormSchema = z.object({
@@ -31,27 +31,47 @@ const eventFormSchema = z.object({
 type EventFormValues = z.infer<typeof eventFormSchema>;
 
 interface EventEditorFormProps {
-    initialData: ScrapeEventDetailsOutput & { sourceUrl?: string };
+    initialData?: ScrapeEventDetailsOutput & { sourceUrl?: string };
+    eventToEdit?: Event;
     venues: Venue[];
     onSuccess: () => void;
 }
 
-export function EventEditorForm({ initialData, venues, onSuccess }: EventEditorFormProps) {
+export function EventEditorForm({ initialData, eventToEdit, venues, onSuccess }: EventEditorFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const isEditMode = !!eventToEdit;
 
-  const foundVenue = venues.find(v => v.name === initialData.venue);
+  const getInitialValues = () => {
+    if (isEditMode) {
+        return {
+            title: eventToEdit.title || '',
+            description: eventToEdit.description || '',
+            url: eventToEdit.url || '',
+            venueId: eventToEdit.venueId || '',
+            type: eventToEdit.type || 'Special Event',
+            occurrences: eventToEdit.occurrences?.length ? eventToEdit.occurrences : [{ date: '', time: '' }],
+        };
+    }
+    if (initialData) {
+        const foundVenue = venues.find(v => v.name === initialData.venue);
+        return {
+            title: initialData.title || '',
+            description: initialData.description || '',
+            url: initialData.sourceUrl || '',
+            venueId: foundVenue?.id || '',
+            type: 'Special Event',
+            occurrences: initialData.occurrences?.length ? initialData.occurrences : [{ date: '', time: '' }],
+        };
+    }
+    return {
+        title: '', description: '', url: '', venueId: '', type: 'Special Event', occurrences: [{ date: '', time: '' }],
+    };
+  };
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
-    defaultValues: {
-      title: initialData.title || '',
-      description: initialData.description || '',
-      url: initialData.sourceUrl || '',
-      venueId: foundVenue?.id || '',
-      type: 'Special Event', // Default type
-      occurrences: initialData.occurrences?.length ? initialData.occurrences : [{ date: '', time: '' }],
-    },
+    defaultValues: getInitialValues(),
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -61,10 +81,13 @@ export function EventEditorForm({ initialData, venues, onSuccess }: EventEditorF
 
   const onSubmit = (data: EventFormValues) => {
     startTransition(async () => {
-      const result = await addEventFromFormAction(data);
+      const result = isEditMode
+        ? await updateEventAction(eventToEdit.id, data)
+        : await addEventFromFormAction(data);
+
       if (result.success) {
         toast({
-          title: 'Event Added',
+          title: isEditMode ? 'Event Updated' : 'Event Added',
           description: result.message,
         });
         onSuccess();
@@ -215,11 +238,10 @@ export function EventEditorForm({ initialData, venues, onSuccess }: EventEditorF
         <div className="flex justify-end">
             <Button type="submit" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Add Event
+            {isEditMode ? 'Update Event' : 'Add Event'}
             </Button>
         </div>
       </form>
     </Form>
   );
 }
-

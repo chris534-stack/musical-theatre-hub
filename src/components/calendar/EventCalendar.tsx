@@ -24,11 +24,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import type { Venue, EventType } from '@/lib/types';
-import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X } from 'lucide-react';
+import type { Venue, Event } from '@/lib/types';
+import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddEventButton } from '@/components/admin/AddEventButton';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { EventEditorModal } from '@/components/admin/EventEditorModal';
 
 function getContrastingTextColor(color: string): string {
     if (!color) return '#ffffff';
@@ -87,6 +89,9 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const { isAdmin } = useAuth();
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+
   
   useEffect(() => {
     setIsClient(true);
@@ -146,6 +151,32 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
 
   const handleCardClick = (eventId: string) => {
     setSelectedEventId(prevId => (prevId === eventId ? null : eventId));
+  };
+  
+  const handleEditClick = (selectedOccurrence: ExpandedCalendarEvent) => {
+    const allOccurrencesForEvent = events
+        .filter(e => e.id === selectedOccurrence.id)
+        .map(e => ({ date: e.date, time: e.time }))
+        .filter((occ, index, self) => 
+            index === self.findIndex(o => o.date === occ.date && o.time === occ.time)
+        )
+        .sort((a, b) => {
+            const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+            const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+            return dateA.getTime() - dateB.getTime();
+        });
+    
+    const fullEvent: Event = {
+        id: selectedOccurrence.id,
+        title: selectedOccurrence.title,
+        description: selectedOccurrence.description,
+        url: selectedOccurrence.url,
+        venueId: selectedOccurrence.venueId,
+        type: selectedOccurrence.type,
+        status: selectedOccurrence.status,
+        occurrences: allOccurrencesForEvent,
+    };
+    setEditingEvent(fullEvent);
   };
 
   const calendarDays = useMemo(() => {
@@ -343,24 +374,34 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 key={event.uniqueOccurrenceId}
                 onClick={() => handleCardClick(event.id)}
                 className={cn(
-                  "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden relative",
+                  "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden",
                   isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-48"
                 )}
                 style={{ borderLeft: `4px solid ${event.venue?.color || 'hsl(var(--primary))'}` }}
               >
                 <CardHeader>
-                  <CardTitle className="font-headline text-lg">{event.title}</CardTitle>
-                  <CardDescription className="pt-2 space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <CardTitle className="font-headline text-lg">{event.title}</CardTitle>
+                      <CardDescription className="pt-2 space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Ticket className="h-4 w-4 flex-shrink-0" /> <span className="capitalize">{event.type.replace('-', ' ')} at {event.time}</span>
+                        </div>
+                      </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Ticket className="h-4 w-4 flex-shrink-0" /> <span className="capitalize">{event.type.replace('-', ' ')} at {event.time}</span>
-                    </div>
-                  </CardDescription>
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">Edit Event</span>
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <p className={cn(
+                <CardContent className={cn(!isSelected && "relative")}>
+                   <p className={cn(
                     "text-sm text-muted-foreground mb-4",
                     !isSelected && "line-clamp-2"
                   )}>
@@ -374,6 +415,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       </a>
                     </Button>
                   )}
+                  {!isSelected && <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none"></div>}
                 </CardContent>
               </Card>
             )})
@@ -386,6 +428,14 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           )}
         </div>
       </div>
+      {isAdmin && (
+        <EventEditorModal
+            isOpen={!!editingEvent}
+            onClose={() => setEditingEvent(null)}
+            eventToEdit={editingEvent}
+            venues={venues}
+        />
+      )}
       <AddEventButton venues={venues} />
     </div>
   );
