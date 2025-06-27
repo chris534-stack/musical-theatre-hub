@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -17,7 +18,7 @@ export function Header() {
           <nav className="flex items-center space-x-6 text-sm font-medium">
             <Link href="/calendar" className="hover:text-accent transition-colors">Calendar</Link>
             <Link href="/get-involved" className="hover:text-accent transition-colors">Involved</Link>
-            <Link href="#" className="hover:text-accent transition-colors">News</Link>
+            <Link href="/news" className="hover:text-accent transition-colors">News</Link>
             <Link href="#" className="hover:text-accent transition-colors">About Us</Link>
             {isAdmin && (
               <Link href="/admin" className="hover:text-accent transition-colors opacity-70 hover:opacity-100">Admin</Link>

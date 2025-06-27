@@ -1,3 +1,4 @@
+
 export type Venue = {
   id: string;
   name: string;
@@ -39,4 +40,13 @@ export type Idea = {
   userEmail: string;
   // Timestamp
   timestamp: Date;
+};
+
+export type NewsArticle = {
+  id: string;
+  url: string;
+  title: string;
+  summary: string;
+  imageUrl?: string;
+  createdAt: Date;
 };

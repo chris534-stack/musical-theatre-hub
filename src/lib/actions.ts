@@ -2,10 +2,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle } from '@/lib/data';
 import { adminDb } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
+import { scrapeArticle } from '@/ai/flows/scrape-article';
 
 
 export async function revalidateAdminPaths() {
@@ -78,4 +79,30 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
   }
+}
+
+export async function addNewsArticleAction(url: string) {
+    try {
+        const articleData = await scrapeArticle({ url });
+
+        if (!articleData.title || !articleData.summary) {
+            return { success: false, message: 'The AI could not extract a title and summary from the article.' };
+        }
+
+        await addNewsArticle({
+            url,
+            title: articleData.title,
+            summary: articleData.summary,
+            imageUrl: articleData.imageUrl,
+            createdAt: new Date(),
+        });
+
+        revalidatePath('/news');
+        return { success: true, message: 'Article added successfully.' };
+
+    } catch (error) {
+        console.error('Failed to add news article:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
 }

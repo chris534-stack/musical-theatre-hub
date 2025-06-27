@@ -270,30 +270,35 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
 
   const MobileCalendar = () => {
     function CustomDayContent(props: DayContentProps) {
-      const { date } = props;
-      const dateKey = format(date, 'yyyy-MM-dd');
-      const dayEvents = eventsByDate.get(dateKey) || [];
-      const uniqueVenueColors = Array.from(
-        new Set(dayEvents.map((e) => e.venue?.color).filter(Boolean) as string[])
-      );
-
-      return (
-        <>
-          {format(date, 'd')}
-          {uniqueVenueColors.length > 0 && (
-            <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center space-x-1">
-              {uniqueVenueColors.slice(0, 3).map((color, index) => (
-                <span
-                  key={index}
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      );
-    }
+        const { date, activeModifiers } = props;
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const dayEvents = eventsByDate.get(dateKey) || [];
+        const uniqueVenueColors = Array.from(
+          new Set(dayEvents.map((e) => e.venue?.color).filter(Boolean) as string[])
+        );
+  
+        // Don't render dots if the day is selected
+        if (activeModifiers.selected) {
+          return <>{format(date, 'd')}</>;
+        }
+  
+        return (
+          <>
+            {format(date, 'd')}
+            {uniqueVenueColors.length > 0 && (
+              <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center space-x-1">
+                {uniqueVenueColors.slice(0, 3).map((color, index) => (
+                  <span
+                    key={index}
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        );
+      }
     
     return (
       <Calendar
@@ -301,6 +306,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
         selected={selectedDate}
         onSelect={setSelectedDate}
         className="w-full rounded-md border"
+        classNames={{
+            cell: "h-9 w-full text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground"
+        }}
         components={{ DayContent: CustomDayContent }}
       />
     );
@@ -434,7 +443,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
             venues={venues}
         />
       )}
-      <AddEventButton venues={venues} />
+      {isAdmin && <AddEventButton venues={venues} />}
     </div>
   );
 }

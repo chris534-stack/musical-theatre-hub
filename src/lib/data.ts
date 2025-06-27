@@ -1,6 +1,7 @@
+
 import { collection, addDoc } from 'firebase/firestore';
 import { adminDb } from './firebase-admin'; // Admin SDK for server-side functions
-import type { Event, Venue, EventStatus } from './types';
+import type { Event, Venue, EventStatus, NewsArticle } from './types';
 import { startOfToday, addDays } from 'date-fns';
 
 const parseDateString = (dateString: string): Date => {
@@ -123,4 +124,14 @@ export async function eventExists(title: string, venueId: string): Promise<boole
   
   const snapshot = await q.count().get();
   return snapshot.data().count > 0;
+}
+
+
+// --- News Article Functions ---
+/**
+ * [SERVER-SIDE] Adds a new news article document.
+ */
+export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Promise<NewsArticle> {
+    const docRef = await adminDb.collection('news').add(articleData);
+    return { id: docRef.id, ...articleData };
 }
