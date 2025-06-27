@@ -28,36 +28,51 @@ import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, Ch
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function getContrastingTextColor(hsl: string): string {
-    if (!hsl) return '#ffffff';
-    const result = /hsl\((\d+),\s*([\d.]+)%,\s*([\d.]+)%\)/.exec(hsl);
-    if (!result) return '#ffffff';
-    let h = parseInt(result[1]);
-    let s = parseFloat(result[2]) / 100;
-    let l = parseFloat(result[3]) / 100;
-    
-    let c = (1 - Math.abs(2 * l - 1)) * s,
-        x = c * (1 - Math.abs((h / 60) % 2 - 1)),
-        m = l - c/2,
-        r = 0,
-        g = 0,
-        b = 0;
+function getContrastingTextColor(color: string): string {
+    if (!color) return '#ffffff';
 
-    if (0 <= h && h < 120) {
-        r = c; g = x; b = 0;
-    } else if (120 <= h && h < 180) {
-        r = 0; g = c; b = x;
-    } else if (180 <= h && h < 240) {
-        r = 0; g = x; b = c;
-    } else if (240 <= h && h < 300) {
-        r = x; g = 0; b = c;
-    } else if (300 <= h && h < 360) {
-        r = c; g = 0; b = x;
+    let r: number, g: number, b: number;
+
+    if (color.startsWith('#')) {
+        let hex = color.replace('#', '');
+        if (hex.length === 3) {
+            hex = hex.split('').map(char => char + char).join('');
+        }
+        if (hex.length !== 6) return '#000000';
+        r = parseInt(hex.substring(0, 2), 16);
+        g = parseInt(hex.substring(2, 4), 16);
+        b = parseInt(hex.substring(4, 6), 16);
+    } else if (color.startsWith('hsl')) {
+        const result = /hsl\(\s*(\d+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/.exec(color);
+        if (!result) return '#000000';
+        const h = parseInt(result[1]);
+        const s = parseFloat(result[2]) / 100;
+        const l = parseFloat(result[3]) / 100;
+        
+        if (s === 0) {
+            r = g = b = l * 255;
+        } else {
+            const hue2rgb = (p: number, q: number, t: number) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1 / 6) return p + (q - p) * 6 * t;
+                if (t < 1 / 2) return q;
+                if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+            };
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h / 360 + 1 / 3) * 255;
+            g = hue2rgb(p, q, h / 360) * 255;
+            b = hue2rgb(p, q, h / 360 - 1 / 3) * 255;
+        }
+    } else {
+        return '#000000'; // Fallback for named colors or other formats
     }
-    r = Math.round((r + m) * 255);
-    g = Math.round((g + m) * 255);
-    b = Math.round((b + m) * 255);
-    
+
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return '#ffffff';
+
+    // Using the WCAG formula for luminance
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     
     return luminance > 0.5 ? '#000000' : '#ffffff';
@@ -199,19 +214,22 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 {format(day, 'd')}
               </span>
               <div className="flex-1 mt-1 space-y-1 overflow-y-auto text-xs">
-                  {dayEvents.slice(0, 4).map(event => (
-                      <div
-                          key={event.uniqueOccurrenceId}
-                          className="p-1 rounded-sm truncate text-white"
-                          style={{
-                              backgroundColor: event.venue?.color || 'hsl(var(--primary))',
-                              color: getContrastingTextColor(event.venue?.color || '')
-                          }}
-                          title={event.title}
-                      >
-                          {event.title}
-                      </div>
-                  ))}
+                  {dayEvents.slice(0, 4).map(event => {
+                      const bgColor = event.venue?.color || 'hsl(var(--primary))';
+                      return (
+                          <div
+                              key={event.uniqueOccurrenceId}
+                              className="p-1 rounded-sm truncate"
+                              style={{
+                                  backgroundColor: bgColor,
+                                  color: getContrastingTextColor(bgColor)
+                              }}
+                              title={event.title}
+                          >
+                              {event.title}
+                          </div>
+                      );
+                  })}
                   {dayEvents.length > 4 && <div className="text-xs text-muted-foreground pt-1">... and {dayEvents.length - 4} more</div>}
               </div>
             </div>
@@ -323,7 +341,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                   "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden relative",
                   isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-48"
                 )}
-                style={{ borderLeft: `4px solid ${event.venue?.color || 'transparent'}` }}
+                style={{ borderLeft: `4px solid ${event.venue?.color || 'hsl(var(--primary))'}` }}
               >
                 <CardHeader>
                   <CardTitle className="font-headline text-lg">{event.title}</CardTitle>

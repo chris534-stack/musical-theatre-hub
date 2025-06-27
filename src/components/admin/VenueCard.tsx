@@ -40,7 +40,7 @@ export function VenueCard({ venue }: { venue: Venue }) {
     name: venue.name,
     address: venue.address || '',
     sourceUrl: venue.sourceUrl || '',
-    color: venue.color || '#000000',
+    color: venue.color || '#8D99A6',
   });
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {

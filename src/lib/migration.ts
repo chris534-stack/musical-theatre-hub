@@ -77,14 +77,14 @@ async function migrateVenues() {
   const batch = firestore.batch();
 
   const venueColors = [
-    'hsl(43, 90%, 57%)',   // Golden Yellow (accent)
-    'hsl(215, 35%, 50%)',  // Steel Blue
-    'hsl(220, 15%, 75%)',  // Light Cool Grey
-    'hsl(50, 70%, 65%)',   // Softer Yellow
-    'hsl(230, 25%, 45%)',  // Muted Slate Blue
-    'hsl(45, 50%, 70%)',   // Pale Gold
-    'hsl(210, 20%, 65%)',  // Medium Grey
-    'hsl(225, 40%, 35%)',  // Deeper Blue
+    '#FDB813', // Golden Yellow
+    '#5E789D', // Muted Slate Blue
+    '#4A6B8A', // Steel Blue
+    '#8D99A6', // Medium Grey
+    '#FEEBA8', // Pale Gold
+    '#B0B8C2', // Light Cool Grey
+    '#364A63', // Deeper Blue
+    '#FDC64A', // Softer Yellow
   ];
   let colorIndex = 0;
 
