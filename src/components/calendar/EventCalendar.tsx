@@ -24,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { Venue, EventType } from '@/lib/types';
-import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -69,6 +69,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   
   useEffect(() => {
     setIsClient(true);
@@ -79,12 +80,17 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const eventTypes = useMemo(() => Array.from(new Set(events.map(e => e.type))) as EventType[], [events]);
 
   const filteredEvents = useMemo(() => {
+    // If an event is selected, only show its occurrences.
+    if (selectedEventId) {
+        return events.filter(event => event.id === selectedEventId);
+    }
+    // Otherwise, apply venue and type filters.
     return events.filter(event => {
       const venueMatch = selectedVenues.length === 0 || selectedVenues.includes(event.venueId);
       const typeMatch = selectedTypes.length === 0 || selectedTypes.includes(event.type);
       return venueMatch && typeMatch;
     });
-  }, [events, selectedVenues, selectedTypes]);
+  }, [events, selectedVenues, selectedTypes, selectedEventId]);
   
   const eventsByDate = useMemo(() => {
     const map = new Map<string, ExpandedCalendarEvent[]>();
@@ -116,6 +122,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     setSelectedTypes(prev => 
       prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
     );
+  };
+
+  const handleCardClick = (eventId: string) => {
+    setSelectedEventId(prevId => (prevId === eventId ? null : eventId));
   };
 
   const calendarDays = useMemo(() => {
@@ -191,7 +201,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
               <div className="flex-1 mt-1 space-y-1 overflow-y-auto text-xs">
                   {dayEvents.slice(0, 4).map(event => (
                       <div
-                          key={event.id}
+                          key={event.uniqueOccurrenceId}
                           className="p-1 rounded-sm truncate text-white"
                           style={{
                               backgroundColor: event.venue?.color || 'hsl(var(--primary))',
@@ -258,46 +268,63 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           <h2 className="text-xl md:text-2xl font-headline">
             {selectedDate ? format(selectedDate, 'MMMM d') : 'Events'}
           </h2>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="bg-accent text-accent-foreground hover:bg-accent/90"><FilterIcon className="mr-2 h-4 w-4" /> Filter</Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-4">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold mb-2">Venues</h4>
-                  <div className="space-y-2">
-                    {venues.map(venue => (
-                      <div key={venue.id} className="flex items-center space-x-2">
-                        <Checkbox id={`venue-${venue.id}`} checked={selectedVenues.includes(venue.id)} onCheckedChange={() => handleVenueToggle(venue.id)} />
-                        <Label htmlFor={`venue-${venue.id}`} className="flex items-center gap-2 cursor-pointer">
-                          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: venue.color }}></span>
-                          {venue.name}
-                        </Label>
-                      </div>
-                    ))}
+          <div className="flex items-center gap-2">
+            {selectedEventId && (
+              <Button variant="outline" size="sm" onClick={() => setSelectedEventId(null)}>
+                <X className="mr-2 h-4 w-4" /> Clear
+              </Button>
+            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="bg-accent text-accent-foreground hover:bg-accent/90"><FilterIcon className="mr-2 h-4 w-4" /> Filter</Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-4">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Venues</h4>
+                    <div className="space-y-2">
+                      {venues.map(venue => (
+                        <div key={venue.id} className="flex items-center space-x-2">
+                          <Checkbox id={`venue-${venue.id}`} checked={selectedVenues.includes(venue.id)} onCheckedChange={() => handleVenueToggle(venue.id)} />
+                          <Label htmlFor={`venue-${venue.id}`} className="flex items-center gap-2 cursor-pointer">
+                            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: venue.color }}></span>
+                            {venue.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">Event Types</h4>
+                    <div className="space-y-2">
+                      {eventTypes.map(type => (
+                        <div key={type} className="flex items-center space-x-2">
+                          <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
+                          <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{type.replace('-', ' ')}</Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <Separator />
-                <div>
-                  <h4 className="font-semibold mb-2">Event Types</h4>
-                  <div className="space-y-2">
-                    {eventTypes.map(type => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
-                        <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{type.replace('-', ' ')}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
         <div className="space-y-4 overflow-y-auto pr-2 flex-grow">
           {selectedDayEvents.length > 0 ? (
-            selectedDayEvents.map(event => (
-              <Card key={event.id} style={{ borderLeft: `4px solid ${event.venue?.color || 'transparent'}` }}>
+            selectedDayEvents.map(event => {
+              const isSelected = selectedEventId === event.id;
+              return (
+              <Card 
+                key={event.uniqueOccurrenceId}
+                onClick={() => handleCardClick(event.id)}
+                className={cn(
+                  "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden relative",
+                  isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-36"
+                )}
+                style={{ borderLeft: `4px solid ${event.venue?.color || 'transparent'}` }}
+              >
                 <CardHeader>
                   <CardTitle className="font-headline text-lg">{event.title}</CardTitle>
                   <CardDescription className="pt-2 space-y-2">
@@ -310,7 +337,12 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{event.description}</p>
+                  <p className={cn(
+                    "text-sm text-muted-foreground mb-4",
+                    !isSelected && "line-clamp-3"
+                  )}>
+                    {event.description}
+                  </p>
 
                   {event.url && (
                     <Button variant="link" size="sm" asChild className="p-0 h-auto">
@@ -321,12 +353,12 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                   )}
                 </CardContent>
               </Card>
-            ))
+            )})
           ) : (
             <div className="text-center pt-10 text-muted-foreground h-full flex flex-col items-center justify-center rounded-lg">
               <CalendarDays className="h-10 w-10 mb-3 text-muted-foreground/50" />
-              <p className="font-semibold text-sm">No events scheduled.</p>
-              <p className="text-xs">Select another day or clear filters.</p>
+              <p className="font-semibold text-sm">{selectedEventId ? 'No performances on this day.' : 'No events scheduled.'}</p>
+              <p className="text-xs">Select another day or change filters.</p>
             </div>
           )}
         </div>

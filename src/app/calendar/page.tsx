@@ -4,6 +4,7 @@ import type { Venue, Event } from '@/lib/types';
 
 // An "Expanded Event" is a single performance instance, derived from a parent Event
 export type ExpandedCalendarEvent = Omit<Event, 'occurrences'> & {
+    uniqueOccurrenceId: string; // A unique ID for this specific performance
     date: string;
     time: string;
     venue?: Venue;
@@ -15,15 +16,14 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
   
   const expandedEvents: ExpandedCalendarEvent[] = approvedEvents.flatMap(event => {
-    if (!event.occurrences) {
+    if (!event.occurrences || event.occurrences.length === 0) {
       return [];
     }
     return event.occurrences.map(occurrence => {
         const { occurrences, ...restOfEvent } = event;
         return {
-            ...restOfEvent,
-            // Create a unique ID for React's key prop to avoid collisions
-            id: `${event.id}-${occurrence.date}-${occurrence.time}`,
+            ...restOfEvent, // This includes the original event 'id'
+            uniqueOccurrenceId: `${event.id}-${occurrence.date}-${occurrence.time || 'all-day'}`,
             date: occurrence.date,
             time: occurrence.time,
             venue: venuesMap.get(event.venueId)
@@ -33,8 +33,8 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
 
   // Sort all occurrences chronologically for the event list view
   expandedEvents.sort((a, b) => {
-    const dateA = new Date(`${a.date}T${a.time}`);
-    const dateB = new Date(`${b.date}T${b.time}`);
+    const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+    const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
     return dateA.getTime() - dateB.getTime();
   });
 
