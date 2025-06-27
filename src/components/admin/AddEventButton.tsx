@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,12 +14,7 @@ import { ScraperForm } from '@/components/admin/ScraperForm';
 import { Plus } from 'lucide-react';
 
 export function AddEventButton() {
-  const { isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-
-  if (!isAdmin) {
-    return null;
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
