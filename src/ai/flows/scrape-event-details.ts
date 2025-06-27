@@ -68,7 +68,7 @@ Here are the steps you must follow:
 3.  Based on the content from the screenshot, extract the following details for any valid, upcoming events.
     - Title: The title of the event. Look for titles in prominent text or within images in the screenshot.
     - Occurrences: A list of all performance dates and times. Pay close attention to dates and times displayed in the screenshot. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
-    - Venue: The name of the event's venue. This MUST EXACTLY match one of the venue names provided by the getKnownVenues tool. Look for venue names or logos in the screenshot.
+    - Venue: The name of the event's venue. Find the best match for the venue from the list provided by the getKnownVenues tool. It is critical that the returned venue name is an EXACT match from the list. Look for venue names or logos in the screenshot.
     - Description: A detailed description of the event. Combine information from text and any descriptive text found in the screenshot.
 4.  If the page/screenshot does not contain information about an event at one of the known venues, or if all events listed are in the past, you must return an empty object: {}.
   `,
