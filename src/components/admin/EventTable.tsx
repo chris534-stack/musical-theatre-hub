@@ -19,10 +19,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, CheckCircle, XCircle, Edit, Clock } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { MoreHorizontal, CheckCircle, XCircle, Edit, Clock, Trash2 } from 'lucide-react';
 import type { Event, Venue, EventStatus } from '@/lib/types';
-import { updateEventStatusAction } from '@/lib/actions';
-import { useTransition } from 'react';
+import { updateEventStatusAction, deleteEventAction } from '@/lib/actions';
+import { useTransition, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -43,6 +53,8 @@ function formatFirstOccurrence(event: Event): string {
 export function EventTable({ events, venues }: { events: EventWithVenue[], venues: Venue[] }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   
   const handleStatusUpdate = (eventId: string, status: 'approved' | 'denied') => {
     startTransition(async () => {
@@ -54,6 +66,25 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
       }
     });
   };
+
+  const handleDeleteConfirm = () => {
+    if (!selectedEventId) return;
+    startTransition(async () => {
+      const result = await deleteEventAction(selectedEventId);
+      if (result.success) {
+        toast({ title: 'Success', description: 'Event has been deleted.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.message });
+      }
+      setIsAlertOpen(false);
+      setSelectedEventId(null);
+    });
+  }
+
+  const handleDeleteClick = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setIsAlertOpen(true);
+  }
 
   const getStatusBadge = (status: EventStatus) => {
     switch(status) {
@@ -75,63 +106,85 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Venue</TableHead>
-              <TableHead>Performances</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.length > 0 ? events.map((event) => (
-              <TableRow key={event.id}>
-                <TableCell className="font-medium">{event.title}</TableCell>
-                <TableCell>{event.venue?.name || 'N/A'}</TableCell>
-                <TableCell>{formatFirstOccurrence(event)}</TableCell>
-                <TableCell>{getStatusBadge(event.status)}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" disabled={isPending}>
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Event Actions</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator/>
-                      {event.status !== 'approved' && (
-                        <DropdownMenuItem onClick={() => handleStatusUpdate(event.id, 'approved')} disabled={isPending}>
-                          <CheckCircle className="mr-2 h-4 w-4" /> Approve
-                        </DropdownMenuItem>
-                      )}
-                      {event.status !== 'denied' && (
-                        <DropdownMenuItem onClick={() => handleStatusUpdate(event.id, 'denied')} disabled={isPending} className="text-destructive focus:text-destructive">
-                          <XCircle className="mr-2 h-4 w-4" /> Deny
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem disabled>
-                        <Edit className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            )) : (
+    <>
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No events found in this category.
-                </TableCell>
+                <TableHead>Title</TableHead>
+                <TableHead>Venue</TableHead>
+                <TableHead>Performances</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right w-[100px]">Actions</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {events.length > 0 ? events.map((event) => (
+                <TableRow key={event.id}>
+                  <TableCell className="font-medium">{event.title}</TableCell>
+                  <TableCell>{event.venue?.name || 'N/A'}</TableCell>
+                  <TableCell>{formatFirstOccurrence(event)}</TableCell>
+                  <TableCell>{getStatusBadge(event.status)}</TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" disabled={isPending}>
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Event Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator/>
+                        {event.status !== 'approved' && (
+                          <DropdownMenuItem onClick={() => handleStatusUpdate(event.id, 'approved')} disabled={isPending}>
+                            <CheckCircle className="mr-2 h-4 w-4" /> Approve
+                          </DropdownMenuItem>
+                        )}
+                        {event.status !== 'denied' && (
+                          <DropdownMenuItem onClick={() => handleStatusUpdate(event.id, 'denied')} disabled={isPending} className="text-destructive focus:text-destructive">
+                            <XCircle className="mr-2 h-4 w-4" /> Deny
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem disabled>
+                          <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleDeleteClick(event.id)} disabled={isPending} className="text-destructive focus:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No events found in this category.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the event.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedEventId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} disabled={isPending}>
+                {isPending ? 'Deleting...' : 'Continue'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

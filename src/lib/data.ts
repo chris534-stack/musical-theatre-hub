@@ -3,16 +3,16 @@ import { db } from './firebase';
 import type { Event, Venue, EventStatus } from './types';
 import { startOfToday, addDays } from 'date-fns';
 
-// Collection references
-const venuesCollection = collection(db, 'venues');
-const eventsCollection = collection(db, 'events');
-
 const parseDateString = (dateString: string): Date => {
   // Manually parse date components to avoid timezone shift issues.
   // new Date('YYYY-MM-DD') can be interpreted as UTC midnight.
   const [year, month, day] = dateString.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
+
+// --- Collection References ---
+const venuesCollection = collection(db, 'venues');
+const eventsCollection = collection(db, 'events');
 
 // --- Venue Functions ---
 
@@ -33,6 +33,11 @@ export async function getVenue(id: string): Promise<Venue | undefined> {
 export async function updateVenue(id: string, updates: Partial<Omit<Venue, 'id'>>): Promise<void> {
   const venueDoc = doc(db, 'venues', id);
   await updateDoc(venueDoc, updates);
+}
+
+export async function deleteVenue(id: string): Promise<void> {
+  const venueDoc = doc(db, 'venues', id);
+  await deleteDoc(venueDoc);
 }
 
 

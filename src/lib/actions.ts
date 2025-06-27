@@ -1,9 +1,36 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, updateEvent, getAllVenues, updateVenue } from '@/lib/data';
+import { addEvent, updateEvent, getAllVenues, updateVenue, deleteVenue, deleteEvent } from '@/lib/data';
 import type { Event, EventStatus, Venue } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
+
+export async function deleteVenueAction(venueId: string) {
+  try {
+    // This does not delete associated events, they will be orphaned.
+    // This is a design choice to prevent accidental mass-deletion.
+    await deleteVenue(venueId);
+    revalidatePath('/admin');
+    revalidatePath('/calendar');
+    revalidatePath('/');
+    return { success: true, message: 'Venue deleted successfully.' };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: 'Failed to delete venue.' };
+  }
+}
+
+export async function deleteEventAction(eventId: string) {
+  try {
+    await deleteEvent(eventId);
+    revalidatePath('/admin');
+    revalidatePath('/calendar');
+    return { success: true, message: 'Event deleted successfully.' };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: 'Failed to delete event.' };
+  }
+}
 
 export async function updateVenueAction(venueId: string, data: Partial<Omit<Venue, 'id'>>) {
   try {
