@@ -5,7 +5,6 @@ import { useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,7 @@ const formSchema = z.object({
     .refine((files) => files?.[0]?.type.startsWith("image/"), "Only image files are accepted."),
 });
 
-export function ScraperForm() {
+export function ScraperForm({ onSuccess }: { onSuccess?: () => void }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -49,6 +48,9 @@ export function ScraperForm() {
           description: result.message,
         });
         form.reset();
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
         toast({
           variant: 'destructive',
@@ -78,81 +80,71 @@ export function ScraperForm() {
 
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-headline">Automated Event Scraper</CardTitle>
-        <CardDescription>
-          Provide a URL for the event, then upload or paste a screenshot of the page. The AI will extract the details and add the event to the "Pending Review" list.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Event Source URL</FormLabel>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Event Source URL</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com/events/the-new-play" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+          <FormField
+          control={form.control}
+          name="screenshot"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Screenshot</FormLabel>
+                <div 
+                  className="relative flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground hover:border-primary/50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+                  onPaste={(e) => handlePaste(e, field.onChange)}
+                  tabIndex={0} 
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      (e.currentTarget.querySelector('input') as HTMLInputElement)?.click();
+                    }
+                  }}
+              >
                   <FormControl>
-                    <Input placeholder="https://example.com/events/the-new-play" {...field} />
+                        <Input 
+                        type="file" 
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={(e) => field.onChange(e.target.files)}
+                        ref={field.ref}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                      />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="screenshot"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Screenshot</FormLabel>
-                   <div 
-                      className="relative flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground hover:border-primary/50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
-                      onPaste={(e) => handlePaste(e, field.onChange)}
-                      tabIndex={0} 
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          (e.currentTarget.querySelector('input') as HTMLInputElement)?.click();
-                        }
-                      }}
-                  >
-                      <FormControl>
-                           <Input 
-                            type="file" 
-                            accept="image/*"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={(e) => field.onChange(e.target.files)}
-                            ref={field.ref}
-                            name={field.name}
-                            onBlur={field.onBlur}
-                          />
-                      </FormControl>
-                      <div className="flex flex-col items-center pointer-events-none">
-                         <ClipboardPaste className="w-10 h-10" />
-                          <p className="mt-2 text-sm">
-                              <span className="font-semibold text-primary">Click to upload</span> or paste an image
-                          </p>
-                          <p className="text-xs">Supports PNG, JPG, GIF</p>
-                      </div>
+                  <div className="flex flex-col items-center pointer-events-none">
+                      <ClipboardPaste className="w-10 h-10" />
+                      <p className="mt-2 text-sm">
+                          <span className="font-semibold text-primary">Click to upload</span> or paste an image
+                      </p>
+                      <p className="text-xs">Supports PNG, JPG, GIF</p>
                   </div>
-                   {fileName && (
-                    <div className="flex items-center gap-2 mt-2 text-sm font-medium">
-                        <Paperclip className="w-4 h-4" />
-                        <span>{fileName}</span>
-                    </div>
-                   )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Scrape Event
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+              </div>
+                {fileName && (
+                <div className="flex items-center gap-2 mt-2 text-sm font-medium">
+                    <Paperclip className="w-4 h-4" />
+                    <span>{fileName}</span>
+                </div>
+                )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Scrape Event
+        </Button>
+      </form>
+    </Form>
   );
 }

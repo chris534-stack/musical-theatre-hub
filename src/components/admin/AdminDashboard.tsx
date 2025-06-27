@@ -5,6 +5,7 @@ import { EventTable } from '@/components/admin/EventTable';
 import { ScraperForm } from '@/components/admin/ScraperForm';
 import { VenueManager } from '@/components/admin/VenueManager';
 import type { Event, Venue } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 type EventWithVenue = Event & { venue?: Venue };
 
@@ -50,7 +51,17 @@ export default function AdminDashboard({ initialEvents, venues }: { initialEvent
       </TabsContent>
       <TabsContent value="scraper">
         <div className="pt-4">
-          <ScraperForm />
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline">Automated Event Scraper</CardTitle>
+              <CardDescription>
+                Provide a URL for the event, then upload or paste a screenshot of the page. The AI will extract the details and add the event to the "Pending Review" list.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScraperForm />
+            </CardContent>
+          </Card>
         </div>
       </TabsContent>
     </Tabs>

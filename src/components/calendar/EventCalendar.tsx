@@ -27,6 +27,7 @@ import type { Venue, EventType } from '@/lib/types';
 import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AddEventButton } from '@/components/admin/AddEventButton';
 
 function getContrastingTextColor(color: string): string {
     if (!color) return '#ffffff';
@@ -381,6 +382,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           )}
         </div>
       </div>
+      <AddEventButton />
     </div>
   );
 }
