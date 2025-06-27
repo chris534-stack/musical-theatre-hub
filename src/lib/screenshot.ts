@@ -12,7 +12,7 @@ export async function takeScreenshot(url: string): Promise<string> {
   let browser;
   try {
     // Launch puppeteer. The 'new' headless mode is more modern.
-    // --no-sandbox is often required in containerized environments like the one used by Firebase Studio.
+    // --no-sandbox and --disable-setuid-sandbox are often required in containerized environments.
     browser = await puppeteer.launch({
       headless: 'new',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
