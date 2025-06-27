@@ -1,24 +1,21 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { events, venues } from '@/lib/data';
+import { getFeaturedEventsFirestore, getAllVenues } from '@/lib/data';
 import type { Event, Venue } from '@/lib/types';
 import { format } from 'date-fns';
 
 type EventWithVenue = Event & { venue?: Venue };
 
 async function getFeaturedEvents(): Promise<EventWithVenue[]> {
-  // In a real app, this would be a more sophisticated query,
-  // e.g., fetching events for the current month.
-  const allEvents = Array.from(events.values());
-  const approvedEvents = allEvents.filter(event => event.status === 'approved');
+  const featured = await getFeaturedEventsFirestore(3);
+  const allVenues = await getAllVenues();
+  const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
   
-  const featured = approvedEvents.slice(0, 3).map(event => ({
+  return featured.map(event => ({
     ...event,
-    venue: venues.get(event.venueId)
+    venue: venuesMap.get(event.venueId)
   }));
-  
-  return featured;
 }
 
 function formatDate(dateString: string, timeString: string) {

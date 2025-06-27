@@ -1,28 +1,30 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { events, venues, addEvent, updateEvent } from '@/lib/data';
+import { addEvent, updateEvent, getAllVenues } from '@/lib/data';
 import type { Event, EventStatus } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 
 export async function updateEventStatusAction(eventId: string, status: EventStatus) {
   try {
-    updateEvent(eventId, { status });
+    await updateEvent(eventId, { status });
     revalidatePath('/admin');
     revalidatePath('/calendar');
     return { success: true };
   } catch (error) {
+    console.error(error);
     return { success: false, message: 'Failed to update event status.' };
   }
 }
 
 export async function updateEventAction(eventId: string, data: Partial<Omit<Event, 'id' | 'status'>>) {
   try {
-    updateEvent(eventId, data);
+    await updateEvent(eventId, data);
     revalidatePath('/admin');
     revalidatePath('/calendar');
     return { success: true };
   } catch (error) {
+    console.error(error);
     return { success: false, message: 'Failed to update event.' };
   }
 }
@@ -30,12 +32,13 @@ export async function updateEventAction(eventId: string, data: Partial<Omit<Even
 export async function scrapeEventAction(url: string) {
   try {
     const scrapedData = await scrapeEventDetails({ url });
+    const allVenues = await getAllVenues();
     
     let venueId = '';
     const venueNameLower = scrapedData.venue.toLowerCase();
-    for (const [id, venue] of venues.entries()) {
+    for (const venue of allVenues) {
       if (venue.name.toLowerCase().includes(venueNameLower) || venueNameLower.includes(venue.name.toLowerCase())) {
-        venueId = id;
+        venueId = venue.id;
         break;
       }
     }
@@ -56,7 +59,7 @@ export async function scrapeEventAction(url: string) {
       url: url,
     };
 
-    addEvent(newEvent);
+    await addEvent(newEvent);
     revalidatePath('/admin');
     return { success: true, message: 'Event scraped successfully and is pending review.' };
   } catch (error) {
