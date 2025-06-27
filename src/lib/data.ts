@@ -8,8 +8,9 @@ const venuesCollection = collection(db, 'venues');
 const eventsCollection = collection(db, 'events');
 
 const parseDateString = (dateString: string): Date => {
+  // Manually parse date components to avoid timezone shift issues.
+  // new Date('YYYY-MM-DD') can be interpreted as UTC midnight.
   const [year, month, day] = dateString.split('-').map(Number);
-  // Creates a date at midnight in the server's local timezone
   return new Date(year, month - 1, day);
 };
 
@@ -27,6 +28,11 @@ export async function getVenue(id: string): Promise<Venue | undefined> {
         return { id: docSnap.id, ...docSnap.data() } as Venue;
     }
     return undefined;
+}
+
+export async function updateVenue(id: string, updates: Partial<Omit<Venue, 'id'>>): Promise<void> {
+  const venueDoc = doc(db, 'venues', id);
+  await updateDoc(venueDoc, updates);
 }
 
 
@@ -81,7 +87,7 @@ export async function getFeaturedEventsFirestore(count: number): Promise<Event[]
                     const timeA = parseDateString(a.date).getTime();
                     const timeB = parseDateString(b.date).getTime();
                     if (timeA === timeB) {
-                        return a.time.localeCompare(b.time);
+                        return (a.time || '').localeCompare(b.time || '');
                     }
                     return timeA - timeB;
                 });
@@ -94,6 +100,7 @@ export async function getFeaturedEventsFirestore(count: number): Promise<Event[]
 
     // Sort the events themselves by their soonest upcoming occurrence
     eventsWithUpcomingOccurrences.sort((a, b) => {
+        // We know occurrences exist and are sorted from the step above.
         const firstDateA = parseDateString(a.occurrences[0].date);
         const firstDateB = parseDateString(b.occurrences[0].date);
         return firstDateA.getTime() - firstDateB.getTime();

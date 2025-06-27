@@ -2,6 +2,8 @@ export type Venue = {
   id: string;
   name: string;
   color: string;
+  address?: string;
+  sourceUrl?: string;
 };
 
 export type EventStatus = 'pending' | 'approved' | 'denied';

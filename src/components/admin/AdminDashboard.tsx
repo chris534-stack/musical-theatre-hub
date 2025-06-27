@@ -3,6 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EventTable } from '@/components/admin/EventTable';
 import { ScraperForm } from '@/components/admin/ScraperForm';
+import { VenueManager } from '@/components/admin/VenueManager';
 import type { Event, Venue } from '@/lib/types';
 
 type EventWithVenue = Event & { venue?: Venue };
@@ -14,10 +15,11 @@ export default function AdminDashboard({ initialEvents, venues }: { initialEvent
 
   return (
     <Tabs defaultValue="pending" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="pending">Pending Review</TabsTrigger>
         <TabsTrigger value="approved">Approved</TabsTrigger>
         <TabsTrigger value="denied">Denied</TabsTrigger>
+        <TabsTrigger value="venues">Venues</TabsTrigger>
         <TabsTrigger value="scraper">Web Scraper</TabsTrigger>
       </TabsList>
       <TabsContent value="pending">
@@ -28,6 +30,9 @@ export default function AdminDashboard({ initialEvents, venues }: { initialEvent
       </TabsContent>
       <TabsContent value="denied">
         <EventTable events={deniedEvents} venues={venues} />
+      </TabsContent>
+      <TabsContent value="venues">
+        <VenueManager venues={venues} />
       </TabsContent>
       <TabsContent value="scraper">
         <ScraperForm />

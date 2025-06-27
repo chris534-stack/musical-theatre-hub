@@ -1,9 +1,22 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, updateEvent, getAllVenues } from '@/lib/data';
-import type { Event, EventStatus } from '@/lib/types';
+import { addEvent, updateEvent, getAllVenues, updateVenue } from '@/lib/data';
+import type { Event, EventStatus, Venue } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
+
+export async function updateVenueAction(venueId: string, data: Partial<Omit<Venue, 'id'>>) {
+  try {
+    await updateVenue(venueId, data);
+    revalidatePath('/admin');
+    revalidatePath('/calendar');
+    revalidatePath('/'); // Revalidate homepage in case venue colors change there
+    return { success: true, message: 'Venue updated successfully.' };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: 'Failed to update venue.' };
+  }
+}
 
 export async function updateEventStatusAction(eventId: string, status: EventStatus) {
   try {
