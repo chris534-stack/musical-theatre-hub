@@ -44,12 +44,12 @@ export async function addEventFromFormAction(data: EventFormData) {
     const newEvent: Omit<Event, 'id'> = {
       ...data,
       description: data.description || '',
-      status: 'pending',
+      status: 'approved',
     };
 
     await addEvent(newEvent);
     await revalidateAdminPaths();
-    return { success: true, message: 'Event added successfully and is pending review.' };
+    return { success: true, message: 'Event added and approved successfully.' };
 
   } catch (error) {
     console.error('Failed to add event:', error);
