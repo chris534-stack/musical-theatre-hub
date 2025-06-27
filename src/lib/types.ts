@@ -48,6 +48,6 @@ export type NewsArticle = {
   title: string;
   summary: string;
   imageUrl?: string;
-  createdAt: Date;
+  createdAt: any;
   order: number;
 };

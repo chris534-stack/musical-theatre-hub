@@ -146,8 +146,8 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
       return { 
         id: doc.id,
         ...data,
-        createdAt: data.createdAt.toDate(), // Convert Firestore Timestamp to JS Date
-        order: data.order ?? 0, // Default order to 0 if not set
+        createdAt: data.createdAt.toDate().toISOString(), // Convert Firestore Timestamp to string for serialization
+        order: data.order ?? 0,
       } as NewsArticle
     });
 }
