@@ -31,7 +31,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MoreHorizontal, CheckCircle, XCircle, Edit, Clock, Trash2 } from 'lucide-react';
 import type { Event, Venue, EventStatus } from '@/lib/types';
-import { updateEventStatusAction, deleteEventAction } from '@/lib/actions';
+import { revalidateAdminPaths } from '@/lib/actions';
+import { updateEvent, deleteEvent } from '@/lib/data';
 import { useTransition, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -58,26 +59,33 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
   
   const handleStatusUpdate = (eventId: string, status: 'approved' | 'denied') => {
     startTransition(async () => {
-      const result = await updateEventStatusAction(eventId, status);
-      if (result.success) {
+      try {
+        await updateEvent(eventId, { status });
+        await revalidateAdminPaths();
         toast({ title: 'Success', description: `Event status updated to ${status}.` });
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.message });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update event status.' });
       }
     });
   };
 
   const handleDeleteConfirm = () => {
     if (!selectedEventId) return;
+    
+    // Store id and close dialog before starting transition
+    // to avoid race conditions with state updates.
+    const eventIdToDelete = selectedEventId;
+    setIsAlertOpen(false);
+    setSelectedEventId(null);
+    
     startTransition(async () => {
-      const result = await deleteEventAction(selectedEventId);
-      if (result.success) {
+      try {
+        await deleteEvent(eventIdToDelete);
+        await revalidateAdminPaths();
         toast({ title: 'Success', description: 'Event has been deleted.' });
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.message });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete event.' });
       }
-      setIsAlertOpen(false);
-      setSelectedEventId(null);
     });
   }
 

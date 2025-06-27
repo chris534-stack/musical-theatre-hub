@@ -27,7 +27,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { updateVenueAction, deleteVenueAction } from '@/lib/actions';
+import { revalidateAdminPaths } from '@/lib/actions';
+import { updateVenue, deleteVenue } from '@/lib/data';
 import { Edit, Trash2 } from 'lucide-react';
 
 export function VenueCard({ venue }: { venue: Venue }) {
@@ -50,24 +51,25 @@ export function VenueCard({ venue }: { venue: Venue }) {
     e.preventDefault();
     
     startTransition(async () => {
-      const result = await updateVenueAction(venue.id, formData);
-      
-      if (result.success) {
+      try {
+        await updateVenue(venue.id, formData);
+        await revalidateAdminPaths();
         toast({ title: "Venue Updated", description: `${formData.name} has been updated successfully.` });
         setIsEditOpen(false);
-      } else {
-        toast({ variant: 'destructive', title: "Update Failed", description: result.message || 'An unknown error occurred.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: "Update Failed", description: error.message || 'An unknown error occurred.' });
       }
     });
   };
 
   const handleDelete = () => {
     startTransition(async () => {
-      const result = await deleteVenueAction(venue.id);
-      if (result.success) {
+      try {
+        await deleteVenue(venue.id);
+        await revalidateAdminPaths();
         toast({ title: 'Venue Deleted', description: `${venue.name} has been deleted.` });
-      } else {
-        toast({ variant: 'destructive', title: 'Deletion Failed', description: result.message || 'An unknown error occurred.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message || 'An unknown error occurred.' });
       }
     });
   };
