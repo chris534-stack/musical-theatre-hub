@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -12,8 +13,9 @@ import {
 } from '@/components/ui/dialog';
 import { ScraperForm } from '@/components/admin/ScraperForm';
 import { Plus } from 'lucide-react';
+import type { Venue } from '@/lib/types';
 
-export function AddEventButton() {
+export function AddEventButton({ venues }: { venues: Venue[] }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -31,11 +33,11 @@ export function AddEventButton() {
         <DialogHeader>
           <DialogTitle className="font-headline">Add Event via Scraper</DialogTitle>
           <DialogDescription>
-            Provide a URL and screenshot to have the AI automatically extract event details. The new event will be added to the pending review list.
+            Provide a URL and/or screenshot to have the AI pre-fill an event form for you to review and submit.
           </DialogDescription>
         </DialogHeader>
         <div className="pt-4">
-            <ScraperForm onSuccess={() => setIsOpen(false)} />
+            <ScraperForm venues={venues} onSuccess={() => setIsOpen(false)} />
         </div>
       </DialogContent>
     </Dialog>

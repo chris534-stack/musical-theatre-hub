@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ExpandedCalendarEvent } from '@/app/calendar/page';
@@ -382,7 +383,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           )}
         </div>
       </div>
-      <AddEventButton />
+      <AddEventButton venues={venues} />
     </div>
   );
 }

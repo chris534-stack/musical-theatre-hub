@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { addEvent, getAllVenues, eventExists } from '@/lib/data';
-import type { Event } from '@/lib/types';
+import type { Event, Venue, EventOccurrence } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 
 
@@ -16,44 +16,44 @@ export async function revalidateAdminPaths() {
 export async function scrapeEventAction(url: string | undefined, screenshotDataUri: string) {
   try {
     const scrapedData = await scrapeEventDetails({ url, screenshotDataUri });
+    return { success: true, data: { ...scrapedData, sourceUrl: url } };
+  } catch (error) {
+    console.error('Scraping failed:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, message: `An unexpected error occurred while scraping the event details. Error: ${errorMessage}` };
+  }
+}
 
-    if (!scrapedData.title || !scrapedData.occurrences || scrapedData.occurrences.length === 0) {
-      return { success: false, message: 'No upcoming events found in the screenshot for a known venue.' };
-    }
+interface EventFormData {
+  title: string;
+  description?: string;
+  url?: string;
+  venueId: string;
+  type: string;
+  occurrences: EventOccurrence[];
+}
 
-    const allVenues = await getAllVenues();
-    
-    const venue = allVenues.find(v => v.name === scrapedData.venue);
-    
-    if (!venue) {
-      return { success: false, message: `Scraped venue "${scrapedData.venue}" does not match any known venues.` };
-    }
-    const venueId = venue.id;
-
-    const alreadyExists = await eventExists(scrapedData.title, venueId);
+export async function addEventFromFormAction(data: EventFormData) {
+  try {
+    const { title, venueId } = data;
+    const alreadyExists = await eventExists(title, venueId);
     if (alreadyExists) {
-        return { success: false, message: `This event ("${scrapedData.title}" at "${venue.name}") already exists in the system.` };
+        return { success: false, message: `This event ("${title}") already exists in the system for this venue.` };
     }
 
     const newEvent: Omit<Event, 'id'> = {
-      title: scrapedData.title,
-      description: scrapedData.description || '',
-      occurrences: scrapedData.occurrences,
-      venueId: venueId,
-      type: 'Special Event',
+      ...data,
+      description: data.description || '',
       status: 'pending',
-      url: url,
     };
 
     await addEvent(newEvent);
     await revalidateAdminPaths();
-    return { success: true, message: 'Event scraped successfully and is pending review.' };
+    return { success: true, message: 'Event added successfully and is pending review.' };
+
   } catch (error) {
-    console.error('Scraping failed:', error);
-    if (error instanceof Error && error.message.includes('PERMISSION_DENIED')) {
-        return { success: false, message: 'Permission denied. The scraper is not yet configured with admin rights.' };
-    }
+    console.error('Failed to add event:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return { success: false, message: `An unexpected error occurred while scraping the event details. Error: ${errorMessage}` };
+    return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
   }
 }

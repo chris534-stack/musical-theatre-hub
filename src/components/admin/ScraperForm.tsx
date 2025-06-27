@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +11,11 @@ import { Button } from '@/components/ui/button';
 import { scrapeEventAction } from '@/lib/actions';
 import { Loader2, Paperclip, ClipboardPaste } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import type { Venue } from '@/lib/types';
+import type { ScrapeEventDetailsOutput } from '@/ai/flows/scrape-event-details';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { EventEditorForm } from '@/components/admin/EventEditorForm';
+
 
 const formSchema = z.object({
   url: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
@@ -19,9 +24,12 @@ const formSchema = z.object({
     .refine((files) => files?.[0]?.type.startsWith("image/"), "Only image files are accepted."),
 });
 
-export function ScraperForm({ onSuccess }: { onSuccess?: () => void }) {
+export function ScraperForm({ venues, onSuccess }: { venues: Venue[], onSuccess?: () => void }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  
+  const [prefillData, setPrefillData] = useState<(ScrapeEventDetailsOutput & { sourceUrl?: string }) | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,14 +50,13 @@ export function ScraperForm({ onSuccess }: { onSuccess?: () => void }) {
 
     startTransition(async () => {
       const result = await scrapeEventAction(values.url || undefined, screenshotDataUri);
-      if (result.success) {
-        toast({
-          title: 'Scraping successful',
-          description: result.message,
-        });
-        form.reset();
+      if (result.success && result.data) {
+        setPrefillData(result.data);
+        setIsEditorOpen(true);
         if (onSuccess) {
-          onSuccess();
+            // onSuccess used to close the parent dialog.
+            // We now control the flow, so we call it when the *final* form is submitted.
+            // onSuccess(); 
         }
       } else {
         toast({
@@ -80,71 +87,94 @@ export function ScraperForm({ onSuccess }: { onSuccess?: () => void }) {
 
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="url"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Event Source URL (Optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="https://example.com/events/the-new-play" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-          <FormField
-          control={form.control}
-          name="screenshot"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Screenshot</FormLabel>
-                <div 
-                  className="relative flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground hover:border-primary/50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
-                  onPaste={(e) => handlePaste(e, field.onChange)}
-                  tabIndex={0} 
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      (e.currentTarget.querySelector('input') as HTMLInputElement)?.click();
-                    }
-                  }}
-              >
-                  <FormControl>
-                        <Input 
-                        type="file" 
-                        accept="image/*"
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        onChange={(e) => field.onChange(e.target.files)}
-                        ref={field.ref}
-                        name={field.name}
-                        onBlur={field.onBlur}
-                      />
-                  </FormControl>
-                  <div className="flex flex-col items-center pointer-events-none">
-                      <ClipboardPaste className="w-10 h-10" />
-                      <p className="mt-2 text-sm">
-                          <span className="font-semibold text-primary">Click to upload</span> or paste an image
-                      </p>
-                      <p className="text-xs">Supports PNG, JPG, GIF</p>
-                  </div>
-              </div>
-                {fileName && (
-                <div className="flex items-center gap-2 mt-2 text-sm font-medium">
-                    <Paperclip className="w-4 h-4" />
-                    <span>{fileName}</span>
+    <>
+        <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+            control={form.control}
+            name="url"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Event Source URL (Optional)</FormLabel>
+                <FormControl>
+                    <Input placeholder="https://example.com/events/the-new-play" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="screenshot"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Screenshot</FormLabel>
+                    <div 
+                    className="relative flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground hover:border-primary/50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+                    onPaste={(e) => handlePaste(e, field.onChange)}
+                    tabIndex={0} 
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                        (e.currentTarget.querySelector('input') as HTMLInputElement)?.click();
+                        }
+                    }}
+                >
+                    <FormControl>
+                            <Input 
+                            type="file" 
+                            accept="image/*"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={(e) => field.onChange(e.target.files)}
+                            ref={field.ref}
+                            name={field.name}
+                            onBlur={field.onBlur}
+                        />
+                    </FormControl>
+                    <div className="flex flex-col items-center pointer-events-none">
+                        <ClipboardPaste className="w-10 h-10" />
+                        <p className="mt-2 text-sm">
+                            <span className="font-semibold text-primary">Click to upload</span> or paste an image
+                        </p>
+                        <p className="text-xs">Supports PNG, JPG, GIF</p>
+                    </div>
                 </div>
+                    {fileName && (
+                    <div className="flex items-center gap-2 mt-2 text-sm font-medium">
+                        <Paperclip className="w-4 h-4" />
+                        <span>{fileName}</span>
+                    </div>
+                    )}
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Scrape and Prefill Form
+            </Button>
+        </form>
+        </Form>
+        <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+            <DialogContent className="sm:max-w-[625px]">
+                <DialogHeader>
+                    <DialogTitle>Review and Add Event</DialogTitle>
+                    <DialogDescription>
+                        The AI has pre-filled the form with details from the screenshot. Please review, correct, and complete the information before adding the event.
+                    </DialogDescription>
+                </DialogHeader>
+                {prefillData && (
+                    <EventEditorForm 
+                        initialData={prefillData} 
+                        venues={venues} 
+                        onSuccess={() => {
+                            setIsEditorOpen(false);
+                            form.reset();
+                            if (onSuccess) onSuccess();
+                        }}
+                    />
                 )}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" disabled={isPending}>
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Scrape Event
-        </Button>
-      </form>
-    </Form>
+            </DialogContent>
+        </Dialog>
+    </>
   );
 }

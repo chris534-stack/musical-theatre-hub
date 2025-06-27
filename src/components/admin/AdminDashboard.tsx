@@ -55,11 +55,11 @@ export default function AdminDashboard({ initialEvents, venues }: { initialEvent
             <CardHeader>
               <CardTitle className="font-headline">Automated Event Scraper</CardTitle>
               <CardDescription>
-                Provide a URL for the event, then upload or paste a screenshot of the page. The AI will extract the details and add the event to the "Pending Review" list.
+                Provide a URL and/or upload a screenshot of the page. The AI will pre-fill an event form for you to review and submit.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScraperForm />
+              <ScraperForm venues={venues} />
             </CardContent>
           </Card>
         </div>
