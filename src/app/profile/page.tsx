@@ -33,7 +33,7 @@ export default function ProfilePage() {
 
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-secondary">
+      <div className="flex flex-1 items-center justify-center bg-secondary">
         <Card className="w-full max-w-sm">
             <CardHeader className="items-center text-center">
                 <Skeleton className="w-24 h-24 mb-4 rounded-full" />
@@ -49,8 +49,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-secondary">
-      <Card className="w-full max-w-sm">
+    <div className="flex flex-1 items-center justify-center bg-secondary">
+      <Card className="w-full max-w-sm mx-4">
         <CardHeader className="items-center text-center">
           <Avatar className="w-24 h-24 mb-4">
             <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />

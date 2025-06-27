@@ -1,6 +1,5 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/Header';
@@ -13,9 +12,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const isAuthPage = pathname === '/login';
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -27,17 +23,13 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-          {isAuthPage ? (
-            children
-          ) : (
             <div className="relative flex min-h-screen flex-col bg-background">
               <Header />
-              <main className="flex-1 pb-20 md:pb-0">{children}</main>
+              <main className="flex flex-1 flex-col pb-20 md:pb-0">{children}</main>
               <Footer />
             </div>
-          )}
-          {!isAuthPage && <MobileNav />}
-          <Toaster />
+            <MobileNav />
+            <Toaster />
         </AuthProvider>
       </body>
     </html>

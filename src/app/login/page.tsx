@@ -41,18 +41,18 @@ export default function LoginPage() {
   };
 
   if (loading || user) {
-    return <div className="flex items-center justify-center h-screen"><p>Loading...</p></div>;
+    return <div className="flex flex-1 items-center justify-center"><p>Loading...</p></div>;
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-secondary">
-      <Card className="w-full max-w-sm">
+    <div className="flex flex-1 items-center justify-center bg-secondary">
+      <Card className="w-full max-w-sm mx-4">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">Join Our Stage</CardTitle>
           <CardDescription>Sign in to continue to your profile.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button onClick={handleSignIn} className="w-full">
+        <CardContent className="flex justify-center">
+          <Button onClick={handleSignIn}>
             <GoogleIcon className="mr-2 h-6 w-6" />
             Sign in with Google
           </Button>
