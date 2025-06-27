@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, UserPlus, Newspaper, User } from 'lucide-react';
+import { Home, CalendarDays, UserPlus, Newspaper, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/auth/AuthProvider';
 
-const navItems = [
+const baseNavItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/get-involved', label: 'Involved', icon: UserPlus },
@@ -15,6 +16,13 @@ const navItems = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
+
+  const navItems = [...baseNavItems];
+  if (isAdmin) {
+    const adminItem = { href: '/admin', label: 'Admin', icon: Shield };
+    navItems.splice(4, 0, adminItem);
+  }
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-primary border-t border-border/20 shadow-t-lg z-50">

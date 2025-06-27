@@ -9,9 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
+import { Shield } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -57,6 +59,16 @@ export default function ProfilePage() {
           <CardTitle className="text-2xl font-headline">{user.displayName}</CardTitle>
           <CardDescription>{user.email}</CardDescription>
         </CardHeader>
+        {isAdmin && (
+          <CardContent className="px-6 pb-6">
+            <Button asChild className="w-full">
+              <Link href="/admin">
+                <Shield className="mr-2 h-5 w-5" />
+                Admin Dashboard
+              </Link>
+            </Button>
+          </CardContent>
+        )}
         <CardFooter>
           <Button onClick={handleSignOut} variant="outline" className="w-full">
             Sign Out
