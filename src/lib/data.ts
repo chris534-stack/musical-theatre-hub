@@ -131,23 +131,23 @@ export async function eventExists(title: string, venueId: string): Promise<boole
 /**
  * [SERVER-SIDE] Adds a new news article document.
  */
-export async function addNewsArticle(articleData: Omit<NewsArticle, 'id' | 'createdAt'> & { createdAt: Date }): Promise<NewsArticle> {
+export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Promise<NewsArticle> {
     const docRef = await adminDb.collection('news').add(articleData);
-    const { createdAt, ...rest } = articleData;
-    return { id: docRef.id, createdAt, ...rest };
+    return { id: docRef.id, ...articleData };
 }
 
 /**
  * [SERVER-SIDE] Fetches all news articles using the Admin SDK, ordered by creation date.
  */
 export async function getAllNewsArticles(): Promise<NewsArticle[]> {
-    const snapshot = await adminDb.collection('news').orderBy('createdAt', 'desc').get();
+    const snapshot = await adminDb.collection('news').orderBy('order', 'asc').get();
     return snapshot.docs.map(doc => {
       const data = doc.data();
       return { 
         id: doc.id,
         ...data,
         createdAt: data.createdAt.toDate(), // Convert Firestore Timestamp to JS Date
+        order: data.order ?? 0, // Default order to 0 if not set
       } as NewsArticle
     });
 }

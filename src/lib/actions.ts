@@ -107,14 +107,39 @@ interface ArticleFormData {
 
 export async function saveNewsArticleAction(data: ArticleFormData) {
     try {
+        const newsCollection = adminDb.collection('news');
+        const snapshot = await newsCollection.count().get();
+        const articleCount = snapshot.data().count;
+
         await addNewsArticle({
             ...data,
             createdAt: new Date(),
+            order: articleCount,
         });
         revalidatePath('/news');
         return { success: true, message: 'Article added successfully.' };
     } catch (error) {
         console.error('Failed to add news article:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function updateNewsArticleOrderAction(orderedArticleIds: string[]) {
+    try {
+        const batch = adminDb.batch();
+        const newsCollection = adminDb.collection('news');
+
+        orderedArticleIds.forEach((id, index) => {
+            const docRef = newsCollection.doc(id);
+            batch.update(docRef, { order: index });
+        });
+
+        await batch.commit();
+        revalidatePath('/news');
+        return { success: true, message: 'Article order updated.' };
+    } catch (error) {
+        console.error('Failed to update article order:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
