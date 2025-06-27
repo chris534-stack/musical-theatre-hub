@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      // This email is hardcoded to grant admin privileges.
+      return request.auth.token.email == 'christopher.ridgley@gmail.com';
+    }
+
+    // Venues: Public can read, only admin can write.
+    match /venues/{venueId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Events: Public can read, only admin can write.
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Ideas: Any authenticated user can create. No one else can read/update/delete.
+    // Admins can view ideas directly in the Firebase Console.
+    match /ideas/{ideaId} {
+      allow read, update, delete: if false;
+      allow create: if request.auth != null;
+    }
+  }
+}
