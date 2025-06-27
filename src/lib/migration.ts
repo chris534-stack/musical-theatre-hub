@@ -9,7 +9,8 @@
  *    - FIREBASE_ADMIN_PROJECT_ID
  *    - FIREBASE_ADMIN_CLIENT_EMAIL
  *    - FIREBASE_ADMIN_PRIVATE_KEY
- * 2. Run the script from your terminal: `npm run migrate`
+ * 2. IMPORTANT: If re-running for a specific collection, delete it from Firestore first.
+ * 3. Run the script from your terminal: `npm run migrate`
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -186,13 +187,21 @@ async function migrateIdeas() {
 
 /**
  * Main migration function.
+ * IMPORTANT: This script is now configured to ONLY migrate events.
+ * Before running, be sure to delete the existing 'events' collection in Firestore.
  */
 async function migrate() {
   console.log("Starting Supabase to Firestore migration...");
   try {
-    await migrateVenues();
+    // Venues are OK, skipping migration.
+    // await migrateVenues();
+    
+    console.log("Migrating events ONLY.");
     await migrateEvents();
-    await migrateIdeas();
+    
+    // Ideas are OK, skipping migration.
+    // await migrateIdeas();
+    
     console.log("\nMigration completed successfully! 🎉");
   } catch (error) {
     console.error("\nMigration failed:", error);
