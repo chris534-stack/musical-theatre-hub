@@ -270,7 +270,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
 
   const MobileCalendar = () => {
     function CustomDayContent(props: DayContentProps) {
-      const { date } = props;
+      const { date, activeModifiers } = props;
       const dateKey = format(date, 'yyyy-MM-dd');
       const dayEvents = eventsByDate.get(dateKey) || [];
       const uniqueVenueColors = Array.from(
@@ -280,7 +280,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
       return (
         <>
           {format(date, 'd')}
-          {uniqueVenueColors.length > 0 && (
+          {uniqueVenueColors.length > 0 && !activeModifiers.selected && (
             <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center space-x-1">
               {uniqueVenueColors.slice(0, 3).map((color, index) => (
                 <span
