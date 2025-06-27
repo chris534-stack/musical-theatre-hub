@@ -19,7 +19,7 @@ export type ScrapeArticleInput = z.infer<typeof ScrapeArticleInputSchema>;
 const ScrapeArticleOutputSchema = z.object({
     title: z.string().describe('The main title of the article.'),
     summary: z.string().describe('A concise, one or two-sentence summary of the article content.'),
-    imageUrl: z.string().url().optional().describe('The URL of the most relevant image from the article. This should be a direct link to an image file (e.g., .jpg, .png).'),
+    imageUrl: z.string().optional().describe('The URL of the most relevant image from the article. This should be a direct link to an image file (e.g., .jpg, .png).'),
 });
 export type ScrapeArticleOutput = z.infer<typeof ScrapeArticleOutputSchema>;
 
