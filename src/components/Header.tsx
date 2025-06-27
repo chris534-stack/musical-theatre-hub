@@ -1,9 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { User } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 export function Header() {
+  const { isAdmin } = useAuth();
+
   return (
     <header className="py-4 px-4 sm:px-6 lg:px-8 bg-primary text-primary-foreground hidden md:block">
       <div className="container mx-auto flex justify-between items-center">
@@ -14,7 +19,9 @@ export function Header() {
             <Link href="/get-involved" className="hover:text-accent transition-colors">Involved</Link>
             <Link href="#" className="hover:text-accent transition-colors">News</Link>
             <Link href="#" className="hover:text-accent transition-colors">About Us</Link>
-            <Link href="/admin" className="hover:text-accent transition-colors opacity-70 hover:opacity-100">Admin</Link>
+            {isAdmin && (
+              <Link href="/admin" className="hover:text-accent transition-colors opacity-70 hover:opacity-100">Admin</Link>
+            )}
           </nav>
           <Button
             asChild
