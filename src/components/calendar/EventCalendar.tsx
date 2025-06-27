@@ -94,7 +94,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   
   const isMobile = useIsMobile();
   
-  const eventTypes = useMemo(() => Array.from(new Set(events.map(e => e.type))) as EventType[], [events]);
+  const eventTypes = useMemo(() => {
+    const normalizedTypes = events.map(e => e.type.trim().toLowerCase());
+    return Array.from(new Set(normalizedTypes));
+  }, [events]);
 
   const filteredEvents = useMemo(() => {
     // If an event is selected, only show its occurrences.
@@ -104,7 +107,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     // Otherwise, apply venue and type filters.
     return events.filter(event => {
       const venueMatch = selectedVenues.length === 0 || selectedVenues.includes(event.venueId);
-      const typeMatch = selectedTypes.length === 0 || selectedTypes.includes(event.type);
+      const typeMatch = selectedTypes.length === 0 || selectedTypes.includes(event.type.trim().toLowerCase());
       return venueMatch && typeMatch;
     });
   }, [events, selectedVenues, selectedTypes, selectedEventId]);
