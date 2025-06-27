@@ -16,7 +16,7 @@ import {
   subMonths,
   isSameDay
 } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,8 +100,8 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const isMobile = useIsMobile();
   
   const eventTypes = useMemo(() => {
-    const normalizedTypes = events.map(e => e.type.trim().toLowerCase());
-    return Array.from(new Set(normalizedTypes));
+    const allTypes = events.map(e => e.type.trim().toLowerCase());
+    return Array.from(new Set(allTypes));
   }, [events]);
 
   const filteredEvents = useMemo(() => {
@@ -262,7 +262,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                               }}
                               title={event.title}
                           >
-                              {event.title}
+                              {toTitleCase(event.title)}
                           </div>
                       );
                   })}
@@ -382,13 +382,17 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <CardTitle className="font-headline text-lg">{event.title}</CardTitle>
+                      <CardTitle className="font-headline text-lg">{toTitleCase(event.title)}</CardTitle>
                       <CardDescription className="pt-2 space-y-2">
                         <div className="flex items-center gap-2 text-sm">
                           <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <Ticket className="h-4 w-4 flex-shrink-0" /> <span className="capitalize">{event.type.replace('-', ' ')} at {event.time}</span>
+                          <Ticket className="h-4 w-4 flex-shrink-0" /> 
+                          <span className="capitalize">
+                            {event.type.replace('-', ' ')}
+                            {event.time && ` at ${format(new Date(`1970-01-01T${event.time}`), 'h:mm a')}`}
+                          </span>
                         </div>
                       </CardDescription>
                     </div>

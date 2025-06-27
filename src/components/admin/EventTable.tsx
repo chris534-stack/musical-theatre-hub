@@ -36,6 +36,7 @@ import { updateEvent, deleteEvent } from '@/lib/data-client';
 import { useTransition, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { toTitleCase } from '@/lib/utils';
 
 type EventWithVenue = Event & { venue?: Venue };
 
@@ -43,12 +44,16 @@ function formatFirstOccurrence(event: Event): string {
     if (!event.occurrences || event.occurrences.length === 0) {
         return 'No performances';
     }
-    const firstDate = new Date(event.occurrences[0].date);
+    const firstOccurrence = event.occurrences[0];
+    const firstDate = new Date(`${firstOccurrence.date}T${firstOccurrence.time || '00:00:00'}`);
+    
     const datePart = format(firstDate, 'MMM d, yyyy');
+    const timePart = firstOccurrence.time ? ` at ${format(firstDate, 'h:mm a')}` : '';
+
     if (event.occurrences.length > 1) {
         return `Starts ${datePart} (${event.occurrences.length} total)`;
     }
-    return `${datePart} at ${event.occurrences[0].time}`;
+    return `${datePart}${timePart}`;
 }
 
 export function EventTable({ events, venues }: { events: EventWithVenue[], venues: Venue[] }) {
@@ -130,7 +135,7 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
             <TableBody>
               {events.length > 0 ? events.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell className="font-medium">{event.title}</TableCell>
+                  <TableCell className="font-medium">{toTitleCase(event.title)}</TableCell>
                   <TableCell>{event.venue?.name || 'N/A'}</TableCell>
                   <TableCell>{formatFirstOccurrence(event)}</TableCell>
                   <TableCell>{getStatusBadge(event.status)}</TableCell>

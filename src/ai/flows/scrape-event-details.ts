@@ -63,7 +63,7 @@ The image is a screenshot from the following URL: {{url}}
 
 Please answer the following questions based on the image and provide your final answer as a single JSON object.
 
-- **What is the title of the event?** If this is for an audition, the title should be the name of the show they are auditioning for.
+- **What is the title of the event?** If this is for an audition, the title should be the name of the show they are auditioning for. Format the title in Title Case (e.g., 'LIZZIE THE MUSICAL' should become 'Lizzie the Musical').
 
 - **What is the venue for this event?** To answer this, you MUST first call the \`getKnownVenues\` tool to get a list of approved theatre names. Then, compare the names from the tool with the text in the image. The venue you provide in the JSON must be an *exact, case-sensitive match* from the tool's list. IMPORTANT: Even if you cannot find a matching venue and must set the 'venue' field to null, you must still extract all other details like the title, description, and dates.
 

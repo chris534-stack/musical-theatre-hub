@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { getFeaturedEventsFirestore, getAllVenues } from '@/lib/data';
 import type { Event, Venue, EventOccurrence } from '@/lib/types';
 import { format } from 'date-fns';
+import { toTitleCase } from '@/lib/utils';
 
 type EventWithVenue = Event & { venue?: Venue };
 
@@ -69,7 +70,7 @@ export default async function Home() {
             {featuredEvents.map(event => (
               <Card key={event.id} className="flex flex-col text-center shadow-lg hover:shadow-xl transition-shadow duration-300 min-h-[220px]">
                 <CardHeader>
-                  <CardTitle className="font-headline font-bold text-primary">{event.title}</CardTitle>
+                  <CardTitle className="font-headline font-bold text-primary">{toTitleCase(event.title)}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col justify-center">
                   <CardDescription>

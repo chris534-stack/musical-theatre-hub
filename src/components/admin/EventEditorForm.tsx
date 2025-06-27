@@ -15,6 +15,7 @@ import { addEventFromFormAction, updateEventAction } from '@/lib/actions';
 import type { ScrapeEventDetailsOutput } from '@/ai/flows/scrape-event-details';
 import type { Venue, Event } from '@/lib/types';
 import { Loader2, PlusCircle, XCircle } from 'lucide-react';
+import { toTitleCase } from '@/lib/utils';
 
 const eventFormSchema = z.object({
   title: z.string().min(3, 'Title is required.'),
@@ -56,7 +57,7 @@ export function EventEditorForm({ initialData, eventToEdit, venues, onSuccess }:
     if (initialData) {
         const foundVenue = venues.find(v => v.name === initialData.venue);
         return {
-            title: initialData.title || '',
+            title: toTitleCase(initialData.title) || '',
             description: initialData.description || '',
             url: initialData.sourceUrl || '',
             venueId: foundVenue?.id || '',
