@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { addEvent, eventExists, addNewsArticle } from '@/lib/data';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Event, EventOccurrence } from '@/lib/types';
+import type { Event, EventOccurrence, NewsArticle } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 
@@ -81,25 +81,38 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
   }
 }
 
-export async function addNewsArticleAction(url: string) {
+export async function scrapeArticleAction(url: string) {
     try {
         const articleData = await scrapeArticle({ url });
 
         if (!articleData.title || !articleData.summary) {
             return { success: false, message: 'The AI could not extract a title and summary from the article.' };
         }
+        
+        return { success: true, data: { ...articleData, url } };
 
+    } catch (error) {
+        console.error('Failed to scrape article:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+interface ArticleFormData {
+  url: string;
+  title: string;
+  summary: string;
+  imageUrl?: string;
+}
+
+export async function saveNewsArticleAction(data: ArticleFormData) {
+    try {
         await addNewsArticle({
-            url,
-            title: articleData.title,
-            summary: articleData.summary,
-            imageUrl: articleData.imageUrl,
+            ...data,
             createdAt: new Date(),
         });
-
         revalidatePath('/news');
         return { success: true, message: 'Article added successfully.' };
-
     } catch (error) {
         console.error('Failed to add news article:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
