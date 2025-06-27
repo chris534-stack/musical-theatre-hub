@@ -55,17 +55,6 @@ try {
 const firestore = admin.firestore();
 
 /**
- * Generates a random HSL color string.
- * @returns A string representing an HSL color.
- */
-function getRandomColor(): string {
-  const h = Math.floor(Math.random() * 360);
-  const s = 40 + Math.floor(Math.random() * 30); // Saturation between 40% and 70%
-  const l = 50 + Math.floor(Math.random() * 20); // Lightness between 50% and 70%
-  return `hsl(${h}, ${s}%, ${l}%)`;
-}
-
-/**
  * Fetches all records from a Supabase table.
  * @param tableName The name of the Supabase table.
  */
@@ -87,6 +76,18 @@ async function migrateVenues() {
   const collectionRef = firestore.collection('venues');
   const batch = firestore.batch();
 
+  const venueColors = [
+    'hsl(262, 47%, 50%)', // Muted Purple
+    'hsl(217, 56%, 51%)', // Strong Blue
+    'hsl(170, 45%, 45%)', // Teal
+    'hsl(350, 60%, 55%)', // Muted Red/Pink
+    'hsl(24, 84%, 55%)',  // Orange
+    'hsl(195, 53%, 45%)', // Cerulean
+    'hsl(100, 35%, 45%)', // Muted Green
+    'hsl(30, 55%, 50%)'   // Brownish Orange
+  ];
+  let colorIndex = 0;
+
   console.log(`Transforming and batching ${venues.length} venue records for Firestore...`);
   venues.forEach(venue => {
     const docRef = collectionRef.doc(String(venue.id));
@@ -95,9 +96,10 @@ async function migrateVenues() {
       name: venue.name,
       // address and contact_email are ignored as they are not in the new schema.
       // A random color is added as it's required by the new UI.
-      color: getRandomColor(),
+      color: venueColors[colorIndex % venueColors.length],
     };
     batch.set(docRef, firestoreVenue);
+    colorIndex++;
   });
 
   await batch.commit();
@@ -128,7 +130,7 @@ async function migrateEvents() {
             date: date,
             time: occ.time || ''
         }
-    }).filter((occ: any) => occ.date && occ.time);
+    }).filter((occ: any) => occ.date);
 
     if (occurrences.length > 0) {
         const newDocRef = collectionRef.doc(); // Firestore generates a new unique ID
@@ -193,10 +195,10 @@ async function migrateIdeas() {
 async function migrate() {
   console.log("Starting Supabase to Firestore migration...");
   try {
-    // Venues are OK, skipping migration.
-    // await migrateVenues();
+    console.log("Migrating venues with new colors...");
+    await migrateVenues();
     
-    console.log("Migrating events ONLY.");
+    console.log("Migrating events with updated occurrence logic...");
     await migrateEvents();
     
     // Ideas are OK, skipping migration.
