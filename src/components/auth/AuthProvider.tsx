@@ -25,14 +25,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      // In development, any logged-in user is an admin for easy testing.
-      if (process.env.NODE_ENV === 'development' && user) {
-        setIsAdmin(true);
-      } else if (user && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+      // If an admin email is configured, only that user is an admin.
+      // If it's NOT configured (e.g., in a preview environment), any signed-in user is an admin for testing.
+      if (adminEmail) {
+        setIsAdmin(!!user && user.email === adminEmail);
+      } else if (user) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);
       }
+
       setLoading(false);
     });
 
