@@ -28,7 +28,7 @@ const ScrapeEventDetailsOutputSchema = z.object({
       date: z.string().describe("The date of the performance in YYYY-MM-DD format."),
       time: z.string().describe("The time of the performance in HH:mm 24-hour format."),
   })).optional().describe('A list of all dates and times for the event performances. Only include performances that have not yet occurred.'),
-  venue: z.string().optional().describe('The venue of the event. Must match a name from the getKnownVenues tool.'),
+  venue: z.string().nullable().optional().describe('The venue of the event. Must match a name from the getKnownVenues tool.'),
   description: z.string().optional().describe('A detailed description of the event.'),
 });
 export type ScrapeEventDetailsOutput = z.infer<typeof ScrapeEventDetailsOutputSchema>;
@@ -70,11 +70,11 @@ Your task is to populate a JSON object with the event details. Follow these step
 
 3.  **Identify the Venue.** Scan the image for any text that could be a venue name. Compare any names you find against the list from the 'getKnownVenues' tool.
     - If you find a name in the image that is an **EXACT, case-sensitive match** to a name in the tool's list, use that name for the 'venue' field.
-    - If you cannot find an exact match in the image, or if there is no venue mentioned, you **MUST** leave the 'venue' field empty or null. Do not guess.
+    - If you cannot find an exact match, you **MUST OMIT** the 'venue' field from your response. Do not guess or use a partial match.
 
 4.  **Extract Other Details.** Based on the image, extract the following:
     - **Title**: The title of the event or the show it's for. For auditions, this should be the name of the show.
-    - **Occurrences**: A list of all dates and times for performances or auditions. IMPORTANT: Only extract dates and times that are in the future. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming dates are found, return an empty array for this field.
+    - **Occurrences**: A list of all dates and times for performances or auditions. IMPORTANT: Only extract dates and times that are in the future. If a year is not specified, assume the current year. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming dates are found, return an empty array for this field.
     - **Description**: A detailed description of the event. If it's an audition, make sure to mention that in the description (e.g., "Auditions for the musical...").
 
 It is critical that the 'venue' field is handled correctly as described in step 3.
