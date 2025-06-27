@@ -53,6 +53,7 @@ export async function scrapeEventAction(url: string | undefined, screenshotDataU
     if (error instanceof Error && error.message.includes('PERMISSION_DENIED')) {
         return { success: false, message: 'Permission denied. The scraper is not yet configured with admin rights.' };
     }
-    return { success: false, message: 'An unexpected error occurred while scraping the event details.' };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, message: `An unexpected error occurred while scraping the event details. Error: ${errorMessage}` };
   }
 }

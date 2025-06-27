@@ -67,10 +67,9 @@ Follow these steps:
 2.  Analyze the provided image for posters, banners, calendars, or text that describes an event, audition, or performance. It is very important that you extract the information.
 3.  Based on the image, extract the following details:
     - Title: The title of the event or the show it's for. For auditions, this should be the name of the show.
-    - Occurrences: A list of all dates and times. This can be for auditions or performances. IMPORTANT: Only extract dates and times that are in the future. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming dates are found, return an empty array.
-    - Venue: Find the best match for the venue from the list provided by the getKnownVenues tool. It is critical that the returned venue name is an EXACT match from the list.
+    - Occurrences: A list of all dates and times. This can be for auditions or performances. IMPORTANT: Only extract dates and times that are in the future. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming dates are found, return an empty array for this field.
+    - Venue: Find the best match for the venue from the list provided by the getKnownVenues tool. It is critical that the returned venue name is an EXACT match from the list. If you cannot find a venue in the image that matches the provided list, leave the 'venue' field empty.
     - Description: A detailed description of the event. If it's an audition, mention that in the description (e.g., "Auditions for the musical...").
-4.  If you cannot find a venue in the image that matches the provided list of known venues, you must return an empty object: {}. Do not make up a venue name. If the image is for an event but the venue isn't in the list, return an empty object.
   `,
 });
 
@@ -81,14 +80,19 @@ const scrapeEventDetailsFlow = ai.defineFlow(
     outputSchema: ScrapeEventDetailsOutputSchema,
   },
   async (input) => {
-    const {output} = await scrapeEventDetailsPrompt(input);
-    
-    console.log('AI Model Response:', JSON.stringify(output, null, 2));
-    
-    if (!output) {
-      throw new Error('AI model did not return a valid output object.');
-    }
+    try {
+        const {output} = await scrapeEventDetailsPrompt(input);
+        
+        console.log('AI Model Response:', JSON.stringify(output, null, 2));
+        
+        if (!output) {
+          throw new Error('AI model did not return a valid output. The response may have been empty or blocked by safety settings.');
+        }
 
-    return output;
+        return output;
+    } catch (e: any) {
+        console.error("Error calling scrapeEventDetailsPrompt:", e);
+        throw new Error(`The AI model failed to process the request. Raw error: ${e.message}`);
+    }
   }
 );
