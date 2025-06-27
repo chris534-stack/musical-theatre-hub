@@ -52,32 +52,26 @@ const scrapeEventDetailsPrompt = ai.definePrompt({
   input: {schema: ScrapeEventDetailsInputSchema},
   output: {schema: ScrapeEventDetailsOutputSchema},
   tools: [getKnownVenuesTool],
-  prompt: `You are an expert event detail extractor for the 'Our Stage, Eugene' website.
-Your goal is to analyze the provided image to extract details for an event. An administrator has provided this image because they believe it contains a valid event.
+  prompt: `You are an expert assistant for the 'Our Stage, Eugene' website. Your task is to analyze an image provided by an administrator and extract event details into a structured JSON format.
 
-Analyze the image:
+Here is the image to analyze:
 {{media url=screenshotDataUri}}
 
 {{#if url}}
 The image is a screenshot from the following URL: {{url}}
 {{/if}}
 
-Your task is to populate a JSON object with the event details. Follow these steps precisely:
+Please answer the following questions based on the image and provide your final answer as a single JSON object.
 
-1.  **Call the 'getKnownVenues' tool.** This tool will give you a definitive list of all theatre venues that our website tracks. This is your list of approved venues.
+- **What is the title of the event?** If this is for an audition, the title should be the name of the show they are auditioning for.
 
-2.  **Thoroughly examine the image for event information.** Look for posters, banners, calendars, or text that describes a show, audition, or performance.
+- **What is the venue for this event?** To answer this, you MUST first call the \`getKnownVenues\` tool to get a list of approved theatre names. Then, compare the names from the tool with the text in the image. The venue you provide in the JSON must be an *exact, case-sensitive match* from the tool's list. If you cannot find an exact match, please set the 'venue' field to null.
 
-3.  **Identify the Venue.** Scan the image for any text that could be a venue name. Compare any names you find against the list from the 'getKnownVenues' tool.
-    - If you find a name in the image that is an **EXACT, case-sensitive match** to a name in the tool's list, use that name for the 'venue' field.
-    - If you cannot find an exact match, you **MUST OMIT** the 'venue' field from your response. Do not guess or use a partial match.
+- **What are the dates and times of the performances or auditions?** Please list all of them. Important: Only include dates that are in the future. If a year isn't specified, assume the current year. For a show with a run (e.g., Friday-Sunday for three weeks), list out each individual performance date and time. If no upcoming dates are found, return an empty array for this field.
 
-4.  **Extract Other Details.** Based on the image, extract the following:
-    - **Title**: The title of the event or the show it's for. For auditions, this should be the name of the show.
-    - **Occurrences**: A list of all dates and times for performances or auditions. IMPORTANT: Only extract dates and times that are in the future. If a year is not specified, assume the current year. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming dates are found, return an empty array for this field.
-    - **Description**: A detailed description of the event. If it's an audition, make sure to mention that in the description (e.g., "Auditions for the musical...").
+- **What is the description of the event?** Provide a detailed summary. If it's an audition, please make that clear in the description.
 
-It is critical that the 'venue' field is handled correctly as described in step 3.
+Remember, your final output must be only the JSON object with the extracted details.
   `,
 });
 
