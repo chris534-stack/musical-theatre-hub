@@ -14,7 +14,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { config } from 'dotenv';
 
 // Load environment variables from .env file
@@ -38,19 +39,14 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !FIREBASE_ADMIN_PROJECT_ID ||
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Initialize Firebase Admin SDK
-try {
-  admin.initializeApp({
-    credential: admin.credential.cert({
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
       projectId: FIREBASE_ADMIN_PROJECT_ID,
       clientEmail: FIREBASE_ADMIN_CLIENT_EMAIL,
       privateKey: FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, '\n'), // Handle newline characters
     }),
   });
-} catch (error: any) {
-  if (error.code !== 'app/duplicate-app') {
-    console.error('Firebase Admin initialization error:', error);
-    process.exit(1);
-  }
 }
 const firestore = admin.firestore();
 

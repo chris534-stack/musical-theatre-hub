@@ -1,30 +1,25 @@
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
 
 // This is a safeguard to prevent re-initialization, which can happen in development
 // environments with hot-reloading.
-if (!admin.apps.length) {
-    try {
-      const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
-      if (!privateKey) {
-          throw new Error("Required environment variable FIREBASE_ADMIN_PRIVATE_KEY is not set.");
-      }
+if (!getApps().length) {
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-          // Handle the newline characters that can get escaped in environment variables
-          privateKey: privateKey.replace(/\\n/g, '\n'),
-        }),
-      });
-    } catch (error: any) {
-      // If the app is already initialized, we don't want to throw an error.
-      if (error.code !== 'app/duplicate-app') {
-        console.error('Firebase Admin initialization error:', error);
-        // Re-throw the error if it's not the one we're expecting to handle.
-        throw error;
-      }
+    if (!projectId || !clientEmail || !privateKey) {
+    throw new Error("Missing Firebase Admin SDK credentials. Please ensure FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and FIREBASE_ADMIN_PRIVATE_KEY are set in your environment variables.");
     }
+
+    initializeApp({
+    credential: cert({
+        projectId: projectId,
+        clientEmail: clientEmail,
+        // Handle the newline characters that can get escaped in environment variables
+        privateKey: privateKey.replace(/\\n/g, '\n'),
+    }),
+    });
 }
 
 // Export the initialized admin instance of Firestore.
