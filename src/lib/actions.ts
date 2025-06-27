@@ -12,12 +12,12 @@ export async function revalidateAdminPaths() {
   revalidatePath('/');
 }
 
-export async function scrapeEventAction(url: string) {
+export async function scrapeEventAction(url: string, screenshotDataUri: string) {
   try {
-    const scrapedData = await scrapeEventDetails({ url });
+    const scrapedData = await scrapeEventDetails({ url, screenshotDataUri });
 
     if (!scrapedData.title || !scrapedData.occurrences || scrapedData.occurrences.length === 0) {
-      return { success: false, message: 'No upcoming events found at that URL for a known venue.' };
+      return { success: false, message: 'No upcoming events found in the screenshot for a known venue.' };
     }
 
     const allVenues = await getAllVenues();

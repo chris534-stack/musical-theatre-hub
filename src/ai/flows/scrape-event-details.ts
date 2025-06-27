@@ -1,30 +1,25 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for automatically extracting event details from web pages.
+ * @fileOverview This file defines a Genkit flow for automatically extracting event details from a user-provided screenshot.
  *
  * It uses a combination of web scraping and AI to extract information about events from various sources.
- * The flow takes a URL as input and returns a structured object containing event details.
+ * The flow takes a URL and a screenshot data URI as input and returns a structured object containing event details.
  *
- * @file scrapeEventDetails - A function that scrapes event details from a given URL.
- * @file ScrapeEventDetailsInput - The input type for the scrapeEventDetails function, which is a URL string.
- * @file ScrapeEventDetailsOutput - The output type for the scrapeEventDetails function, containing event details like title, all occurrences, venue, and description.
+ * @file scrapeEventDetails - A function that scrapes event details from a given URL and screenshot.
+ * @file ScrapeEventDetailsInput - The input type for the scrapeEventDetails function.
+ * @file ScrapeEventDetailsOutput - The output type for the scrapeEventDetails function, containing event details.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import { getAllVenues } from '@/lib/data';
-import { takeScreenshot } from '@/lib/screenshot';
 
 const ScrapeEventDetailsInputSchema = z.object({
   url: z.string().url().describe('The URL of the event page to scrape.'),
-});
-export type ScrapeEventDetailsInput = z.infer<typeof ScrapeEventDetailsInputSchema>;
-
-// This is the schema for the prompt, which includes the page's screenshot
-const PromptInputSchema = ScrapeEventDetailsInputSchema.extend({
   screenshotDataUri: z.string().describe("A screenshot of the page as a Base64 data URI."),
 });
+export type ScrapeEventDetailsInput = z.infer<typeof ScrapeEventDetailsInputSchema>;
 
 const ScrapeEventDetailsOutputSchema = z.object({
   title: z.string().optional().describe('The title of the event.'),
@@ -53,7 +48,7 @@ const getKnownVenuesTool = ai.defineTool({
 
 const scrapeEventDetailsPrompt = ai.definePrompt({
   name: 'scrapeEventDetailsPrompt',
-  input: {schema: PromptInputSchema},
+  input: {schema: ScrapeEventDetailsInputSchema},
   output: {schema: ScrapeEventDetailsOutputSchema},
   tools: [getKnownVenuesTool],
   prompt: `You are an expert event detail extractor for the 'Our Stage, Eugene' website.
@@ -81,14 +76,9 @@ const scrapeEventDetailsFlow = ai.defineFlow(
     outputSchema: ScrapeEventDetailsOutputSchema,
   },
   async (input) => {
-    // Take a screenshot of the page
-    const screenshotDataUri = await takeScreenshot(input.url);
-
-    // Call the prompt with the original URL and the screenshot
-    const {output} = await scrapeEventDetailsPrompt({
-        url: input.url,
-        screenshotDataUri: screenshotDataUri,
-    });
+    // The screenshot is now provided directly by the user.
+    // Call the prompt with the URL and the screenshot data.
+    const {output} = await scrapeEventDetailsPrompt(input);
     
     console.log('AI Model Response:', JSON.stringify(output, null, 2));
     
