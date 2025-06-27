@@ -120,22 +120,25 @@ async function migrateEvents() {
   for (const event of events) {
     const occurrencesSource = event.event_occurrences || event.dates || [];
     
-    const occurrences = occurrencesSource.map((occ: any) => {
+    const occurrences = Array.isArray(occurrencesSource) ? occurrencesSource.map((occ: any) => {
         let date = '';
         try {
             if (occ.date) {
+                // Just validate and format, don't create a new Date() object here
+                // to avoid timezone issues on the server running the script.
                 const d = new Date(occ.date);
-                if (!isNaN(d.getTime())) { // Check if date is valid
-                     date = d.toISOString().split('T')[0];
+                if (!isNaN(d.getTime())) {
+                     date = d.toISOString().split('T')[0]; // Format to YYYY-MM-DD
                 }
             }
         } catch(e) { /* ignore invalid dates */ }
 
+        // A time is not required for an occurrence to be valid
         return {
             date: date,
             time: occ.time || ''
         }
-    }).filter((occ: any) => occ.date); // Only keep occurrences that have a valid date
+    }).filter((occ: any) => occ.date) : []; // Only keep occurrences that have a valid date
 
     if (occurrences.length > 0) {
         const newDocRef = collectionRef.doc(); // Firestore generates a new unique ID
@@ -168,14 +171,11 @@ async function migrateEvents() {
 async function migrate() {
   console.log("Starting Supabase to Firestore migration...");
   try {
-    // console.log("Migrating venues with new colors...");
+    // To re-migrate venues, uncomment the line below and delete the 'venues' collection in Firestore.
     // await migrateVenues();
     
     console.log("Migrating events with updated occurrence logic...");
     await migrateEvents();
-    
-    // Ideas are OK, skipping migration.
-    // await migrateIdeas();
     
     console.log("\nMigration completed successfully! 🎉");
   } catch (error) {
