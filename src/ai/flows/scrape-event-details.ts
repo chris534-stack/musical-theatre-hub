@@ -53,23 +53,31 @@ const scrapeEventDetailsPrompt = ai.definePrompt({
   output: {schema: ScrapeEventDetailsOutputSchema},
   tools: [getKnownVenuesTool],
   prompt: `You are an expert event detail extractor for the 'Our Stage, Eugene' website.
-Your goal is to analyze the provided image to extract details for any upcoming events, auditions, or performances. An administrator has provided this image because they believe it contains a valid event.
+Your goal is to analyze the provided image to extract details for an event. An administrator has provided this image because they believe it contains a valid event.
+
+Analyze the image:
+{{media url=screenshotDataUri}}
 
 {{#if url}}
 The image is a screenshot from the following URL: {{url}}
 {{/if}}
 
-Analyze the image:
-{{media url=screenshotDataUri}}
+Your task is to populate a JSON object with the event details. Follow these steps precisely:
 
-Follow these steps:
-1.  Use the getKnownVenues tool to get a list of all theatre venues the website is interested in.
-2.  Analyze the provided image for posters, banners, calendars, or text that describes an event, audition, or performance. It is very important that you extract the information.
-3.  Based on the image, extract the following details:
-    - Title: The title of the event or the show it's for. For auditions, this should be the name of the show.
-    - Occurrences: A list of all dates and times. This can be for auditions or performances. IMPORTANT: Only extract dates and times that are in the future. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming dates are found, return an empty array for this field.
-    - Venue: Find the best match for the venue from the list provided by the getKnownVenues tool. It is critical that the returned venue name is an EXACT match from the list. If you cannot find a venue in the image that matches the provided list, leave the 'venue' field empty.
-    - Description: A detailed description of the event. If it's an audition, mention that in the description (e.g., "Auditions for the musical...").
+1.  **Call the 'getKnownVenues' tool.** This tool will give you a definitive list of all theatre venues that our website tracks. This is your list of approved venues.
+
+2.  **Thoroughly examine the image for event information.** Look for posters, banners, calendars, or text that describes a show, audition, or performance.
+
+3.  **Identify the Venue.** Scan the image for any text that could be a venue name. Compare any names you find against the list from the 'getKnownVenues' tool.
+    - If you find a name in the image that is an **EXACT, case-sensitive match** to a name in the tool's list, use that name for the 'venue' field.
+    - If you cannot find an exact match in the image, or if there is no venue mentioned, you **MUST** leave the 'venue' field empty or null. Do not guess.
+
+4.  **Extract Other Details.** Based on the image, extract the following:
+    - **Title**: The title of the event or the show it's for. For auditions, this should be the name of the show.
+    - **Occurrences**: A list of all dates and times for performances or auditions. IMPORTANT: Only extract dates and times that are in the future. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming dates are found, return an empty array for this field.
+    - **Description**: A detailed description of the event. If it's an audition, make sure to mention that in the description (e.g., "Auditions for the musical...").
+
+It is critical that the 'venue' field is handled correctly as described in step 3.
   `,
 });
 
