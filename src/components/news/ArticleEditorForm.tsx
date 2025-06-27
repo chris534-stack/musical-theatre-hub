@@ -4,7 +4,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTransition } from 'react';
+import { useTransition, useState, useEffect } from 'react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,8 @@ import { saveNewsArticleAction } from '@/lib/actions';
 import type { ScrapeArticleOutput } from '@/ai/flows/scrape-article';
 import { Loader2 } from 'lucide-react';
 import { toTitleCase } from '@/lib/utils';
+import Image from 'next/image';
+import { Label } from '@/components/ui/label';
 
 const articleFormSchema = z.object({
   title: z.string().min(3, 'Title is required.'),
@@ -32,6 +34,7 @@ interface ArticleEditorFormProps {
 export function ArticleEditorForm({ initialData, onSuccess }: ArticleEditorFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [isImageError, setIsImageError] = useState(false);
 
   const form = useForm<ArticleFormValues>({
     resolver: zodResolver(articleFormSchema),
@@ -42,6 +45,13 @@ export function ArticleEditorForm({ initialData, onSuccess }: ArticleEditorFormP
         imageUrl: initialData.imageUrl || '',
     },
   });
+
+  const imageUrlValue = form.watch('imageUrl');
+
+  useEffect(() => {
+    setIsImageError(false);
+  }, [imageUrlValue]);
+
 
   const onSubmit = (data: ArticleFormValues) => {
     startTransition(async () => {
@@ -105,6 +115,30 @@ export function ArticleEditorForm({ initialData, onSuccess }: ArticleEditorFormP
             </FormItem>
           )}
         />
+
+        {imageUrlValue && (
+            <div className="space-y-2">
+                <Label>Image Preview</Label>
+                <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted flex items-center justify-center">
+                    {!isImageError ? (
+                        <Image
+                            src={imageUrlValue}
+                            alt="Article preview"
+                            fill
+                            className="object-cover"
+                            data-ai-hint="news preview"
+                            unoptimized
+                            onError={() => setIsImageError(true)}
+                        />
+                    ) : (
+                        <p className="text-muted-foreground text-sm px-4 text-center">
+                            Image preview not available. Please check the URL.
+                        </p>
+                    )}
+                </div>
+            </div>
+        )}
+
         <FormField
           control={form.control}
           name="url"
