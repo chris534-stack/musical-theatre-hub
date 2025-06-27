@@ -140,14 +140,36 @@ export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Prom
  * [SERVER-SIDE] Fetches all news articles using the Admin SDK, ordered by creation date.
  */
 export async function getAllNewsArticles(): Promise<NewsArticle[]> {
-    const snapshot = await adminDb.collection('news').orderBy('order', 'asc').get();
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      return { 
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate().toISOString(), // Convert Firestore Timestamp to string for serialization
-        order: data.order ?? 0,
-      } as NewsArticle
+    const snapshot = await adminDb.collection('news').get();
+    
+    const articles = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt.toDate().toISOString(),
+            order: data.order, // This might be undefined for old articles
+        } as NewsArticle;
     });
+
+    // Custom sort: items with an 'order' value come first, sorted by that order.
+    // Items without 'order' come next, sorted by their creation date.
+    articles.sort((a, b) => {
+        const aHasOrder = a.order !== undefined && a.order !== null;
+        const bHasOrder = b.order !== undefined && b.order !== null;
+
+        if (aHasOrder && bHasOrder) {
+            return a.order - b.order;
+        }
+        if (aHasOrder) {
+            return -1; // a comes first
+        }
+        if (bHasOrder) {
+            return 1; // b comes first
+        }
+        // Neither has an order, so sort by creation date (newest first)
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return articles;
 }
