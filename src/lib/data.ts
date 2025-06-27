@@ -30,20 +30,20 @@ export async function getAllEvents(): Promise<Event[]> {
 }
 
 export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
-    const q = query(eventsCollection, where("status", "==", status), orderBy("date", "asc"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+    const allEvents = await getAllEvents();
+    const filteredByStatus = allEvents.filter(event => event.status === status);
+    // Original query sorted by date ascending, but getAllEvents sorts descending.
+    // We need to re-sort to maintain the ascending order for the calendar view.
+    return filteredByStatus.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 export async function getFeaturedEventsFirestore(count: number): Promise<Event[]> {
-    const q = query(
-        eventsCollection, 
-        where("status", "==", "approved"),
-        orderBy("date", "asc"),
-        limit(count)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+    const allEvents = await getAllEvents();
+    const approvedEvents = allEvents.filter(event => event.status === "approved");
+     // Original query sorted by date ascending, but getAllEvents sorts descending.
+    // We re-sort to get the soonest upcoming events first.
+    const sortedEvents = approvedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return sortedEvents.slice(0, count);
 }
 
 
