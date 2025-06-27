@@ -68,16 +68,18 @@ export default async function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             {featuredEvents.map(event => (
               <Card key={event.id} className="flex flex-col text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
-                <CardHeader className="flex-grow flex flex-col justify-center">
+                <CardHeader>
                   <CardTitle className="font-headline font-bold text-primary">{event.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow">
                   <CardDescription>
                     {event.venue?.name}
                     {event.occurrences && event.occurrences.length > 0 && (
                       <p className="mt-2">{formatOccurrence(event.occurrences[0])}</p>
                     )}
                   </CardDescription>
-                </CardHeader>
-                <CardFooter className="justify-center pt-0">
+                </CardContent>
+                <CardFooter className="justify-center">
                   <Button variant="link" asChild>
                     <Link href={event.url || '#'}>Details</Link>
                   </Button>
