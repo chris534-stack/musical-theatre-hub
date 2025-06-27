@@ -14,11 +14,17 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import { getAllVenues } from '@/lib/data';
+import { takeScreenshot } from '@/lib/screenshot';
 
 const ScrapeEventDetailsInputSchema = z.object({
   url: z.string().url().describe('The URL of the event page to scrape.'),
 });
 export type ScrapeEventDetailsInput = z.infer<typeof ScrapeEventDetailsInputSchema>;
+
+// This is the schema for the prompt, which includes the screenshot
+const PromptInputSchema = ScrapeEventDetailsInputSchema.extend({
+  screenshotDataUri: z.string().describe("A screenshot of the event page, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+});
 
 const ScrapeEventDetailsOutputSchema = z.object({
   title: z.string().optional().describe('The title of the event.'),
@@ -47,21 +53,24 @@ const getKnownVenuesTool = ai.defineTool({
 
 const scrapeEventDetailsPrompt = ai.definePrompt({
   name: 'scrapeEventDetailsPrompt',
-  input: {schema: ScrapeEventDetailsInputSchema},
+  input: {schema: PromptInputSchema},
   output: {schema: ScrapeEventDetailsOutputSchema},
   tools: [getKnownVenuesTool],
   prompt: `You are an expert event detail extractor for the 'Our Stage, Eugene' website.
-Your goal is to analyze the provided URL and determine if there are upcoming, relevant events to add to the website's calendar.
+Your goal is to analyze the provided URL and a screenshot of the page to determine if there are upcoming, relevant events to add to the website's calendar. The screenshot is the primary source of truth for visual information.
+
+Screenshot of the page:
+{{media url=screenshotDataUri}}
 
 Here are the steps you must follow:
 1.  Use the getKnownVenues tool to get a list of all theatre venues the website is interested in.
-2.  Visually analyze the fully rendered page at the provided URL. Your analysis must include all text and, most importantly, all images, such as posters or banners. URL: {{url}}
-3.  Based on the content from both text and images, extract the following details for any valid, upcoming events.
-    - Title: The title of the event. Look for titles in prominent text or within images related to the event (e.g., event posters).
-    - Occurrences: A list of all performance dates and times. Pay close attention to dates and times mentioned in text and **dates and times displayed in images**. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
-    - Venue: The name of the event's venue. This MUST EXACTLY match one of the venue names provided by the getKnownVenues tool. Look for venue names in text and **potentially in images (e.g., venue logos or names on posters)**.
-    - Description: A detailed description of the event. Combine information from text and any descriptive text found in images.
-4.  If the page does not contain information about an event at one of the known venues, or if all events listed are in the past, you must return an empty object: {}.
+2.  Analyze the provided screenshot of the rendered page at {{url}}. Your analysis must prioritize the content within the screenshot, especially images like posters or banners, as they may contain information not present in the site's text content.
+3.  Based on the content from the screenshot, extract the following details for any valid, upcoming events.
+    - Title: The title of the event. Look for titles in prominent text or within images in the screenshot.
+    - Occurrences: A list of all performance dates and times. Pay close attention to dates and times displayed in the screenshot. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
+    - Venue: The name of the event's venue. This MUST EXACTLY match one of the venue names provided by the getKnownVenues tool. Look for venue names or logos in the screenshot.
+    - Description: A detailed description of the event. Combine information from text and any descriptive text found in the screenshot.
+4.  If the page/screenshot does not contain information about an event at one of the known venues, or if all events listed are in the past, you must return an empty object: {}.
   `,
 });
 
@@ -71,8 +80,16 @@ const scrapeEventDetailsFlow = ai.defineFlow(
     inputSchema: ScrapeEventDetailsInputSchema,
     outputSchema: ScrapeEventDetailsOutputSchema,
   },
-  async input => {
-    const {output} = await scrapeEventDetailsPrompt(input);
+  async (input) => {
+    // Take the screenshot
+    const screenshotDataUri = await takeScreenshot(input.url);
+
+    // Call the prompt with the original URL and the new screenshot
+    const {output} = await scrapeEventDetailsPrompt({
+        url: input.url,
+        screenshotDataUri: screenshotDataUri,
+    });
+    
     console.log('AI Model Response:', JSON.stringify(output, null, 2));
     
     if (!output) {
