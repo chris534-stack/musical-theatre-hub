@@ -77,14 +77,14 @@ async function migrateVenues() {
   const batch = firestore.batch();
 
   const venueColors = [
-      'hsl(262, 47%, 50%)', // Muted Purple
-      'hsl(217, 56%, 51%)', // Strong Blue
-      'hsl(170, 45%, 45%)', // Teal
-      'hsl(350, 60%, 55%)', // Muted Red/Pink
-      'hsl(24, 84%, 55%)',  // Orange
-      'hsl(195, 53%, 45%)', // Cerulean
-      'hsl(100, 35%, 45%)', // Muted Green
-      'hsl(30, 55%, 50%)'   // Brownish Orange
+    'hsl(210, 31%, 40%)', // Slate Blue
+    'hsl(160, 44%, 48%)', // Verdant Green
+    'hsl(30, 84%, 60%)',  // Muted Orange
+    'hsl(260, 35%, 55%)', // Soft Purple
+    'hsl(0, 50%, 60%)',   // Coral Red
+    'hsl(45, 70%, 55%)',  // Goldenrod
+    'hsl(190, 50%, 50%)', // Steel Blue
+    'hsl(340, 45%, 60%)', // Rose Pink
   ];
   let colorIndex = 0;
 
@@ -124,16 +124,20 @@ async function migrateEvents() {
         let date = '';
         try {
             if (occ.date) {
-                // Just validate and format, don't create a new Date() object here
-                // to avoid timezone issues on the server running the script.
+                // Manually parse date to avoid timezone issues.
+                // Supabase might return a full ISO string. We only want YYYY-MM-DD.
                 const d = new Date(occ.date);
                 if (!isNaN(d.getTime())) {
-                     date = d.toISOString().split('T')[0]; // Format to YYYY-MM-DD
+                     // Get UTC date parts to avoid timezone shift
+                     const year = d.getUTCFullYear();
+                     const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+                     const day = String(d.getUTCDate()).padStart(2, '0');
+                     date = `${year}-${month}-${day}`;
                 }
             }
         } catch(e) { /* ignore invalid dates */ }
 
-        // A time is not required for an occurrence to be valid
+        // An occurrence is valid even without a time.
         return {
             date: date,
             time: occ.time || ''
@@ -165,16 +169,16 @@ async function migrateEvents() {
 
 /**
  * Main migration function.
- * IMPORTANT: This script is now configured to ONLY migrate events.
- * Before running, be sure to delete the existing 'events' collection in Firestore.
+ * This script will migrate both venues and events.
+ * Before running, be sure to delete the existing 'venues' and 'events' collections in Firestore.
  */
 async function migrate() {
   console.log("Starting Supabase to Firestore migration...");
   try {
-    // To re-migrate venues, uncomment the line below and delete the 'venues' collection in Firestore.
-    // await migrateVenues();
+    console.log("Migrating venues...");
+    await migrateVenues();
     
-    console.log("Migrating events with updated occurrence logic...");
+    console.log("Migrating events...");
     await migrateEvents();
     
     console.log("\nMigration completed successfully! 🎉");
