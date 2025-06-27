@@ -321,7 +321,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 onClick={() => handleCardClick(event.id)}
                 className={cn(
                   "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden relative",
-                  isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-36"
+                  isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-44"
                 )}
                 style={{ borderLeft: `4px solid ${event.venue?.color || 'transparent'}` }}
               >
@@ -339,7 +339,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 <CardContent>
                   <p className={cn(
                     "text-sm text-muted-foreground mb-4",
-                    !isSelected && "line-clamp-3"
+                    !isSelected && "line-clamp-2"
                   )}>
                     {event.description}
                   </p>
