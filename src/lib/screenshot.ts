@@ -16,6 +16,7 @@ export async function takeScreenshot(url: string): Promise<string> {
     browser = await puppeteer.launch({
       headless: 'new',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      channel: 'chrome-headless-shell',
     });
 
     const page = await browser.newPage();
