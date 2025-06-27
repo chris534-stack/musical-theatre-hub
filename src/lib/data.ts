@@ -1,9 +1,17 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Event, Venue, EventStatus } from './types';
+import { startOfToday, addDays } from 'date-fns';
 
+// Collection references
 const venuesCollection = collection(db, 'venues');
 const eventsCollection = collection(db, 'events');
+
+const parseDateString = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  // Creates a date at midnight in the server's local timezone
+  return new Date(year, month - 1, day);
+};
 
 // --- Venue Functions ---
 
@@ -32,18 +40,33 @@ export async function getAllEvents(): Promise<Event[]> {
 export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
     const allEvents = await getAllEvents();
     const filteredByStatus = allEvents.filter(event => event.status === status);
-    // Original query sorted by date ascending, but getAllEvents sorts descending.
     // We need to re-sort to maintain the ascending order for the calendar view.
-    return filteredByStatus.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return filteredByStatus.sort((a, b) => parseDateString(a.date).getTime() - parseDateString(b.date).getTime());
 }
 
 export async function getFeaturedEventsFirestore(count: number): Promise<Event[]> {
     const allEvents = await getAllEvents();
     const approvedEvents = allEvents.filter(event => event.status === "approved");
-     // Original query sorted by date ascending, but getAllEvents sorts descending.
-    // We re-sort to get the soonest upcoming events first.
-    const sortedEvents = approvedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    return sortedEvents.slice(0, count);
+    
+    // Sort events by date ascending to get the soonest first
+    const sortedEvents = approvedEvents.sort((a, b) => parseDateString(a.date).getTime() - parseDateString(b.date).getTime());
+
+    const today = startOfToday();
+    const thirtyDaysFromNow = addDays(today, 30);
+
+    const featuredEvents = sortedEvents.filter(event => {
+        try {
+            const eventDate = parseDateString(event.date);
+            
+            // Check if the event date is between today and 30 days from now.
+            return eventDate >= today && eventDate <= thirtyDaysFromNow;
+        } catch (e) {
+            console.error(`Invalid date format for event ${event.id}: ${event.date}`);
+            return false;
+        }
+    });
+
+    return featuredEvents.slice(0, count);
 }
 
 
