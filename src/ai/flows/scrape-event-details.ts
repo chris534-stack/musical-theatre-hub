@@ -12,7 +12,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 import { getAllVenues } from '@/lib/data';
 
 const ScrapeEventDetailsInputSchema = z.object({
@@ -55,15 +55,13 @@ Your goal is to analyze the provided URL and determine if there are upcoming, re
 
 Here are the steps you must follow:
 1.  Use the getKnownVenues tool to get a list of all theatre venues the website is interested in.
-2.  Thoroughly browse and analyze the entire content of the page at the provided URL to find event information. URL: {{url}}
-3.  Based on the content, extract the following details for any valid, upcoming events.
-    - Title: The title of the event.
-    - Occurrences: A list of all performance dates and times. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
-    - Venue: The name of the event's venue. This MUST EXACTLY match one of the venue names provided by the getKnownVenues tool.
-    - Description: A detailed description of the event.
-4.  If the page does not contain information about an event at one of the known venues, or if all events listed are in the past, you should return the 'title' and 'description' as empty strings and 'occurrences' as an empty array.
-
-Return the extracted details in the specified JSON format.
+2.  Visually analyze the fully rendered page at the provided URL. Your analysis must include all text and, most importantly, all images, such as posters or banners. URL: {{url}}
+3.  Based on the content from both text and images, extract the following details for any valid, upcoming events.
+    - Title: The title of the event. Look for titles in prominent text or within images related to the event (e.g., event posters).
+    - Occurrences: A list of all performance dates and times. Pay close attention to dates and times mentioned in text and **dates and times displayed in images**. IMPORTANT: Only extract dates and times that are in the future. Ignore any past performances. If a show has a run (e.g., Fri-Sun for 3 weeks), list out each individual performance date. If no upcoming performances are found, return an empty array for occurrences.
+    - Venue: The name of the event's venue. This MUST EXACTLY match one of the venue names provided by the getKnownVenues tool. Look for venue names in text and **potentially in images (e.g., venue logos or names on posters)**.
+    - Description: A detailed description of the event. Combine information from text and any descriptive text found in images.
+4.  If the page does not contain information about an event at one of the known venues, or if all events listed are in the past, you should return an object with empty strings for 'title' and 'description', and an empty array for 'occurrences'.
   `,
 });
 
@@ -75,6 +73,12 @@ const scrapeEventDetailsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await scrapeEventDetailsPrompt(input);
-    return output!;
+    console.log('AI Model Response:', JSON.stringify(output, null, 2));
+    
+    if (!output) {
+      throw new Error('AI model did not return a valid output object.');
+    }
+
+    return output;
   }
 );
