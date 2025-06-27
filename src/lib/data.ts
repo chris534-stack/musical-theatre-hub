@@ -1,5 +1,5 @@
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, limit, orderBy, getCountFromServer } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, addDoc } from 'firebase/firestore';
+import { adminDb } from './firebase-admin'; // Admin SDK for server-side functions
 import type { Event, Venue, EventStatus } from './types';
 import { startOfToday, addDays } from 'date-fns';
 
@@ -10,41 +10,24 @@ const parseDateString = (dateString: string): Date => {
   return new Date(year, month - 1, day);
 };
 
-// --- Collection References ---
-const venuesCollection = collection(db, 'venues');
-const eventsCollection = collection(db, 'events');
-
 // --- Venue Functions ---
 
+/**
+ * [SERVER-SIDE] Fetches all venues using the Admin SDK.
+ */
 export async function getAllVenues(): Promise<Venue[]> {
-  const snapshot = await getDocs(venuesCollection);
+  const snapshot = await adminDb.collection('venues').get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Venue));
-}
-
-export async function getVenue(id: string): Promise<Venue | undefined> {
-    const docRef = doc(db, 'venues', id);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Venue;
-    }
-    return undefined;
-}
-
-export async function updateVenue(id: string, updates: Partial<Omit<Venue, 'id'>>): Promise<void> {
-  const venueDoc = doc(db, 'venues', id);
-  await updateDoc(venueDoc, updates);
-}
-
-export async function deleteVenue(id: string): Promise<void> {
-  const venueDoc = doc(db, 'venues', id);
-  await deleteDoc(venueDoc);
 }
 
 
 // --- Event Functions ---
 
+/**
+ * [SERVER-SIDE] Fetches all events using the Admin SDK.
+ */
 export async function getAllEvents(): Promise<Event[]> {
-  const snapshot = await getDocs(eventsCollection);
+  const snapshot = await adminDb.collection('events').get();
   const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
   
   // Sort events by the date of their first occurrence
@@ -59,11 +42,17 @@ export async function getAllEvents(): Promise<Event[]> {
   return events;
 }
 
+/**
+ * [SERVER-SIDE] Fetches events by status.
+ */
 export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
     const allEvents = await getAllEvents();
     return allEvents.filter(event => event.status === status);
 }
 
+/**
+ * [SERVER-SIDE] Fetches featured events for the homepage.
+ */
 export async function getFeaturedEventsFirestore(count: number): Promise<Event[]> {
     const allEvents = await getAllEvents();
     const approvedEvents = allEvents.filter(event => event.status === "approved");
@@ -114,31 +103,24 @@ export async function getFeaturedEventsFirestore(count: number): Promise<Event[]
     return eventsWithUpcomingOccurrences.slice(0, count);
 }
 
-
+/**
+ * [SERVER-SIDE] Adds a new event document using the Admin SDK.
+ */
 export async function addEvent(eventData: Omit<Event, 'id'>): Promise<Event> {
-  const docRef = await addDoc(eventsCollection, eventData);
+  const docRef = await adminDb.collection('events').add(eventData);
   return { id: docRef.id, ...eventData };
 }
 
-export async function updateEvent(id: string, updates: Partial<Event>): Promise<void> {
-  const eventDoc = doc(db, 'events', id);
-  await updateDoc(eventDoc, updates);
-}
-
-export async function deleteEvent(id: string): Promise<void> {
-  const eventDoc = doc(db, 'events', id);
-  await deleteDoc(eventDoc);
-}
-
+/**
+ * [SERVER-SIDE] Checks if an event already exists using the Admin SDK.
+ */
 export async function eventExists(title: string, venueId: string): Promise<boolean> {
   if (!venueId) return false;
 
-  const q = query(
-    eventsCollection,
-    where('title', '==', title),
-    where('venueId', '==', venueId)
-  );
+  const q = adminDb.collection('events')
+    .where('title', '==', title)
+    .where('venueId', '==', venueId);
   
-  const snapshot = await getCountFromServer(q);
+  const snapshot = await q.count().get();
   return snapshot.data().count > 0;
 }

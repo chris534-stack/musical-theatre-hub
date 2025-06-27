@@ -32,7 +32,7 @@ import {
 import { MoreHorizontal, CheckCircle, XCircle, Edit, Clock, Trash2 } from 'lucide-react';
 import type { Event, Venue, EventStatus } from '@/lib/types';
 import { revalidateAdminPaths } from '@/lib/actions';
-import { updateEvent, deleteEvent } from '@/lib/data';
+import { updateEvent, deleteEvent } from '@/lib/data-client';
 import { useTransition, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';

@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { revalidateAdminPaths } from '@/lib/actions';
-import { updateVenue, deleteVenue } from '@/lib/data';
+import { updateVenue, deleteVenue } from '@/lib/data-client';
 import { Edit, Trash2 } from 'lucide-react';
 
 export function VenueCard({ venue }: { venue: Venue }) {

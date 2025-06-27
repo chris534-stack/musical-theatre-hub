@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, getAllVenues, deleteEvent, deleteVenue, eventExists } from '@/lib/data';
+import { addEvent, getAllVenues, eventExists } from '@/lib/data';
 import type { Event } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 
@@ -54,24 +54,4 @@ export async function scrapeEventAction(url: string) {
     }
     return { success: false, message: 'An unexpected error occurred while scraping the event details.' };
   }
-}
-
-export async function deleteEventAction(eventId: string) {
-    try {
-        await deleteEvent(eventId);
-        await revalidateAdminPaths();
-        return { success: true, message: 'Event has been deleted.' };
-    } catch (error: any) {
-        return { success: false, message: error.message || 'Failed to delete event.' };
-    }
-}
-
-export async function deleteVenueAction(venueId: string) {
-    try {
-        await deleteVenue(venueId);
-        await revalidateAdminPaths();
-        return { success: true, message: 'Venue has been deleted.' };
-    } catch (error: any) {
-        return { success: false, message: error.message || 'Failed to delete venue.' };
-    }
 }
