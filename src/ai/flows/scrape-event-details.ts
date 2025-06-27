@@ -65,7 +65,7 @@ Please answer the following questions based on the image and provide your final 
 
 - **What is the title of the event?** If this is for an audition, the title should be the name of the show they are auditioning for.
 
-- **What is the venue for this event?** To answer this, you MUST first call the \`getKnownVenues\` tool to get a list of approved theatre names. Then, compare the names from the tool with the text in the image. The venue you provide in the JSON must be an *exact, case-sensitive match* from the tool's list. If you cannot find an exact match, please set the 'venue' field to null.
+- **What is the venue for this event?** To answer this, you MUST first call the \`getKnownVenues\` tool to get a list of approved theatre names. Then, compare the names from the tool with the text in the image. The venue you provide in the JSON must be an *exact, case-sensitive match* from the tool's list. IMPORTANT: Even if you cannot find a matching venue and must set the 'venue' field to null, you must still extract all other details like the title, description, and dates.
 
 - **What are the dates and times of the performances or auditions?** Please list all of them. Important: Only include dates that are in the future. If a year isn't specified, assume the current year. For a show with a run (e.g., Friday-Sunday for three weeks), list out each individual performance date and time. If no upcoming dates are found, return an empty array for this field.
 
