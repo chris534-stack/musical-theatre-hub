@@ -270,7 +270,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
 
   const MobileCalendar = () => {
     function CustomDayContent(props: DayContentProps) {
-      const { date, activeModifiers } = props;
+      const { date } = props;
       const dateKey = format(date, 'yyyy-MM-dd');
       const dayEvents = eventsByDate.get(dateKey) || [];
       const uniqueVenueColors = Array.from(
@@ -280,7 +280,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
       return (
         <>
           {format(date, 'd')}
-          {uniqueVenueColors.length > 0 && !activeModifiers.selected && (
+          {uniqueVenueColors.length > 0 && (
             <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center space-x-1">
               {uniqueVenueColors.slice(0, 3).map((color, index) => (
                 <span
@@ -349,7 +349,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       {eventTypes.map(type => (
                         <div key={type} className="flex items-center space-x-2">
                           <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
-                          <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{type.replace('-', ' ')}</Label>
+                          <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{toTitleCase(type.replace('-', ' '))}</Label>
                         </div>
                       ))}
                     </div>
@@ -384,7 +384,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                         <div className="flex items-center gap-2 text-sm">
                           <Ticket className="h-4 w-4 flex-shrink-0" /> 
                           <span className="capitalize">
-                            {event.type.replace('-', ' ')}
+                            {toTitleCase(event.type.replace('-', ' '))}
                             {event.time && ` at ${format(new Date(`1970-01-01T${event.time}`), 'h:mm a')}`}
                           </span>
                         </div>
