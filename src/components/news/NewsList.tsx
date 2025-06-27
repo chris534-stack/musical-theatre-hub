@@ -61,7 +61,7 @@ export function NewsList({ initialArticles }: { initialArticles: NewsArticle[] }
                     <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+                        className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-8"
                     >
                         {articles.map((article, index) => (
                             <Draggable key={article.id} draggableId={article.id} index={index}>
