@@ -161,7 +161,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   }
 
   const DesktopCalendar = () => (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col min-h-[720px]">
       <CardHeader className="flex flex-row items-center justify-between py-4">
         <CardTitle className="font-headline text-2xl">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
         <div className="flex items-center gap-2">
@@ -177,7 +177,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
       <div className="grid grid-cols-7 border-t border-b text-center text-sm font-semibold text-muted-foreground">
         {weekDayNames.map(day => <div key={day} className="py-2">{day}</div>)}
       </div>
-      <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-px bg-border min-h-[720px]">
+      <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-px bg-border">
         {calendarDays.map((day) => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const dayEvents = eventsByDate.get(dateKey) || [];
