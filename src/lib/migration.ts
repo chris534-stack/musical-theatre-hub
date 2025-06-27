@@ -1,5 +1,6 @@
 /**
  * One-time migration script to move data from Supabase to Firebase Firestore.
+ * This script is tailored to the specific schemas of the source and destination.
  *
  * To run this script:
  * 1. Fill in the environment variables in your .env file:
@@ -52,71 +53,151 @@ try {
 }
 const firestore = admin.firestore();
 
+/**
+ * Generates a random HSL color string.
+ * @returns A string representing an HSL color.
+ */
+function getRandomColor(): string {
+  const h = Math.floor(Math.random() * 360);
+  const s = 40 + Math.floor(Math.random() * 30); // Saturation between 40% and 70%
+  const l = 50 + Math.floor(Math.random() * 20); // Lightness between 50% and 70%
+  return `hsl(${h}, ${s}%, ${l}%)`;
+}
 
 /**
  * Fetches all records from a Supabase table.
  * @param tableName The name of the Supabase table.
  */
-async function fetchFromSupabase(tableName: string) {
+async function fetchFromSupabase(tableName: string): Promise<any[]> {
+  console.log(`Fetching data from Supabase table: '${tableName}'...`);
   const { data, error } = await supabase.from(tableName).select('*');
   if (error) {
     throw new Error(`Error fetching from Supabase table ${tableName}: ${error.message}`);
   }
+  console.log(`Successfully fetched ${data?.length || 0} records from '${tableName}'.`);
   return data || [];
 }
 
 /**
- * Writes data to a Firestore collection, using the provided id as the document ID.
- * @param collectionName The name of the Firestore collection.
- * @param data The array of data to write.
+ * Migrates venues from Supabase to Firestore.
  */
-async function writeToFirestore(collectionName: string, data: any[]) {
-  const collectionRef = firestore.collection(collectionName);
+async function migrateVenues() {
+  const venues = await fetchFromSupabase('venues');
+  const collectionRef = firestore.collection('venues');
   const batch = firestore.batch();
 
-  console.log(`Preparing to write ${data.length} records to Firestore collection '${collectionName}'...`);
-
-  data.forEach(item => {
-    // Ensure there is an 'id' field to use as the document ID
-    if (!item.id) {
-        console.warn(`Skipping item without an ID in collection '${collectionName}':`, item);
-        return;
-    }
-    const docRef = collectionRef.doc(String(item.id));
-    batch.set(docRef, item);
+  console.log(`Transforming and batching ${venues.length} venue records for Firestore...`);
+  venues.forEach(venue => {
+    const docRef = collectionRef.doc(String(venue.id));
+    const firestoreVenue = {
+      id: String(venue.id),
+      name: venue.name,
+      // address and contact_email are ignored as they are not in the new schema.
+      // A random color is added as it's required by the new UI.
+      color: getRandomColor(),
+    };
+    batch.set(docRef, firestoreVenue);
   });
 
   await batch.commit();
-  console.log(`Successfully wrote ${data.length} records to '${collectionName}'.`);
+  console.log(`Successfully wrote ${venues.length} records to Firestore 'venues' collection.`);
 }
+
+/**
+ * Migrates events from Supabase to Firestore, flattening occurrences.
+ */
+async function migrateEvents() {
+    const events = await fetchFromSupabase('events');
+    const collectionRef = firestore.collection('events');
+    const batch = firestore.batch();
+    let firestoreEventCount = 0;
+
+    console.log(`Transforming and batching ${events.length} event records for Firestore...`);
+
+    for (const event of events) {
+        // Fallback to 'dates' if 'event_occurrences' is null/empty
+        const occurrences = event.event_occurrences || event.dates;
+
+        if (occurrences && Array.isArray(occurrences)) {
+            for (const occurrence of occurrences) {
+                // Ensure we can parse the date and time
+                if (occurrence.date && occurrence.time) {
+                    const newDocRef = collectionRef.doc(); // Firestore generates a new unique ID
+                    
+                    // Basic validation/parsing for date and time
+                    let eventDate = '';
+                    try {
+                        eventDate = new Date(occurrence.date).toISOString().split('T')[0];
+                    } catch (e) {
+                        console.warn(`Skipping occurrence with invalid date for event '${event.title}':`, occurrence.date);
+                        continue;
+                    }
+
+                    const firestoreEvent = {
+                        id: newDocRef.id,
+                        title: event.title,
+                        description: event.description || '',
+                        date: eventDate, // Format: YYYY-MM-DD
+                        time: occurrence.time, // Format: HH:MM
+                        venueId: String(event.venue_id),
+                        type: event.category || 'Special Event',
+                        status: 'approved', // Default old events to approved
+                        url: event.ticket_link || '',
+                    };
+                    batch.set(newDocRef, firestoreEvent);
+                    firestoreEventCount++;
+                } else {
+                     console.warn(`Skipping occurrence with missing date/time for event '${event.title}':`, occurrence);
+                }
+            }
+        }
+    }
+
+    await batch.commit();
+    console.log(`Successfully wrote ${firestoreEventCount} flattened event records to Firestore 'events' collection.`);
+}
+
+
+/**
+ * Migrates ideas from Supabase to Firestore.
+ */
+async function migrateIdeas() {
+  const ideas = await fetchFromSupabase('ideas');
+  const collectionRef = firestore.collection('ideas');
+  const batch = firestore.batch();
+
+  console.log(`Transforming and batching ${ideas.length} idea records for Firestore...`);
+  ideas.forEach(idea => {
+    // Use the Supabase UUID as the Firestore document ID
+    const docRef = collectionRef.doc(idea.id);
+    const firestoreIdea = {
+      id: idea.id,
+      idea: idea.title || '',
+      showType: idea.idea_type || '',
+      targetAudience: '', // Not available in Supabase data
+      communityFit: idea.description || '', // Mapping description to communityFit
+      userName: idea.name,
+      userEmail: idea.email,
+      timestamp: admin.firestore.Timestamp.fromDate(new Date(idea.created_at)),
+      // userId is not available in Supabase data
+    };
+    batch.set(docRef, firestoreIdea);
+  });
+
+  await batch.commit();
+  console.log(`Successfully wrote ${ideas.length} records to Firestore 'ideas' collection.`);
+}
+
 
 /**
  * Main migration function.
  */
 async function migrate() {
   console.log("Starting Supabase to Firestore migration...");
-
   try {
-    // --- Migrate Venues ---
-    console.log("\nMigrating venues...");
-    // NOTE: Replace 'venues' with your actual Supabase table name if different.
-    const venues = await fetchFromSupabase('venues');
-    // NOTE: The data structure is assumed to match the Firestore structure.
-    // If transformation is needed, do it here before writing.
-    await writeToFirestore('venues', venues);
-    
-    // --- Migrate Events ---
-    console.log("\nMigrating events...");
-    // NOTE: Replace 'events' with your actual Supabase table name if different.
-    const events = await fetchFromSupabase('events');
-    await writeToFirestore('events', events);
-    
-    // --- Migrate Ideas ---
-    console.log("\nMigrating ideas...");
-    // NOTE: Replace 'ideas' with your actual Supabase table name if different.
-    const ideas = await fetchFromSupabase('ideas');
-    await writeToFirestore('ideas', ideas);
-
+    await migrateVenues();
+    await migrateEvents();
+    await migrateIdeas();
     console.log("\nMigration completed successfully! 🎉");
   } catch (error) {
     console.error("\nMigration failed:", error);
