@@ -270,17 +270,12 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
 
   const MobileCalendar = () => {
     function CustomDayContent(props: DayContentProps) {
-        const { date, activeModifiers } = props;
+        const { date } = props;
         const dateKey = format(date, 'yyyy-MM-dd');
         const dayEvents = eventsByDate.get(dateKey) || [];
         const uniqueVenueColors = Array.from(
           new Set(dayEvents.map((e) => e.venue?.color).filter(Boolean) as string[])
         );
-  
-        // Don't render dots if the day is selected
-        if (activeModifiers.selected) {
-          return <>{format(date, 'd')}</>;
-        }
   
         return (
           <>
@@ -308,7 +303,9 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
         className="w-full rounded-md border"
         classNames={{
             cell: "h-9 w-full text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground"
+            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+            day_today: "bg-accent text-accent-foreground",
+            day_outside: "day-outside text-muted-foreground opacity-50",
         }}
         components={{ DayContent: CustomDayContent }}
       />
