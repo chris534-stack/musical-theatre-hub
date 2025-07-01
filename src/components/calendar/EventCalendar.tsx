@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ExpandedCalendarEvent } from '@/app/calendar/page';
+import type { ExpandedCalendarEvent } from '@/lib/types';
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   format,

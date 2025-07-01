@@ -1,15 +1,6 @@
 import { EventCalendar } from '@/components/calendar/EventCalendar';
 import { getEventsByStatus, getAllVenues, getAllReviews } from '@/lib/data';
-import type { Venue, Event, Review } from '@/lib/types';
-
-// An "Expanded Event" is a single performance instance, derived from a parent Event
-export type ExpandedCalendarEvent = Omit<Event, 'occurrences'> & {
-    uniqueOccurrenceId: string; // A unique ID for this specific performance
-    date: string;
-    time: string;
-    venue?: Venue;
-    reviews: Review[];
-};
+import type { Venue, Event, Review, ExpandedCalendarEvent } from '@/lib/types';
 
 async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
   const approvedEvents = await getEventsByStatus('approved');

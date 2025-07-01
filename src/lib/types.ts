@@ -72,3 +72,12 @@ export type Review = {
     dislikes: number;
     votedBy: string[];
 };
+
+// An "Expanded Event" is a single performance instance, derived from a parent Event
+export type ExpandedCalendarEvent = Omit<Event, 'occurrences'> & {
+    uniqueOccurrenceId: string; // A unique ID for this specific performance
+    date: string;
+    time: string;
+    venue?: Venue;
+    reviews: Review[];
+};
