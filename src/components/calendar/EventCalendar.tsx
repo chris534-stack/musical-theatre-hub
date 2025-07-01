@@ -322,6 +322,8 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
         mode="single"
         selected={selectedDate}
         onSelect={setSelectedDate}
+        month={currentMonth}
+        onMonthChange={setCurrentMonth}
         className="w-full rounded-md border"
         classNames={{
             cell: "h-9 w-full text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
@@ -440,16 +442,16 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                     </CardContent>
                   </div>
                   <CardFooter>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <div className="flex w-full flex-wrap items-center justify-start gap-x-4 gap-y-2">
                       {event.url && (
                         <Button variant="link" size="sm" asChild className="p-0 h-auto">
                           <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                             Visit Website
-                            <ExternalLink className="h-3 w-3" />
+                            <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>
                       )}
-                       {event.reviews && event.reviews.length > 0 && (
+                       {event.reviews?.length > 0 && (
                         <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
                             <Link href="/reviews" onClick={(e) => e.stopPropagation()}>
                                 View Reviews ({event.reviews.length})
@@ -459,8 +461,8 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       )}
                       {isReviewer && isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
                         <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
-                          <MessageSquareQuote className="h-4 w-4" />
                           Leave a Review
+                          <MessageSquareQuote className="h-4 w-4" />
                         </Button>
                       )}
                     </div>

@@ -4,11 +4,12 @@ import { getEventsByStatus, getAllVenues, getAllReviews } from '@/lib/data';
 import type { Venue, ExpandedCalendarEvent, Review } from '@/lib/types';
 
 async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
-  const [approvedEvents, allVenues, allReviews] = await Promise.all([
+  // Reverted to sequential fetching for this page to resolve a bug with review data.
+  const [approvedEvents, allVenues] = await Promise.all([
     getEventsByStatus('approved'),
     getAllVenues(),
-    getAllReviews()
   ]);
+  const allReviews = await getAllReviews();
 
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
 
