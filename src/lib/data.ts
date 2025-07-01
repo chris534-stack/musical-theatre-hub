@@ -263,6 +263,7 @@ function createMockReview(event: Event): Review {
         likes: 12,
         dislikes: 1,
         votedBy: [],
+        disclosureText: "To be fully transparent, I am good friends with the lighting designer. I've done my best to remain objective in my review of the production as a whole.",
     };
 }
 

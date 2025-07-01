@@ -39,6 +39,7 @@ const reviewFormSchema = z.object({
   ticketInfo: z.string().min(5, 'Please provide some detail on your ticket.'),
   valueConsiderationText: z.string().min(10, 'Please share at least a few words.'),
   timeWellSpentText: z.string().min(10, 'Please share at least a few words.'),
+  disclosureText: z.string().optional(),
 });
 
 type ReviewFormValues = z.infer<typeof reviewFormSchema>;
@@ -65,6 +66,7 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
             ticketInfo: '',
             valueConsiderationText: '',
             timeWellSpentText: '',
+            disclosureText: '',
         },
     });
 
@@ -241,6 +243,22 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
                                     <FormLabel>A Rewarding Evening?</FormLabel>
                                     <FormControl><Textarea rows={4} {...field} /></FormControl>
                                     <FormDescription>Your time is valuable. Did this production feel like a rewarding way to spend an evening out? What made it feel that way?</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <div className="space-y-6">
+                        <h3 className="text-lg font-semibold text-primary">Section 4: Transparency</h3>
+                        <FormField
+                            control={form.control}
+                            name="disclosureText"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Bias & Relationship Disclosure (Optional)</FormLabel>
+                                    <FormControl><Textarea rows={3} {...field} placeholder="e.g., I am friends with the lead actor, my partner was the set designer..." /></FormControl>
+                                    <FormDescription>It's okay to have friends in theatre—that's the point of community! To maintain integrity, we ask that you're transparent about any relationships that might affect your opinion.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

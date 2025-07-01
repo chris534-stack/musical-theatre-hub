@@ -93,6 +93,13 @@ export function ReviewCard({ review, hideHeader = false }: { review: Review, hid
                 <ReviewSection title="Ticket & Seat Info" content={review.ticketInfo} />
                 <ReviewSection title="Production Value & Admission" content={review.valueConsiderationText} />
                 <ReviewSection title="A Rewarding Evening?" content={review.timeWellSpentText} />
+                
+                {review.disclosureText && (
+                    <>
+                        <Separator />
+                        <ReviewSection title="Transparency Disclosure" content={review.disclosureText} />
+                    </>
+                )}
 
             </CardContent>
             <CardFooter className="flex justify-end items-center gap-4">
