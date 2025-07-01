@@ -81,3 +81,12 @@ export type ExpandedCalendarEvent = Omit<Event, 'occurrences'> & {
     venue?: Venue;
     reviews: Review[];
 };
+
+export type ReviewerRequest = {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    status: 'pending' | 'approved' | 'denied';
+    createdAt: any;
+};

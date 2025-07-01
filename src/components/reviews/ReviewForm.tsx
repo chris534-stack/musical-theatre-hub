@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { submitReviewAction } from '@/lib/actions';
-import type { ExpandedCalendarEvent } from '@/app/calendar/page';
+import type { ExpandedCalendarEvent } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import SignInPromptModal from '@/components/SignInPromptModal';
 
@@ -256,7 +256,12 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
                     </div>
                 </form>
             </Form>
-            <SignInPromptModal isOpen={showSignInModal} onClose={() => setShowSignInModal(false)} />
+            <SignInPromptModal
+                isOpen={showSignInModal}
+                onClose={() => setShowSignInModal(false)}
+                title="Sign in to Submit Review"
+                description="To submit your review, please sign in or sign up with your Google account."
+            />
         </>
     );
 }

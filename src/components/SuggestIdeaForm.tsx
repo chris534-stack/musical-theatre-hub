@@ -92,7 +92,12 @@ export default function SuggestIdeaForm({ closeModal }: SuggestIdeaFormProps) {
         </div>
         <Button type="submit">Submit Idea</Button>
       </form>
-      <SignInPromptModal isOpen={showSignInModal} onClose={() => setShowSignInModal(false)} />
+      <SignInPromptModal
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        title="Sign in to Suggest an Idea"
+        description="To submit your idea, please sign in or sign up with your Google account."
+      />
     </>
   );
 }

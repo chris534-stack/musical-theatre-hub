@@ -233,3 +233,26 @@ export async function voteOnReviewAction(reviewId: string, voteType: 'like' | 'd
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
+export async function requestToBeReviewerAction(data: {
+    userId: string;
+    userName: string;
+    userEmail: string;
+}) {
+    try {
+        const requestData = {
+            ...data,
+            status: 'pending',
+            createdAt: new Date(),
+        };
+
+        await adminDb.collection('reviewerRequests').add(requestData);
+        
+        return { success: true, message: 'Request submitted successfully.' };
+
+    } catch (error) {
+        console.error('Failed to submit reviewer request:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}

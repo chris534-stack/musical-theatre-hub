@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { ReviewerRequestForm } from '@/components/get-involved/ReviewerRequestForm';
 export default function GetInvolvedPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   return (
@@ -19,6 +20,32 @@ export default function GetInvolvedPage() {
 
       {/* Bento box layout container */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Adjust grid columns as needed for desired layout */}
+        
+        {/* Suggest an Idea section (with modal trigger) */}
+        <section className="p-6 border rounded-lg shadow-sm flex flex-col justify-center items-center"> {/* Added styling and centered content */}
+          <h2 className="text-2xl font-semibold mb-4">Suggest an Idea</h2>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button>Suggest a Show or Project</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]"> {/* Adjust modal width */}
+              <DialogHeader>
+                <DialogTitle>Suggest a Show or Project Idea</DialogTitle>
+              </DialogHeader>
+              <SuggestIdeaForm closeModal={() => setIsModalOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </section>
+
+        {/* Become a Reviewer Section */}
+        <section className="p-6 border rounded-lg shadow-sm flex flex-col">
+          <h2 className="text-2xl font-semibold mb-4">Become a Community Reviewer</h2>
+          <p className="text-muted-foreground mb-4 flex-grow">
+            Represent the voice of our community! As a reviewer, you'll provide valuable feedback that supports local artists and enriches the Eugene theatre scene. If you're passionate and have a constructive spirit, we'd love to hear from you.
+          </p>
+          <ReviewerRequestForm />
+        </section>
+
         {/* Audition Opportunities section */}
         <section className="p-6 border rounded-lg shadow-sm flex flex-col"> {/* Added padding, border, rounded corners, and shadow for a card-like appearance */}
           <h2 className="text-2xl font-semibold mb-4">Audition Opportunities</h2>
@@ -31,23 +58,6 @@ export default function GetInvolvedPage() {
           <h2 className="text-2xl font-semibold mb-4">Volunteer Positions</h2>
           {/* Placeholder for Volunteer Positions content */}
           <p>Available volunteer roles will be listed here.</p>
-        </section>
-
-        {/* Suggest an Idea section (with modal trigger) */}
-        {/* You can add grid-row-span or grid-col-span classes here to make this section larger */}
-        <section className="p-6 border rounded-lg shadow-sm flex flex-col justify-center items-center"> {/* Added styling and centered content */}
-          <h2 className="text-2xl font-semibold mb-4">Suggest an Idea</h2>
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button>Suggest an Idea</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]"> {/* Adjust modal width */}
-              <DialogHeader>
-                <DialogTitle>Suggest a Show or Project Idea</DialogTitle>
-              </DialogHeader>
-              <SuggestIdeaForm closeModal={() => setIsModalOpen(false)} />
-            </DialogContent>
-          </Dialog>
         </section>
 
         {/* Show Reviews section */}

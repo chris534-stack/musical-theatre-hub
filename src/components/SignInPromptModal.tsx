@@ -21,9 +21,11 @@ const GoogleIcon = (props: { className?: string }) => (
 interface SignInPromptModalProps {
     isOpen: boolean;
     onClose: () => void;
+    title: string;
+    description: string;
 }
 
-export default function SignInPromptModal({ isOpen, onClose }: SignInPromptModalProps) {
+export default function SignInPromptModal({ isOpen, onClose, title, description }: SignInPromptModalProps) {
 
     const handleSignIn = async () => {
         const provider = new GoogleAuthProvider();
@@ -39,9 +41,9 @@ export default function SignInPromptModal({ isOpen, onClose }: SignInPromptModal
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="flex flex-col items-center justify-center text-center">
-                <h3 className="text-lg font-semibold mb-4">Sign in to Suggest an Idea</h3>
+                <h3 className="text-lg font-semibold mb-4">{title}</h3>
                 <p className="mb-6 text-muted-foreground">
-                    To submit your idea, please sign in or sign up with your Google account.
+                    {description}
                 </p>
                 <Button onClick={handleSignIn} className="w-full max-w-xs">
                     <GoogleIcon className="mr-2 h-6 w-6" />
