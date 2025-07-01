@@ -3,13 +3,12 @@ import { EventCalendar } from '@/components/calendar/EventCalendar';
 import { getEventsByStatus, getAllVenues, getAllReviews } from '@/lib/data';
 import type { Venue, ExpandedCalendarEvent, Review } from '@/lib/types';
 
-async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
-  // Reverted to sequential fetching for this page to resolve a bug with review data.
-  const [approvedEvents, allVenues] = await Promise.all([
+async function getCalendarData(): Promise<{ events: ExpandedCalendarEvent[], venues: Venue[] }> {
+  const [approvedEvents, allVenues, allReviews] = await Promise.all([
     getEventsByStatus('approved'),
     getAllVenues(),
+    getAllReviews(),
   ]);
-  const allReviews = await getAllReviews();
 
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
 
@@ -49,16 +48,15 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
     return dateA.getTime() - dateB.getTime();
   });
 
-  return expandedEvents;
+  return { events: expandedEvents, venues: allVenues };
 }
 
 export default async function CalendarPage() {
-  const calendarEvents = await getApprovedEventsWithVenues();
-  const allVenues = await getAllVenues();
+  const { events, venues } = await getCalendarData();
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-4 md:py-8">
-      <EventCalendar events={calendarEvents} venues={allVenues} />
+      <EventCalendar events={events} venues={venues} />
     </div>
   );
 }

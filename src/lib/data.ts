@@ -219,6 +219,54 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
 
 // --- Review Functions ---
 
+// Helper function to find a suitable event for the mock review
+function findEventForMockReview(events: Event[]): Event | null {
+    const today = startOfToday();
+    
+    // Priority 1: Find a completed, approved, non-audition event
+    const pastEvent = events.find(e => 
+        e.status === 'approved' &&
+        e.type.toLowerCase() !== 'audition' &&
+        e.occurrences?.length > 0 &&
+        new Date(`${e.occurrences[e.occurrences.length - 1].date}T23:59:59`) < today
+    );
+    if (pastEvent) return pastEvent;
+
+    // Priority 2 (Fallback): Find ANY approved, non-audition event
+    const anySuitableEvent = events.find(e =>
+        e.status === 'approved' &&
+        e.type.toLowerCase() !== 'audition' &&
+        e.occurrences?.length > 0
+    );
+    return anySuitableEvent || null;
+}
+
+// Helper function to create the mock review
+function createMockReview(event: Event): Review {
+     const performanceDate = event.occurrences?.[0]?.date || new Date().toISOString().split('T')[0];
+     return {
+        id: 'mock-review-1',
+        showId: event.id,
+        showTitle: event.title,
+        performanceDate: performanceDate,
+        reviewerId: 'mock-user-id',
+        reviewerName: 'Casey Critic',
+        createdAt: new Date().toISOString(),
+        overallExperience: "Exceptional & Memorable",
+        specialMomentsText: "The lead's performance in the second act was breathtaking. A true masterclass in acting that left the entire audience speechless. The rock score was performed with incredible energy by the band, and the lighting design perfectly captured the show's dark, intense mood.",
+        recommendations: ["Date Night", "Dramatic", "Musical"],
+        showHeartText: "This was a profound exploration of a historical figure through a modern rock lens. It was challenging, but ultimately very rewarding.",
+        communityImpactText: "A story like this is exactly what Eugene needs right now. It opens up important conversations and showcases incredible local talent.",
+        ticketInfo: "Paid $35 for a seat in the mezzanine, Row E. The view was excellent for the price.",
+        valueConsiderationText: "For the price of a movie ticket and popcorn, you get a live experience that will stick with you for weeks. The production value was outstanding and felt like a bargain.",
+        timeWellSpentText: "Absolutely. The show was engaging from start to finish. I'd recommend it to anyone looking for a powerful night of theatre.",
+        likes: 12,
+        dislikes: 1,
+        votedBy: [],
+    };
+}
+
+
 /**
  * [SERVER-SIDE] Fetches all reviews using the Admin SDK, sorted by creation date.
  */
@@ -232,5 +280,16 @@ export async function getAllReviews(): Promise<Review[]> {
         createdAt: data.createdAt.toDate().toISOString(),
     } as Review;
   });
+  
+  // If no real reviews exist, create a mock one for demonstration.
+  if (reviews.length === 0) {
+      // Find a past event to attach the mock review to
+      const allEvents = await getAllEvents({ includeOccurrences: true });
+      const eventForMock = findEventForMockReview(allEvents);
+      if (eventForMock) {
+          reviews.push(createMockReview(eventForMock));
+      }
+  }
+
   return reviews;
 }
