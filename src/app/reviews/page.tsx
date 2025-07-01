@@ -4,6 +4,7 @@ import type { Review, Event } from '@/lib/types';
 import { BecomeReviewerCTA } from '@/components/reviews/BecomeReviewerCTA';
 import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { toTitleCase } from '@/lib/utils';
+import { startOfToday } from 'date-fns';
 
 type GroupedReviews = {
     [showId: string]: {
@@ -18,8 +19,11 @@ function groupReviewsByShow(reviews: Review[], events: Event[]): GroupedReviews 
 
     reviews.forEach(review => {
         if (!grouped[review.showId]) {
+            const showTitle = eventMap.get(review.showId) || review.showTitle;
+            if (!showTitle) return; // Skip reviews for shows that don't exist
+            
             grouped[review.showId] = {
-                showTitle: toTitleCase(eventMap.get(review.showId) || review.showTitle),
+                showTitle: toTitleCase(showTitle),
                 reviews: []
             };
         }
@@ -34,12 +38,57 @@ function groupReviewsByShow(reviews: Review[], events: Event[]): GroupedReviews 
     return grouped;
 }
 
+// Helper function to find a suitable event for the mock review
+function findEventForMockReview(events: Event[]): Event | null {
+    const today = startOfToday();
+    return events.find(e => 
+        e.status === 'approved' &&
+        e.type.toLowerCase() !== 'audition' &&
+        e.occurrences?.length > 0 &&
+        new Date(`${e.occurrences[e.occurrences.length - 1].date}T23:59:59`) < today
+    ) || null;
+}
+
+// Helper function to create the mock review
+function createMockReview(event: Event): Review {
+     const performanceDate = event.occurrences?.[0]?.date || new Date().toISOString().split('T')[0];
+     return {
+        id: 'mock-review-1',
+        showId: event.id,
+        showTitle: event.title,
+        performanceDate: performanceDate,
+        reviewerId: 'mock-user-id',
+        reviewerName: 'Casey Critic',
+        createdAt: new Date().toISOString(),
+        overallExperience: "Exceptional & Memorable",
+        specialMomentsText: "The lead's performance in the second act was breathtaking. A true masterclass in acting that left the entire audience speechless. The rock score was performed with incredible energy by the band, and the lighting design perfectly captured the show's dark, intense mood.",
+        recommendations: ["Date Night", "Dramatic", "Musical"],
+        showHeartText: "This was a profound exploration of a historical figure through a modern rock lens. It was challenging, but ultimately very rewarding.",
+        communityImpactText: "A story like this is exactly what Eugene needs right now. It opens up important conversations and showcases incredible local talent.",
+        ticketInfo: "Paid $35 for a seat in the mezzanine, Row E. The view was excellent for the price.",
+        valueConsiderationText: "For the price of a movie ticket and popcorn, you get a live experience that will stick with you for weeks. The production value was outstanding and felt like a bargain.",
+        timeWellSpentText: "Absolutely. The show was engaging from start to finish. I'd recommend it to anyone looking for a powerful night of theatre.",
+        likes: 12,
+        dislikes: 1,
+        votedBy: [],
+    };
+}
+
+
 export default async function ReviewsPage() {
     const [allReviews, allEvents] = await Promise.all([
         getAllReviews(),
-        getAllEvents()
+        getAllEvents({ includeOccurrences: false }) // Optimize by not fetching occurrences
     ]);
     
+    // If no real reviews exist, create a mock one for demonstration.
+    if (allReviews.length === 0) {
+        const eventForMock = findEventForMockReview(await getAllEvents());
+        if (eventForMock) {
+            allReviews.push(createMockReview(eventForMock));
+        }
+    }
+
     const groupedReviews = groupReviewsByShow(allReviews, allEvents);
     const sortedShowIds = Object.keys(groupedReviews).sort((a,b) => {
         const latestReviewA = new Date(groupedReviews[a].reviews[0].createdAt).getTime();

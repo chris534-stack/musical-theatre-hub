@@ -9,7 +9,7 @@ import { ArrowRight, GripVertical } from 'lucide-react';
 export function NewsArticleCard({ article, dragHandleProps }: { article: NewsArticle, dragHandleProps?: any }) {
   return (
     <Card className="flex flex-col transition-shadow hover:shadow-lg h-full">
-        <div className="relative">
+        <div className="relative group">
             <a href={article.url} target="_blank" rel="noopener noreferrer" className="block">
                 {article.imageUrl ? (
                     <div className="aspect-video relative overflow-hidden rounded-t-lg">
@@ -29,9 +29,11 @@ export function NewsArticleCard({ article, dragHandleProps }: { article: NewsArt
                     </div>
                 )}
             </a>
-            <div {...dragHandleProps} className="absolute top-2 right-2 bg-black/30 text-white/80 rounded-md p-2 cursor-grab active:cursor-grabbing hover:bg-black/50 hover:text-white transition-colors">
-                <GripVertical className="h-5 w-5" />
-            </div>
+            {dragHandleProps && (
+                <div {...dragHandleProps} className="absolute top-2 right-2 bg-black/30 text-white/80 rounded-md p-2 cursor-grab active:cursor-grabbing hover:bg-black/50 hover:text-white transition-colors">
+                    <GripVertical className="h-5 w-5" />
+                </div>
+            )}
         </div>
         <CardHeader>
             <CardTitle className="font-headline text-lg leading-tight">

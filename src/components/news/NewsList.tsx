@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -7,11 +8,13 @@ import { NewsArticleCard } from '@/components/news/NewsArticleCard';
 import type { NewsArticle } from '@/lib/types';
 import { updateNewsArticleOrderAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 export function NewsList({ initialArticles }: { initialArticles: NewsArticle[] }) {
     const [articles, setArticles] = useState(initialArticles);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
+    const { isAdmin } = useAuth();
 
     // This effect synchronizes the state with the server-fetched props.
     // It's useful for when new articles are added and the page re-renders.
@@ -54,33 +57,44 @@ export function NewsList({ initialArticles }: { initialArticles: NewsArticle[] }
         );
     }
 
+    if (isAdmin) {
+        return (
+            <DragDropContext onDragEnd={onDragEnd}>
+                <StrictModeDroppable droppableId="articles">
+                    {(provided) => (
+                        <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+                        >
+                            {articles.map((article, index) => (
+                                <Draggable key={article.id} draggableId={article.id} index={index}>
+                                    {(provided, snapshot) => (
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            style={provided.draggableProps.style}
+                                            className={snapshot.isDragging ? 'shadow-2xl' : ''}
+                                        >
+                                            <NewsArticleCard article={article} dragHandleProps={provided.dragHandleProps} />
+                                        </div>
+                                    )}
+                                </Draggable>
+                            ))}
+                            {provided.placeholder}
+                        </div>
+                    )}
+                </StrictModeDroppable>
+            </DragDropContext>
+        );
+    }
+
+    // Render a static list for non-admin users for better performance
     return (
-        <DragDropContext onDragEnd={onDragEnd}>
-            <StrictModeDroppable droppableId="articles">
-                {(provided) => (
-                    <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-8"
-                    >
-                        {articles.map((article, index) => (
-                            <Draggable key={article.id} draggableId={article.id} index={index}>
-                                {(provided, snapshot) => (
-                                    <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        style={provided.draggableProps.style}
-                                        className={snapshot.isDragging ? 'shadow-2xl' : ''}
-                                    >
-                                        <NewsArticleCard article={article} dragHandleProps={provided.dragHandleProps} />
-                                    </div>
-                                )}
-                            </Draggable>
-                        ))}
-                        {provided.placeholder}
-                    </div>
-                )}
-            </StrictModeDroppable>
-        </DragDropContext>
+        <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {articles.map((article) => (
+                <NewsArticleCard key={article.id} article={article} />
+            ))}
+        </div>
     );
 }
