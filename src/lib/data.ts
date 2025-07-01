@@ -46,16 +46,27 @@ export async function getAllEvents(): Promise<Event[]> {
  * [SERVER-SIDE] Fetches events by status.
  */
 export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
-    const allEvents = await getAllEvents();
-    return allEvents.filter(event => event.status === status);
+    const q = adminDb.collection('events').where('status', '==', status);
+    const snapshot = await q.get();
+    const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+
+    // Sort events by the date of their first occurrence
+    events.sort((a, b) => {
+        if (!a.occurrences || a.occurrences.length === 0) return 1;
+        if (!b.occurrences || b.occurrences.length === 0) return -1;
+        const dateA = parseDateString(a.occurrences[0].date);
+        const dateB = parseDateString(b.occurrences[0].date);
+        return dateA.getTime() - dateB.getTime();
+    });
+
+    return events;
 }
 
 /**
  * [SERVER-SIDE] Fetches featured events for the homepage.
  */
 export async function getFeaturedEventsFirestore(count: number): Promise<Event[]> {
-    const allEvents = await getAllEvents();
-    const approvedEvents = allEvents.filter(event => event.status === "approved");
+    const approvedEvents = await getEventsByStatus("approved");
 
     const today = startOfToday();
     const thirtyDaysFromNow = addDays(today, 30);
@@ -196,9 +207,10 @@ export async function getAllReviews(): Promise<Review[]> {
       if (allEvents.length > 0) {
         const eventForMockReview = allEvents.find(e => 
             e.status === 'approved' &&
+            e.type.toLowerCase() !== 'audition' &&
             e.occurrences?.length > 0 &&
             new Date(`${e.occurrences[e.occurrences.length - 1].date}T23:59:59`) < new Date()
-        ) || allEvents.find(e => e.occurrences && e.occurrences.length > 0) || allEvents[0];
+        );
 
         if (eventForMockReview && eventForMockReview.occurrences && eventForMockReview.occurrences.length > 0) {
             const mockReview: Review = {

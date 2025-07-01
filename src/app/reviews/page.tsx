@@ -35,8 +35,10 @@ function groupReviewsByShow(reviews: Review[], events: Event[]): GroupedReviews 
 }
 
 export default async function ReviewsPage() {
-    const allReviews = await getAllReviews();
-    const allEvents = await getAllEvents();
+    const [allReviews, allEvents] = await Promise.all([
+        getAllReviews(),
+        getAllEvents()
+    ]);
     
     const groupedReviews = groupReviewsByShow(allReviews, allEvents);
     const sortedShowIds = Object.keys(groupedReviews).sort((a,b) => {

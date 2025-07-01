@@ -3,22 +3,20 @@ import AdminDashboard from '@/components/admin/AdminDashboard';
 import type { Venue } from '@/lib/types';
 import AdminAuthGuard from '@/components/auth/AdminAuthGuard';
 
-async function getEventsWithVenues() {
-  const allEvents = await getAllEvents();
-  const allVenues = await getAllVenues();
-  const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
-
-  return allEvents.map(event => ({
-    ...event,
-    venue: venuesMap.get(event.venueId)
-  }));
-}
-
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  const allEventsWithVenues = await getEventsWithVenues();
-  const allVenues = await getAllVenues();
+  const [allEvents, allVenues] = await Promise.all([
+    getAllEvents(),
+    getAllVenues()
+  ]);
+  
+  const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
+
+  const allEventsWithVenues = allEvents.map(event => ({
+    ...event,
+    venue: venuesMap.get(event.venueId)
+  }));
 
   return (
     <AdminAuthGuard>

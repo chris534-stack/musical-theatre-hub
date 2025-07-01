@@ -9,8 +9,11 @@ import { toTitleCase } from '@/lib/utils';
 type EventWithVenue = Event & { venue?: Venue };
 
 async function getFeaturedEvents(): Promise<EventWithVenue[]> {
-  const featured = await getFeaturedEventsFirestore(3);
-  const allVenues = await getAllVenues();
+  const [featured, allVenues] = await Promise.all([
+    getFeaturedEventsFirestore(3),
+    getAllVenues()
+  ]);
+  
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
   
   return featured.map(event => ({
