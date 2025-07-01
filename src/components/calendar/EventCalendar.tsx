@@ -436,7 +436,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                             </a>
                             </Button>
                         )}
-                        {isReviewer && isOccurrenceInPast(event) && (
+                        {isOccurrenceInPast(event) && (
                             <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
                                 <MessageSquareQuote className="mr-2 h-4 w-4" /> Leave a Review
                             </Button>

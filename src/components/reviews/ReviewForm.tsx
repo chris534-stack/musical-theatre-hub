@@ -4,7 +4,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { submitReviewAction } from '@/lib/actions';
 import type { ExpandedCalendarEvent } from '@/app/calendar/page';
 import { Loader2 } from 'lucide-react';
+import SignInPromptModal from '@/components/SignInPromptModal';
 
 const experienceOptions = ["Exceptional & Memorable", "Thoroughly Entertaining", "Thought-Provoking & Important", "A Promising Production"];
 const categoryOptions = [
@@ -51,6 +52,7 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const { user } = useAuth();
+    const [showSignInModal, setShowSignInModal] = useState(false);
 
     const form = useForm<ReviewFormValues>({
         resolver: zodResolver(reviewFormSchema),
@@ -68,7 +70,7 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
 
     const onSubmit = (data: ReviewFormValues) => {
         if (!user) {
-            toast({ variant: 'destructive', title: 'You must be logged in to submit a review.'});
+            setShowSignInModal(true);
             return;
         }
 
@@ -99,159 +101,162 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
     };
 
     return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-4">
-                 <Card className="bg-secondary/50 border-accent/20">
-                    <CardHeader>
-                        <CardTitle className="text-base text-accent">A Note on Community Feedback</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                        Hey there! Our Stage, Eugene, is intended to foster a vibrant and supportive theatre community. Your impartial perspective as an audience member is vital for supporting our local artists and enriching the entire Eugene theatre community. Please offer your insights with encouragement, honesty, and a constructive spirit.
-                        </p>
-                    </CardContent>
-                </Card>
+        <>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-4">
+                    <Card className="bg-secondary/50 border-accent/20">
+                        <CardHeader>
+                            <CardTitle className="text-base text-accent">A Note on Community Feedback</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                            Hey there! Our Stage, Eugene, is intended to foster a vibrant and supportive theatre community. Your impartial perspective as an audience member is vital for supporting our local artists and enriching the entire Eugene theatre community. Please offer your insights with encouragement, honesty, and a constructive spirit.
+                            </p>
+                        </CardContent>
+                    </Card>
 
-                <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-primary">Section 1: Your Experience</h3>
-                    <FormField
-                        control={form.control}
-                        name="overallExperience"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Overall Experience</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        {experienceOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="specialMomentsText"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>What made this performance special?</FormLabel>
-                                <FormControl><Textarea rows={4} {...field} /></FormControl>
-                                <FormDescription>Focus on the strengths. What did you enjoy most? This could be the energy of the ensemble, a standout performance, the set design, lighting, or a particular moment that moved you.</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                     <FormField
-                        control={form.control}
-                        name="recommendations"
-                        render={() => (
-                            <FormItem>
-                                <FormLabel>How would you categorize this show? (Optional)</FormLabel>
-                                {categoryOptions.map((item) => (
-                                    <FormField
-                                        key={item.id}
-                                        control={form.control}
-                                        name="recommendations"
-                                        render={({ field }) => (
-                                            <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                                <FormControl>
-                                                    <Checkbox
-                                                        checked={field.value?.includes(item.label)}
-                                                        onCheckedChange={(checked) => {
-                                                            return checked
-                                                            ? field.onChange([...(field.value || []), item.label])
-                                                            : field.onChange(field.value?.filter((value) => value !== item.label))
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormLabel className="font-normal">{item.label}</FormLabel>
-                                            </FormItem>
-                                        )}
-                                    />
-                                ))}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                     />
-                </div>
+                    <div className="space-y-6">
+                        <h3 className="text-lg font-semibold text-primary">Section 1: Your Experience</h3>
+                        <FormField
+                            control={form.control}
+                            name="overallExperience"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Overall Experience</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {experienceOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="specialMomentsText"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>What made this performance special?</FormLabel>
+                                    <FormControl><Textarea rows={4} {...field} /></FormControl>
+                                    <FormDescription>Focus on the strengths. What did you enjoy most? This could be the energy of the ensemble, a standout performance, the set design, lighting, or a particular moment that moved you.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="recommendations"
+                            render={() => (
+                                <FormItem>
+                                    <FormLabel>How would you categorize this show? (Optional)</FormLabel>
+                                    {categoryOptions.map((item) => (
+                                        <FormField
+                                            key={item.id}
+                                            control={form.control}
+                                            name="recommendations"
+                                            render={({ field }) => (
+                                                <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(item.label)}
+                                                            onCheckedChange={(checked) => {
+                                                                return checked
+                                                                ? field.onChange([...(field.value || []), item.label])
+                                                                : field.onChange(field.value?.filter((value) => value !== item.label))
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">{item.label}</FormLabel>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ))}
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
 
-                <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-primary">Section 2: The Show's Message & Impact</h3>
-                    <FormField
-                        control={form.control}
-                        name="showHeartText"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Describe the Heart of the Show</FormLabel>
-                                <FormControl><Textarea rows={4} {...field} /></FormControl>
-                                <FormDescription>How would you describe the content and tone of the script / source material? Is it a lighthearted spectacle, a joyful celebration, or something more impactful and challenging?</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="communityImpactText"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Is this show important for Eugene right now?</FormLabel>
-                                <FormControl><Textarea rows={4} {...field} /></FormControl>
-                                <FormDescription>Thinking about our local community, does this show feel particularly relevant or necessary? Why or why not?</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
+                    <div className="space-y-6">
+                        <h3 className="text-lg font-semibold text-primary">Section 2: The Show's Message & Impact</h3>
+                        <FormField
+                            control={form.control}
+                            name="showHeartText"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Describe the Heart of the Show</FormLabel>
+                                    <FormControl><Textarea rows={4} {...field} /></FormControl>
+                                    <FormDescription>How would you describe the content and tone of the script / source material? Is it a lighthearted spectacle, a joyful celebration, or something more impactful and challenging?</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="communityImpactText"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Is this show important for Eugene right now?</FormLabel>
+                                    <FormControl><Textarea rows={4} {...field} /></FormControl>
+                                    <FormDescription>Thinking about our local community, does this show feel particularly relevant or necessary? Why or why not?</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
 
-                <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-primary">Section 3: Value & Time</h3>
-                     <FormField
-                        control={form.control}
-                        name="ticketInfo"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Actual Cost</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormDescription>How much did your ticket cost? What seat did you get for this price?</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="valueConsiderationText"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Production Value & Admission</FormLabel>
-                                <FormControl><Textarea rows={4} {...field} /></FormControl>
-                                <FormDescription>Considering the cost of admission, please discuss the production value. Did the performance, sets, costumes, and overall experience provide a value that felt right for the ticket price?</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="timeWellSpentText"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>A Rewarding Evening?</FormLabel>
-                                <FormControl><Textarea rows={4} {...field} /></FormControl>
-                                <FormDescription>Your time is valuable. Did this production feel like a rewarding way to spend an evening out? What made it feel that way?</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-                
-                <div className="flex justify-end gap-2">
-                    <Button type="button" variant="ghost" onClick={onSuccess}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Submit Review
-                    </Button>
-                </div>
-            </form>
-        </Form>
+                    <div className="space-y-6">
+                        <h3 className="text-lg font-semibold text-primary">Section 3: Value & Time</h3>
+                        <FormField
+                            control={form.control}
+                            name="ticketInfo"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Actual Cost</FormLabel>
+                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormDescription>How much did your ticket cost? What seat did you get for this price?</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="valueConsiderationText"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Production Value & Admission</FormLabel>
+                                    <FormControl><Textarea rows={4} {...field} /></FormControl>
+                                    <FormDescription>Considering the cost of admission, please discuss the production value. Did the performance, sets, costumes, and overall experience provide a value that felt right for the ticket price?</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="timeWellSpentText"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>A Rewarding Evening?</FormLabel>
+                                    <FormControl><Textarea rows={4} {...field} /></FormControl>
+                                    <FormDescription>Your time is valuable. Did this production feel like a rewarding way to spend an evening out? What made it feel that way?</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    
+                    <div className="flex justify-end gap-2">
+                        <Button type="button" variant="ghost" onClick={onSuccess}>Cancel</Button>
+                        <Button type="submit" disabled={isPending}>
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Submit Review
+                        </Button>
+                    </div>
+                </form>
+            </Form>
+            <SignInPromptModal isOpen={showSignInModal} onClose={() => setShowSignInModal(false)} />
+        </>
     );
 }
