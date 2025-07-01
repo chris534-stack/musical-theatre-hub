@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -30,6 +31,13 @@ export default function GetInvolvedPage() {
           <ReviewerRequestForm />
         </section>
 
+        {/* Show Reviews section */}
+        <section className="p-6 border rounded-lg shadow-sm flex flex-col"> {/* Added styling */}
+          <h2 className="text-2xl font-semibold mb-4">Show Reviews</h2>
+          {/* Placeholder for Show Reviews content */}
+          <p>Reviews for current shows will appear here.</p>
+        </section>
+
         {/* Suggest an Idea section (with modal trigger) */}
         <section className="p-6 border rounded-lg shadow-sm flex flex-col justify-center items-center"> {/* Added styling and centered content */}
           <h2 className="text-2xl font-semibold mb-4">Suggest an Idea</h2>
@@ -58,14 +66,6 @@ export default function GetInvolvedPage() {
           <h2 className="text-2xl font-semibold mb-4">Volunteer Positions</h2>
           {/* Placeholder for Volunteer Positions content */}
           <p>Available volunteer roles will be listed here.</p>
-        </section>
-
-        {/* Show Reviews section */}
-        {/* You might want to make this section span multiple columns */}
-        <section className="p-6 border rounded-lg shadow-sm flex flex-col"> {/* Added styling */}
-          <h2 className="text-2xl font-semibold mb-4">Show Reviews</h2>
-          {/* Placeholder for Show Reviews content */}
-          <p>Reviews for current shows will appear here.</p>
         </section>
 
         {/* Green Room Guild section */}
