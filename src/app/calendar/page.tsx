@@ -1,19 +1,33 @@
 
 import { EventCalendar } from '@/components/calendar/EventCalendar';
-import { getEventsByStatus, getAllVenues } from '@/lib/data';
-import type { Venue, ExpandedCalendarEvent } from '@/lib/types';
+import { getEventsByStatus, getAllVenues, getAllReviews } from '@/lib/data';
+import type { Venue, ExpandedCalendarEvent, Review } from '@/lib/types';
 
 async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
-  const approvedEvents = await getEventsByStatus('approved');
-  const allVenues = await getAllVenues();
+  const [approvedEvents, allVenues, allReviews] = await Promise.all([
+    getEventsByStatus('approved'),
+    getAllVenues(),
+    getAllReviews()
+  ]);
 
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
+
+  // Group reviews by showId for efficient lookup
+  const reviewsByShowId = new Map<string, Review[]>();
+  allReviews.forEach(review => {
+    if (!reviewsByShowId.has(review.showId)) {
+      reviewsByShowId.set(review.showId, []);
+    }
+    reviewsByShowId.get(review.showId)!.push(review);
+  });
   
   const expandedEvents: ExpandedCalendarEvent[] = approvedEvents.flatMap(event => {
     if (!event.occurrences || event.occurrences.length === 0) {
       return [];
     }
     
+    const eventReviews = reviewsByShowId.get(event.id) || [];
+
     return event.occurrences.map(occurrence => {
         const { occurrences, ...restOfEvent } = event;
         return {
@@ -22,7 +36,7 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
             date: occurrence.date,
             time: occurrence.time,
             venue: venuesMap.get(event.venueId),
-            reviews: [] // Reviews are now handled on their own page
+            reviews: eventReviews // Attach the reviews for this event
         };
     })
   });

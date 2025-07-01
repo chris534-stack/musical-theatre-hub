@@ -38,12 +38,19 @@ export default async function ReviewsPage() {
     let allReviews = await getAllReviews();
     const allEvents = await getAllEvents();
     
-    // For testing, inject a mock review if no reviews exist
-    if (allReviews.length === 0) {
+    // For testing, inject a mock review if no reviews exist.
+    // This connects it to a real event for better testing on the calendar page.
+    if (allReviews.length === 0 && allEvents.length > 0) {
+        const eventForMockReview = allEvents.find(e => 
+            e.status === 'approved' &&
+            e.occurrences?.length > 0 &&
+            new Date(`${e.occurrences[e.occurrences.length - 1].date}T23:59:59`) < new Date()
+        ) || allEvents[0]; // Fallback to the first event if none are in the past
+
         const mockReview: Review = {
             id: 'mock-review-1',
-            showId: 'mock-show-id-1',
-            showTitle: 'Lizzie the Musical',
+            showId: eventForMockReview.id,
+            showTitle: eventForMockReview.title,
             performanceDate: '2024-07-20',
             reviewerId: 'mock-user-id',
             reviewerName: 'Casey Critic',

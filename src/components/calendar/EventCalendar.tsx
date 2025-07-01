@@ -27,7 +27,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { Venue, Event } from '@/lib/types';
-import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit, MessageSquareQuote } from 'lucide-react';
+import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit, MessageSquareQuote, MessageSquareText } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddEventButton } from '@/components/admin/AddEventButton';
@@ -35,6 +35,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { EventEditorModal } from '@/components/admin/EventEditorModal';
 import { ReviewSubmissionModal } from '@/components/reviews/ReviewSubmissionModal';
 import type { DayContentProps } from 'react-day-picker';
+import Link from 'next/link';
 
 function getContrastingTextColor(color: string): string {
     if (!color) return '#ffffff';
@@ -440,6 +441,13 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                           <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                             Visit Website <ExternalLink className="ml-2 h-3 w-3" />
                           </a>
+                        </Button>
+                      )}
+                       {event.reviews && event.reviews.length > 0 && (
+                        <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
+                            <Link href="/reviews" onClick={(e) => e.stopPropagation()}>
+                                <MessageSquareText className="mr-2 h-4 w-4" /> View Reviews ({event.reviews.length})
+                            </Link>
                         </Button>
                       )}
                       {isReviewer && isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
