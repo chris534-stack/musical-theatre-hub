@@ -1,15 +1,16 @@
+
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, UserPlus, Newspaper, User, Shield } from 'lucide-react';
+import { Home, CalendarDays, MessageSquareQuote, Newspaper, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 const baseNavItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { href: '/get-involved', label: 'Involved', icon: UserPlus },
+  { href: '/reviews', label: 'Reviews', icon: MessageSquareQuote },
   { href: '/news', label: 'News', icon: Newspaper },
   { href: '/profile', label: 'Profile', icon: User },
 ];
@@ -21,7 +22,12 @@ export function MobileNav() {
   const navItems = [...baseNavItems];
   if (isAdmin) {
     const adminItem = { href: '/admin', label: 'Admin', icon: Shield };
-    navItems.splice(4, 0, adminItem);
+    const profileIndex = navItems.findIndex(item => item.href === '/profile');
+    if (profileIndex !== -1) {
+        navItems.splice(profileIndex, 0, adminItem);
+    } else {
+        navItems.push(adminItem);
+    }
   }
 
   return (
@@ -35,7 +41,7 @@ export function MobileNav() {
               key={item.label}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center text-center px-0 py-2 rounded-md transition-colors',
+                'flex flex-col items-center justify-center text-center px-0 py-2 rounded-md transition-colors w-16',
                 isActive ? 'text-accent' : 'text-primary-foreground/70 hover:text-primary-foreground'
               )}
             >

@@ -1,8 +1,8 @@
 
 'use client';
 
-import type { ExpandedCalendarEvent } from '@/lib/types';
 import React, { useState, useMemo, useEffect } from 'react';
+import type { ExpandedCalendarEvent } from '@/lib/types';
 import {
   format,
   startOfMonth,
@@ -34,7 +34,6 @@ import { AddEventButton } from '@/components/admin/AddEventButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { EventEditorModal } from '@/components/admin/EventEditorModal';
 import { ReviewSubmissionModal } from '@/components/reviews/ReviewSubmissionModal';
-import { ReviewList } from '@/components/reviews/ReviewList';
 import type { DayContentProps } from 'react-day-picker';
 
 function getContrastingTextColor(color: string): string {
@@ -93,7 +92,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isReviewer } = useAuth();
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isReviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedEventForReview, setSelectedEventForReview] = useState<ExpandedCalendarEvent | null>(null);
@@ -432,11 +431,6 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       {!isSelected && event.description && (
                         <div className="absolute bottom-4 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
                       )}
-                      {isSelected && (
-                        <div className="mt-4 pt-4 border-t">
-                          <ReviewList reviews={event.reviews} />
-                        </div>
-                      )}
                     </CardContent>
                   </div>
                   <CardFooter>
@@ -448,7 +442,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                           </a>
                         </Button>
                       )}
-                      {isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
+                      {isReviewer && isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
                         <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
                           <MessageSquareQuote className="mr-2 h-4 w-4" /> Leave a Review
                         </Button>

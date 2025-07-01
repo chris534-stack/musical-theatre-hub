@@ -17,7 +17,7 @@ export function Header() {
         <div className="flex items-center gap-6">
           <nav className="flex items-center space-x-6 text-sm font-medium">
             <Link href="/calendar" className="hover:text-accent transition-colors">Calendar</Link>
-            <Link href="/get-involved" className="hover:text-accent transition-colors">Involved</Link>
+            <Link href="/reviews" className="hover:text-accent transition-colors">Reviews</Link>
             <Link href="/news" className="hover:text-accent transition-colors">News</Link>
             <Link href="/about-us" className="hover:text-accent transition-colors">About Us</Link>
             {isAdmin && (

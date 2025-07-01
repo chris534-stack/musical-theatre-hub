@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -43,9 +44,9 @@ export function ReviewerRequestForm() {
 
   return (
     <>
-      <Button onClick={handleSubmit} disabled={isPending} className="mt-auto">
+      <Button onClick={handleSubmit} disabled={isPending} size="lg" className="w-full max-w-xs">
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Submit My Interest
+        Submit Your Interest
       </Button>
       <SignInPromptModal
         isOpen={showSignInModal}
