@@ -35,40 +35,8 @@ function groupReviewsByShow(reviews: Review[], events: Event[]): GroupedReviews 
 }
 
 export default async function ReviewsPage() {
-    let allReviews = await getAllReviews();
+    const allReviews = await getAllReviews();
     const allEvents = await getAllEvents();
-    
-    // For testing, inject a mock review if no reviews exist.
-    // This connects it to a real event for better testing on the calendar page.
-    if (allReviews.length === 0 && allEvents.length > 0) {
-        const eventForMockReview = allEvents.find(e => 
-            e.status === 'approved' &&
-            e.occurrences?.length > 0 &&
-            new Date(`${e.occurrences[e.occurrences.length - 1].date}T23:59:59`) < new Date()
-        ) || allEvents[0]; // Fallback to the first event if none are in the past
-
-        const mockReview: Review = {
-            id: 'mock-review-1',
-            showId: eventForMockReview.id,
-            showTitle: eventForMockReview.title,
-            performanceDate: eventForMockReview.occurrences?.[0]?.date || '2024-07-20',
-            reviewerId: 'mock-user-id',
-            reviewerName: 'Casey Critic',
-            createdAt: new Date().toISOString(),
-            overallExperience: "Exceptional & Memorable",
-            specialMomentsText: "The lead's performance in the second act was breathtaking. A true masterclass in acting that left the entire audience speechless. The rock score was performed with incredible energy by the band, and the lighting design perfectly captured the show's dark, intense mood.",
-            recommendations: ["Date Night", "Dramatic", "Musical"],
-            showHeartText: "This was a profound exploration of a historical figure through a modern rock lens. It was challenging, but ultimately very rewarding.",
-            communityImpactText: "A story like this is exactly what Eugene needs right now. It opens up important conversations and showcases incredible local talent.",
-            ticketInfo: "Paid $35 for a seat in the mezzanine, Row E. The view was excellent for the price.",
-            valueConsiderationText: "For the price of a movie ticket and popcorn, you get a live experience that will stick with you for weeks. The production value was outstanding and felt like a bargain.",
-            timeWellSpentText: "Absolutely. The show was engaging from start to finish. I'd recommend it to anyone looking for a powerful night of theatre.",
-            likes: 12,
-            dislikes: 1,
-            votedBy: [],
-        };
-        allReviews.unshift(mockReview);
-    }
     
     const groupedReviews = groupReviewsByShow(allReviews, allEvents);
     const sortedShowIds = Object.keys(groupedReviews).sort((a,b) => {
