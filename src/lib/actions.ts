@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { addEvent, eventExists, addNewsArticle } from '@/lib/data';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Event, EventOccurrence, NewsArticle } from '@/lib/types';
+import type { Event, EventOccurrence, NewsArticle, Review } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 
@@ -165,6 +165,70 @@ export async function addListingRequestAction(data: {
 
     } catch (error) {
         console.error('Failed to submit listing request:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' | 'likes' | 'dislikes' | 'votedBy'>) {
+    try {
+        const reviewData = {
+            ...data,
+            likes: 0,
+            dislikes: 0,
+            votedBy: [],
+            createdAt: new Date(),
+        };
+
+        await adminDb.collection('reviews').add(reviewData);
+
+        revalidatePath('/calendar');
+        return { success: true, message: 'Your review has been submitted. Thank you!' };
+    } catch (error) {
+        console.error('Failed to submit review:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function voteOnReviewAction(reviewId: string, voteType: 'like' | 'dislike', userId: string) {
+    if (!userId) {
+        return { success: false, message: 'You must be logged in to vote.' };
+    }
+
+    const reviewRef = adminDb.collection('reviews').doc(reviewId);
+
+    try {
+        await adminDb.runTransaction(async (transaction) => {
+            const reviewDoc = await transaction.get(reviewRef);
+            if (!reviewDoc.exists) {
+                throw new Error("Review not found.");
+            }
+
+            const reviewData = reviewDoc.data() as Review;
+            
+            if (reviewData.votedBy?.includes(userId)) {
+                // User has already voted, we don't return an error message to the UI
+                // to avoid letting them know they can't vote again. Just do nothing.
+                return;
+            }
+
+            const newVotedBy = [...(reviewData.votedBy || []), userId];
+            const newLikes = voteType === 'like' ? (reviewData.likes || 0) + 1 : (reviewData.likes || 0);
+            const newDislikes = voteType === 'dislike' ? (reviewData.dislikes || 0) + 1 : (reviewData.dislikes || 0);
+
+            transaction.update(reviewRef, {
+                likes: newLikes,
+                dislikes: newDislikes,
+                votedBy: newVotedBy,
+            });
+        });
+        
+        revalidatePath('/calendar');
+        return { success: true };
+
+    } catch (error) {
+        console.error('Failed to vote on review:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }

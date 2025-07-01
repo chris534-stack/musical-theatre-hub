@@ -1,6 +1,6 @@
 import { EventCalendar } from '@/components/calendar/EventCalendar';
-import { getEventsByStatus, getAllVenues } from '@/lib/data';
-import type { Venue, Event } from '@/lib/types';
+import { getEventsByStatus, getAllVenues, getAllReviews } from '@/lib/data';
+import type { Venue, Event, Review } from '@/lib/types';
 
 // An "Expanded Event" is a single performance instance, derived from a parent Event
 export type ExpandedCalendarEvent = Omit<Event, 'occurrences'> & {
@@ -8,17 +8,31 @@ export type ExpandedCalendarEvent = Omit<Event, 'occurrences'> & {
     date: string;
     time: string;
     venue?: Venue;
+    reviews: Review[];
 };
 
 async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
   const approvedEvents = await getEventsByStatus('approved');
   const allVenues = await getAllVenues();
+  const allReviews = await getAllReviews();
+  
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
+  const reviewsMap = new Map<string, Review[]>();
+  allReviews.forEach(review => {
+    if (!reviewsMap.has(review.showId)) {
+        reviewsMap.set(review.showId, []);
+    }
+    reviewsMap.get(review.showId)!.push(review);
+  });
   
   const expandedEvents: ExpandedCalendarEvent[] = approvedEvents.flatMap(event => {
     if (!event.occurrences || event.occurrences.length === 0) {
       return [];
     }
+    
+    // Sort reviews for this event by likes
+    const sortedReviews = (reviewsMap.get(event.id) || []).sort((a,b) => b.likes - a.likes);
+
     return event.occurrences.map(occurrence => {
         const { occurrences, ...restOfEvent } = event;
         return {
@@ -26,7 +40,8 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
             uniqueOccurrenceId: `${event.id}-${occurrence.date}-${occurrence.time || 'all-day'}`,
             date: occurrence.date,
             time: occurrence.time,
-            venue: venuesMap.get(event.venueId)
+            venue: venuesMap.get(event.venueId),
+            reviews: sortedReviews
         };
     })
   });

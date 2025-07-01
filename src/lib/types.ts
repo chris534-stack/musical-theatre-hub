@@ -43,11 +43,32 @@ export type Idea = {
 };
 
 export type NewsArticle = {
-  id: string;
+  id:string;
   url: string;
   title: string;
   summary: string;
   imageUrl?: string;
   createdAt: any;
   order: number;
+};
+
+export type Review = {
+    id: string;
+    showId: string;
+    showTitle: string;
+    performanceDate: string; // YYYY-MM-DD
+    reviewerId: string;
+    reviewerName: string;
+    createdAt: any;
+    overallExperience: string;
+    specialMomentsText: string;
+    recommendations: string[];
+    showHeartText: string;
+    communityImpactText: string;
+    ticketInfo: string;
+    valueConsiderationText: string;
+    timeWellSpentText: string;
+    likes: number;
+    dislikes: number;
+    votedBy: string[];
 };

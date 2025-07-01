@@ -9,33 +9,49 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isReviewer: boolean;
 };
 
 const AuthContext = React.createContext<AuthContextType>({
   user: null,
   loading: true,
   isAdmin: false,
+  isReviewer: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [isAdmin, setIsAdmin] = React.useState(false);
+  const [isReviewer, setIsReviewer] = React.useState(false);
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
 
       const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+      const reviewerEmails = (process.env.NEXT_PUBLIC_REVIEWER_EMAILS || '').split(',').filter(e => e);
 
-      // If an admin email is configured, only that user is an admin.
-      // If it's NOT configured (e.g., in a preview environment), any signed-in user is an admin for testing.
-      if (adminEmail) {
-        setIsAdmin(!!user && user.email === adminEmail);
-      } else if (user) {
-        setIsAdmin(true);
+      if (user) {
+        // Admin Check
+        if (adminEmail) {
+          setIsAdmin(!!user && user.email === adminEmail);
+        } else {
+          // If not configured, any signed-in user is an admin for testing.
+          setIsAdmin(true); 
+        }
+
+        // Reviewer Check
+        if (reviewerEmails.length > 0) {
+            setIsReviewer(reviewerEmails.includes(user.email || ''));
+        } else {
+            // For testing, if no reviewer emails are set, any logged-in user is a reviewer.
+            setIsReviewer(true);
+        }
+
       } else {
         setIsAdmin(false);
+        setIsReviewer(false);
       }
 
       setLoading(false);
@@ -44,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const value = { user, loading, isAdmin };
+  const value = { user, loading, isAdmin, isReviewer };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,7 +1,7 @@
 
 import { collection, addDoc } from 'firebase/firestore';
 import { adminDb } from './firebase-admin'; // Admin SDK for server-side functions
-import type { Event, Venue, EventStatus, NewsArticle } from './types';
+import type { Event, Venue, EventStatus, NewsArticle, Review } from './types';
 import { startOfToday, addDays } from 'date-fns';
 
 const parseDateString = (dateString: string): Date => {
@@ -172,4 +172,22 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
     });
 
     return articles;
+}
+
+
+// --- Review Functions ---
+
+/**
+ * [SERVER-SIDE] Fetches all reviews using the Admin SDK, sorted by creation date.
+ */
+export async function getAllReviews(): Promise<Review[]> {
+  const snapshot = await adminDb.collection('reviews').orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt.toDate().toISOString(),
+    } as Review;
+  });
 }

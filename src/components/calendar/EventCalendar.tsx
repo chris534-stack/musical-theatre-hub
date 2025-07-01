@@ -14,7 +14,9 @@ import {
   isToday,
   addMonths,
   subMonths,
-  isSameDay
+  isSameDay,
+  isPast,
+  parseISO
 } from 'date-fns';
 import { cn, toTitleCase } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -25,12 +27,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { Venue, Event } from '@/lib/types';
-import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit } from 'lucide-react';
+import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit, MessageSquareQuote } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddEventButton } from '@/components/admin/AddEventButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { EventEditorModal } from '@/components/admin/EventEditorModal';
+import { ReviewSubmissionModal } from '@/components/reviews/ReviewSubmissionModal';
+import { ReviewList } from '@/components/reviews/ReviewList';
 import type { DayContentProps } from 'react-day-picker';
 
 function getContrastingTextColor(color: string): string {
@@ -77,7 +81,6 @@ function getContrastingTextColor(color: string): string {
 
     if (isNaN(r) || isNaN(g) || isNaN(b)) return '#ffffff';
 
-    // Using the WCAG formula for luminance
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     
     return luminance > 0.5 ? '#000000' : '#ffffff';
@@ -90,8 +93,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const { isAdmin } = useAuth();
+  const { user, isAdmin, isReviewer } = useAuth();
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [isReviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedEventForReview, setSelectedEventForReview] = useState<ExpandedCalendarEvent | null>(null);
 
   
   useEffect(() => {
@@ -106,11 +111,9 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   }, [events]);
 
   const filteredEvents = useMemo(() => {
-    // If an event is selected, only show its occurrences.
     if (selectedEventId) {
         return events.filter(event => event.id === selectedEventId);
     }
-    // Otherwise, apply venue and type filters.
     return events.filter(event => {
       const venueMatch = selectedVenues.length === 0 || selectedVenues.includes(event.venueId);
       const typeMatch = selectedTypes.length === 0 || selectedTypes.includes(event.type.trim().toLowerCase());
@@ -121,8 +124,6 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const eventsByDate = useMemo(() => {
     const map = new Map<string, ExpandedCalendarEvent[]>();
     filteredEvents.forEach(event => {
-      // Use the 'YYYY-MM-DD' string directly as the key.
-      // Parsing it with `new Date()` can cause timezone shifts.
       const dateKey = event.date;
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
@@ -153,6 +154,16 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const handleCardClick = (eventId: string) => {
     setSelectedEventId(prevId => (prevId === eventId ? null : eventId));
   };
+
+  const isOccurrenceInPast = (event: ExpandedCalendarEvent): boolean => {
+    const dateTimeString = `${event.date}T${event.time || '23:59:59'}`;
+    try {
+        const eventDateTime = parseISO(dateTimeString);
+        return isPast(eventDateTime);
+    } catch {
+        return false;
+    }
+  }
   
   const handleEditClick = (selectedOccurrence: ExpandedCalendarEvent) => {
     const allOccurrencesForEvent = events
@@ -178,6 +189,11 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
         occurrences: allOccurrencesForEvent,
     };
     setEditingEvent(fullEvent);
+  };
+
+  const handleLeaveReviewClick = (event: ExpandedCalendarEvent) => {
+    setSelectedEventForReview(event);
+    setReviewModalOpen(true);
   };
 
   const calendarDays = useMemo(() => {
@@ -375,7 +391,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 onClick={() => handleCardClick(event.id)}
                 className={cn(
                   "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden",
-                  isSelected ? "max-h-[500px] z-10 shadow-lg" : "max-h-48"
+                  isSelected ? "max-h-none z-10 shadow-lg" : "max-h-48"
                 )}
                 style={{ borderLeft: `4px solid ${event.venue?.color || 'hsl(var(--primary))'}` }}
               >
@@ -404,7 +420,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className={cn(!isSelected && "relative")}>
+                <CardContent className={cn("relative pb-6")}>
                    <p className={cn(
                     "text-sm text-muted-foreground mb-4",
                     !isSelected && "line-clamp-2"
@@ -412,14 +428,28 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                     {event.description}
                   </p>
 
-                  {event.url && (
-                    <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                      <a href={event.url} target="_blank" rel="noopener noreferrer">
-                        Visit Website <ExternalLink className="ml-2 h-3 w-3" />
-                      </a>
-                    </Button>
-                  )}
-                  {!isSelected && <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none"></div>}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {event.url && (
+                            <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                            <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                                Visit Website <ExternalLink className="ml-2 h-3 w-3" />
+                            </a>
+                            </Button>
+                        )}
+                        {isReviewer && isOccurrenceInPast(event) && (
+                            <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
+                                <MessageSquareQuote className="mr-2 h-4 w-4" /> Leave a Review
+                            </Button>
+                        )}
+                    </div>
+
+                    {isSelected && event.reviews.length > 0 && (
+                        <div className="mt-6 pt-4 border-t">
+                            <ReviewList reviews={event.reviews} />
+                        </div>
+                    )}
+                  
+                  {!isSelected && <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none"></div>}
                 </CardContent>
               </Card>
             )})
@@ -440,6 +470,11 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
             venues={venues}
         />
       )}
+      <ReviewSubmissionModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        event={selectedEventForReview}
+      />
       {isAdmin && <AddEventButton venues={venues} />}
     </div>
   );
