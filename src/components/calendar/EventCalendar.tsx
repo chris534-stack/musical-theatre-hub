@@ -2,7 +2,7 @@
 'use client';
 
 import type { ExpandedCalendarEvent } from '@/app/calendar/page';
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   format,
   startOfMonth,
