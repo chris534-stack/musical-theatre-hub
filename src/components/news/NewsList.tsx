@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { DragDropContext, Draggable, type OnDragEndResponder } from 'react-beautiful-dnd';
+import { DragDropContext, Draggable, type OnDragEndResponder } from '@hello-pangea/dnd';
 import { StrictModeDroppable } from './StrictModeDroppable';
 import { NewsArticleCard } from '@/components/news/NewsArticleCard';
 import type { NewsArticle } from '@/lib/types';

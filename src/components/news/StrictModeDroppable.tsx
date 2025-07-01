@@ -3,7 +3,7 @@
 // This is a workaround for a known issue with react-beautiful-dnd and React 18 Strict Mode.
 // See: https://github.com/atlassian/react-beautiful-dnd/issues/2396#issuecomment-1195648513
 import { useEffect, useState } from 'react';
-import { Droppable, type DroppableProps } from 'react-beautiful-dnd';
+import { Droppable, type DroppableProps } from '@hello-pangea/dnd';
 
 export const StrictModeDroppable = ({ children, ...props }: DroppableProps) => {
   const [enabled, setEnabled] = useState(false);
