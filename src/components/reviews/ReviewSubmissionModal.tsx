@@ -3,7 +3,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ReviewForm } from '@/components/reviews/ReviewForm';
-import type { ExpandedCalendarEvent } from '@/app/calendar/page';
+import type { ExpandedCalendarEvent } from '@/lib/types';
 import { toTitleCase } from '@/lib/utils';
 import { format } from 'date-fns';
 
