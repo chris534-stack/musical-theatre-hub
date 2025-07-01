@@ -51,7 +51,7 @@ export default async function ReviewsPage() {
             id: 'mock-review-1',
             showId: eventForMockReview.id,
             showTitle: eventForMockReview.title,
-            performanceDate: '2024-07-20',
+            performanceDate: eventForMockReview.occurrences?.[0]?.date || '2024-07-20',
             reviewerId: 'mock-user-id',
             reviewerName: 'Casey Critic',
             createdAt: new Date().toISOString(),
