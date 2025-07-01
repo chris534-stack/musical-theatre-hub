@@ -93,7 +93,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const { user, isAdmin, isReviewer } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isReviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedEventForReview, setSelectedEventForReview] = useState<ExpandedCalendarEvent | null>(null);
@@ -163,6 +163,11 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     } catch {
         return false;
     }
+  }
+
+  const isReviewableEventType = (eventType: string) => {
+    const nonReviewableTypes = ['audition', 'workshop'];
+    return !nonReviewableTypes.includes(eventType.trim().toLowerCase());
   }
   
   const handleEditClick = (selectedOccurrence: ExpandedCalendarEvent) => {
@@ -422,13 +427,13 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 </CardHeader>
                 <CardContent className={cn("relative pb-6")}>
                    <p className={cn(
-                    "text-sm text-muted-foreground mb-4",
+                    "text-sm text-muted-foreground",
                     !isSelected && "line-clamp-2"
                   )}>
                     {event.description}
                   </p>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 mt-4">
                         {event.url && (
                             <Button variant="link" size="sm" asChild className="p-0 h-auto">
                             <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
@@ -436,7 +441,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                             </a>
                             </Button>
                         )}
-                        {isOccurrenceInPast(event) && (
+                        {isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
                             <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
                                 <MessageSquareQuote className="mr-2 h-4 w-4" /> Leave a Review
                             </Button>
