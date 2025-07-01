@@ -1,8 +1,7 @@
-
 'use client';
 
 import type { Review } from '@/lib/types';
-import { ReviewCard } from './ReviewCard';
+import { ReviewCompact } from './ReviewCompact';
 import { MessageSquareText } from 'lucide-react';
 
 export function ReviewList({ reviews }: { reviews: Review[] }) {
@@ -17,10 +16,10 @@ export function ReviewList({ reviews }: { reviews: Review[] }) {
     }
     
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <h3 className="text-xl font-headline text-primary">Community Reviews ({reviews.length})</h3>
             {reviews.map(review => (
-                <ReviewCard key={review.id} review={review} />
+                <ReviewCompact key={review.id} review={review} />
             ))}
         </div>
     );
