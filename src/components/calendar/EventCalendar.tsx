@@ -440,24 +440,27 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                     </CardContent>
                   </div>
                   <CardFooter>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                       {event.url && (
                         <Button variant="link" size="sm" asChild className="p-0 h-auto">
                           <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                            Visit Website <ExternalLink className="ml-2 h-3 w-3" />
+                            Visit Website
+                            <ExternalLink className="h-3 w-3" />
                           </a>
                         </Button>
                       )}
                        {event.reviews && event.reviews.length > 0 && (
                         <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
                             <Link href="/reviews" onClick={(e) => e.stopPropagation()}>
-                                <MessageSquareText className="mr-2 h-4 w-4" /> View Reviews ({event.reviews.length})
+                                View Reviews ({event.reviews.length})
+                                <MessageSquareText className="h-4 w-4" />
                             </Link>
                         </Button>
                       )}
                       {isReviewer && isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
                         <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
-                          <MessageSquareQuote className="mr-2 h-4 w-4" /> Leave a Review
+                          <MessageSquareQuote className="h-4 w-4" />
+                          Leave a Review
                         </Button>
                       )}
                     </div>
