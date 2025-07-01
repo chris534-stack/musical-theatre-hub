@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -11,6 +10,7 @@ import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { voteOnReviewAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 function ReviewSection({ title, content }: { title: string, content: React.ReactNode }) {
     if (!content) return null;
@@ -22,7 +22,7 @@ function ReviewSection({ title, content }: { title: string, content: React.React
     )
 }
 
-export function ReviewCard({ review }: { review: Review }) {
+export function ReviewCard({ review, hideHeader = false }: { review: Review, hideHeader?: boolean }) {
     const { user } = useAuth();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
@@ -66,18 +66,20 @@ export function ReviewCard({ review }: { review: Review }) {
 
     return (
         <Card>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle className="text-base">{review.reviewerName}</CardTitle>
-                        <CardDescription className="text-xs mt-1">
-                            Reviewed performance on {new Date(review.performanceDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
-                        </CardDescription>
+            {!hideHeader && (
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle className="text-base">{review.reviewerName}</CardTitle>
+                            <CardDescription className="text-xs mt-1">
+                                Reviewed performance on {new Date(review.performanceDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                            </CardDescription>
+                        </div>
+                        <Badge variant="secondary">{review.overallExperience}</Badge>
                     </div>
-                    <Badge variant="secondary">{review.overallExperience}</Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
+                </CardHeader>
+            )}
+            <CardContent className={cn("space-y-4", hideHeader && "pt-6")}>
                 <div className="flex flex-wrap gap-2">
                     {review.recommendations?.map(rec => <Badge key={rec} variant="outline">{rec}</Badge>)}
                 </div>

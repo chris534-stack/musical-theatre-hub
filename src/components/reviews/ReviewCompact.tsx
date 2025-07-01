@@ -1,9 +1,10 @@
 'use client';
 
 import type { Review } from '@/lib/types';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ReviewCard } from '@/components/reviews/ReviewCard';
 import { Badge } from '@/components/ui/badge';
+import { toTitleCase } from '@/lib/utils';
 
 export function ReviewCompact({ review }: { review: Review }) {
     const snippet = review.specialMomentsText.length > 100
@@ -25,8 +26,12 @@ export function ReviewCompact({ review }: { review: Review }) {
                 </div>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[725px]">
-                <div className="max-h-[85vh] overflow-y-auto pr-6">
-                    <ReviewCard review={review} />
+                <DialogHeader>
+                    <DialogTitle>Review for {toTitleCase(review.showTitle)}</DialogTitle>
+                    <DialogDescription>By {review.reviewerName}</DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[80vh] overflow-y-auto pr-4">
+                    <ReviewCard review={review} hideHeader />
                 </div>
             </DialogContent>
         </Dialog>

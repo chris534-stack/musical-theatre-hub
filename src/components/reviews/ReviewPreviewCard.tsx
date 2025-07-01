@@ -3,9 +3,10 @@ import type { Review } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ReviewCard } from '@/components/reviews/ReviewCard';
 import { format } from 'date-fns';
+import { toTitleCase } from '@/lib/utils';
 
 export function ReviewPreviewCard({ review }: { review: Review }) {
     const snippet = review.specialMomentsText.length > 150 
@@ -44,8 +45,14 @@ export function ReviewPreviewCard({ review }: { review: Review }) {
                 </Card>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[725px]">
+                <DialogHeader>
+                    <DialogTitle>Review for {toTitleCase(review.showTitle)}</DialogTitle>
+                    <DialogDescription>
+                        By {review.reviewerName}. Performance on {format(new Date(review.performanceDate), "MMM d, yyyy")}.
+                    </DialogDescription>
+                </DialogHeader>
                 <div className="max-h-[85vh] overflow-y-auto pr-6">
-                    <ReviewCard review={review} />
+                    <ReviewCard review={review} hideHeader />
                 </div>
             </DialogContent>
         </Dialog>
