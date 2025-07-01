@@ -432,7 +432,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       {!isSelected && event.description && (
                         <div className="absolute bottom-4 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
                       )}
-                      {isSelected && event.reviews.length > 0 && (
+                      {isSelected && (
                         <div className="mt-4 pt-4 border-t">
                           <ReviewList reviews={event.reviews} />
                         </div>

@@ -1,3 +1,4 @@
+
 import { EventCalendar } from '@/components/calendar/EventCalendar';
 import { getEventsByStatus, getAllVenues, getAllReviews } from '@/lib/data';
 import type { Venue, Event, Review, ExpandedCalendarEvent } from '@/lib/types';
@@ -5,8 +6,33 @@ import type { Venue, Event, Review, ExpandedCalendarEvent } from '@/lib/types';
 async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
   const approvedEvents = await getEventsByStatus('approved');
   const allVenues = await getAllVenues();
-  const allReviews = await getAllReviews();
+  let allReviews = await getAllReviews();
   
+  // Inject mock review for preview
+  if (approvedEvents.length > 0 && approvedEvents[0].occurrences.length > 0) {
+    const mockReview: Review = {
+        id: 'mock-review-1',
+        showId: approvedEvents[0].id,
+        showTitle: approvedEvents[0].title,
+        performanceDate: approvedEvents[0].occurrences[0].date,
+        reviewerId: 'mock-user-id',
+        reviewerName: 'Casey Critic',
+        createdAt: new Date().toISOString(),
+        overallExperience: "Exceptional & Memorable",
+        specialMomentsText: "The lead's performance in the second act was breathtaking. A true masterclass in acting that left the entire audience speechless.",
+        recommendations: ["Date Night", "Dramatic", "Thought-Provoking"],
+        showHeartText: "This was a profound exploration of family dynamics and loss. It was challenging, but ultimately very rewarding.",
+        communityImpactText: "A story like this is exactly what Eugene needs right now. It opens up important conversations and showcases incredible local talent.",
+        ticketInfo: "Paid $35 for a seat in the mezzanine, Row E. The view was excellent for the price.",
+        valueConsiderationText: "For the price of a movie ticket and popcorn, you get a live experience that will stick with you for weeks. The production value was outstanding and felt like a bargain.",
+        timeWellSpentText: "Absolutely. The show was engaging from start to finish. I'd recommend it to anyone looking for a powerful night of theatre.",
+        likes: 12,
+        dislikes: 1,
+        votedBy: [],
+    };
+    allReviews.unshift(mockReview);
+  }
+
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
   const reviewsMap = new Map<string, Review[]>();
   allReviews.forEach(review => {

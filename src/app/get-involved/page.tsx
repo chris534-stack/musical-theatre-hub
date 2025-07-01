@@ -13,6 +13,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ReviewerRequestForm } from '@/components/get-involved/ReviewerRequestForm';
+import { LatestReviews } from '@/components/get-involved/LatestReviews';
+
 export default function GetInvolvedPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   return (
@@ -34,8 +36,7 @@ export default function GetInvolvedPage() {
         {/* Show Reviews section */}
         <section className="p-6 border rounded-lg shadow-sm flex flex-col"> {/* Added styling */}
           <h2 className="text-2xl font-semibold mb-4">Show Reviews</h2>
-          {/* Placeholder for Show Reviews content */}
-          <p>Reviews for current shows will appear here.</p>
+          <LatestReviews />
         </section>
 
         {/* Suggest an Idea section (with modal trigger) */}
