@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { ExpandedCalendarEvent } from '@/lib/types';
+import type { ExpandedCalendarEvent, Venue, Event, Review } from '@/lib/types';
 import {
   format,
   startOfMonth,
@@ -26,7 +26,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import type { Venue, Event } from '@/lib/types';
 import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit, MessageSquareQuote, MessageSquareText } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,6 +35,8 @@ import { EventEditorModal } from '@/components/admin/EventEditorModal';
 import { ReviewSubmissionModal } from '@/components/reviews/ReviewSubmissionModal';
 import type { DayContentProps } from 'react-day-picker';
 import Link from 'next/link';
+import { ReviewList } from '@/components/reviews/ReviewList';
+
 
 function getContrastingTextColor(color: string): string {
     if (!color) return '#ffffff';
@@ -87,19 +88,19 @@ function getContrastingTextColor(color: string): string {
 }
 
 export function EventCalendar({ events, venues }: { events: ExpandedCalendarEvent[], venues: Venue[] }) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [isClient, setIsClient] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+  const [selectedVenues, setSelectedVenues] = React.useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = React.useState<string[]>([]);
+  const [isClient, setIsClient] = React.useState(false);
+  const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
   const { user, isAdmin, isReviewer } = useAuth();
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [isReviewModalOpen, setReviewModalOpen] = useState(false);
-  const [selectedEventForReview, setSelectedEventForReview] = useState<ExpandedCalendarEvent | null>(null);
+  const [editingEvent, setEditingEvent] = React.useState<Event | null>(null);
+  const [isReviewModalOpen, setReviewModalOpen] = React.useState(false);
+  const [selectedEventForReview, setSelectedEventForReview] = React.useState<ExpandedCalendarEvent | null>(null);
 
   
-  useEffect(() => {
+  React.useEffect(() => {
     setIsClient(true);
   }, []);
   
@@ -432,6 +433,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       {!isSelected && event.description && (
                         <div className="absolute bottom-4 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
                       )}
+                       <div className={cn("w-full transition-all duration-300 ease-in-out overflow-hidden", isSelected ? "max-h-96 opacity-100 mt-4" : "max-h-0 opacity-0")}>
+                          <Separator className="mb-3" />
+                          <ReviewList reviews={event.reviews} />
+                      </div>
                     </CardContent>
                   </div>
                   <CardFooter>
