@@ -8,13 +8,21 @@ async function getApprovedEventsWithVenues(): Promise<ExpandedCalendarEvent[]> {
   const allVenues = await getAllVenues();
   let allReviews = await getAllReviews();
   
-  // Inject mock review for preview
-  if (approvedEvents.length > 0 && approvedEvents[0].occurrences.length > 0) {
+  // Find a suitable past event to attach the mock review to for preview purposes.
+  const now = new Date();
+  const eventForMocking = approvedEvents.find(event => 
+    event.occurrences?.some(occ => new Date(`${occ.date}T${occ.time || '23:59:59'}`) < now)
+  );
+  
+  // Inject mock review if a suitable past event is found
+  if (eventForMocking) {
+    const pastOccurrence = eventForMocking.occurrences.find(occ => new Date(`${occ.date}T${occ.time || '23:59:59'}`) < now)!;
+
     const mockReview: Review = {
         id: 'mock-review-1',
-        showId: approvedEvents[0].id,
-        showTitle: approvedEvents[0].title,
-        performanceDate: approvedEvents[0].occurrences[0].date,
+        showId: eventForMocking.id,
+        showTitle: eventForMocking.title,
+        performanceDate: pastOccurrence.date,
         reviewerId: 'mock-user-id',
         reviewerName: 'Casey Critic',
         createdAt: new Date().toISOString(),
