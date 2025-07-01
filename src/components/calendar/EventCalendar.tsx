@@ -20,7 +20,7 @@ import {
 } from 'date-fns';
 import { cn, toTitleCase } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -391,73 +391,73 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
             selectedDayEvents.map(event => {
               const isSelected = selectedEventId === event.id;
               return (
-              <Card 
-                key={event.uniqueOccurrenceId}
-                onClick={() => handleCardClick(event.id)}
-                className={cn(
-                  "transition-all duration-300 ease-in-out cursor-pointer overflow-hidden",
-                  isSelected ? "max-h-none z-10 shadow-lg" : "max-h-48"
-                )}
-                style={{ borderLeft: `4px solid ${event.venue?.color || 'hsl(var(--primary))'}` }}
-              >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="font-headline text-lg">{toTitleCase(event.title)}</CardTitle>
-                      <CardDescription className="pt-2 space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
+                <Card 
+                  key={event.uniqueOccurrenceId}
+                  className={cn(
+                    "flex flex-col transition-shadow duration-300 ease-in-out",
+                    isSelected ? "z-10 shadow-lg" : ""
+                  )}
+                  style={{ borderLeft: `4px solid ${event.venue?.color || 'hsl(var(--primary))'}` }}
+                >
+                  <div onClick={() => handleCardClick(event.id)} className="cursor-pointer flex-grow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <CardTitle className="font-headline text-lg">{toTitleCase(event.title)}</CardTitle>
+                          <CardDescription className="pt-2 space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Ticket className="h-4 w-4 flex-shrink-0" /> 
+                              <span className="capitalize">
+                                {toTitleCase(event.type.replace('-', ' '))}
+                                {event.time && ` at ${format(new Date(`1970-01-01T${event.time}`), 'h:mm a')}`}
+                              </span>
+                            </div>
+                          </CardDescription>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Ticket className="h-4 w-4 flex-shrink-0" /> 
-                          <span className="capitalize">
-                            {toTitleCase(event.type.replace('-', ' '))}
-                            {event.time && ` at ${format(new Date(`1970-01-01T${event.time}`), 'h:mm a')}`}
-                          </span>
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit Event</span>
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="relative pt-0 pb-4">
+                      <p className={cn("text-sm text-muted-foreground", !isSelected && "line-clamp-3")}>
+                        {event.description}
+                      </p>
+                      {!isSelected && event.description && (
+                        <div className="absolute bottom-4 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                      )}
+                      {isSelected && event.reviews.length > 0 && (
+                        <div className="mt-4 pt-4 border-t">
+                          <ReviewList reviews={event.reviews} />
                         </div>
-                      </CardDescription>
-                    </div>
-                    {isAdmin && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit Event</span>
-                      </Button>
-                    )}
+                      )}
+                    </CardContent>
                   </div>
-                </CardHeader>
-                <CardContent className={cn("relative pb-6")}>
-                   <p className={cn(
-                    "text-sm text-muted-foreground",
-                    !isSelected && "line-clamp-2"
-                  )}>
-                    {event.description}
-                  </p>
-
-                    <div className="flex flex-wrap items-center gap-2 mt-4">
-                        {event.url && (
-                            <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                            <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                                Visit Website <ExternalLink className="ml-2 h-3 w-3" />
-                            </a>
-                            </Button>
-                        )}
-                        {isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
-                            <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
-                                <MessageSquareQuote className="mr-2 h-4 w-4" /> Leave a Review
-                            </Button>
-                        )}
+                  <CardFooter>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {event.url && (
+                        <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                          <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                            Visit Website <ExternalLink className="ml-2 h-3 w-3" />
+                          </a>
+                        </Button>
+                      )}
+                      {isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
+                        <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
+                          <MessageSquareQuote className="mr-2 h-4 w-4" /> Leave a Review
+                        </Button>
+                      )}
                     </div>
-
-                    {isSelected && event.reviews.length > 0 && (
-                        <div className="mt-6 pt-4 border-t">
-                            <ReviewList reviews={event.reviews} />
-                        </div>
-                    )}
-                  
-                  {!isSelected && <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none"></div>}
-                </CardContent>
-              </Card>
-            )})
+                  </CardFooter>
+                </Card>
+              )
+            })
           ) : (
             <div className="text-center pt-10 text-muted-foreground h-full flex flex-col items-center justify-center rounded-lg">
               <CalendarDays className="h-10 w-10 mb-3 text-muted-foreground/50" />
