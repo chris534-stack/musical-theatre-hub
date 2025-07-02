@@ -7,9 +7,10 @@ if (!getApps().length) {
     const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
     const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
-    if (!projectId || !clientEmail || !privateKey) {
-    throw new Error("Missing Firebase Admin SDK credentials. Please ensure FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and FIREBASE_ADMIN_PRIVATE_KEY are set in your environment variables.");
+    if (!projectId || !clientEmail || !privateKey || !storageBucket) {
+    throw new Error("Missing Firebase Admin SDK credentials. Please ensure FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, FIREBASE_ADMIN_PRIVATE_KEY, and FIREBASE_STORAGE_BUCKET are set in your environment variables.");
     }
 
     initializeApp({
@@ -19,6 +20,7 @@ if (!getApps().length) {
         // Handle the newline characters that can get escaped in environment variables
         privateKey: privateKey.replace(/\\n/g, '\n'),
     }),
+    storageBucket: storageBucket,
     });
 }
 
