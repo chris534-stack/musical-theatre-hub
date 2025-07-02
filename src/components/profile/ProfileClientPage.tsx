@@ -5,14 +5,14 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
 
-function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined }) {
+function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
     return (
         <div className="flex items-center gap-3">
@@ -24,6 +24,22 @@ function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, la
         </div>
     );
 }
+
+function calculateYearsInCommunity(startDate?: string): string | null {
+  if (!startDate?.trim() || !/^\d{4}$/.test(startDate.trim())) return null;
+  
+  const currentYear = new Date().getFullYear();
+  const startYear = parseInt(startDate.trim(), 10);
+
+  if (isNaN(startYear)) return null;
+
+  const years = currentYear - startYear;
+
+  if (years < 1) return "Less than a year";
+  if (years === 1) return "About 1 year";
+  return `About ${years} years`;
+}
+
 
 export default function ProfileClientPage({ initialProfile, initialReviews }: { initialProfile: UserProfile, initialReviews: Review[] }) {
     const { user, isAdmin } = useAuth();
@@ -42,6 +58,8 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     };
     const RoleIcon = profile.roleInCommunity ? roleIcons[profile.roleInCommunity] : Users;
     
+    const yearsInCommunity = calculateYearsInCommunity(profile.communityStartDate);
+
     const onProfileUpdate = (updatedProfile: UserProfile) => {
         setProfile(updatedProfile);
     };
@@ -72,7 +90,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                         </div>
                         
                         {/* Name and Actions */}
-                        <div className="mt-4 md:mt-0 flex-grow flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                        <div className="mt-6 md:mt-0 flex-grow flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                             <div>
                                 <h1 className="text-3xl font-bold font-headline">{profile.displayName}</h1>
                                 <p className="text-muted-foreground flex items-center gap-2 mt-1">
@@ -112,7 +130,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                 <CardHeader><CardTitle>Community Details</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                     <ProfileStat icon={RoleIcon} label="Primary Role" value={profile.roleInCommunity} />
-                                    <ProfileStat icon={Drama} label="Years in Community" value={profile.yearsInCommunity} />
+                                    <ProfileStat icon={CalendarClock} label="In Community For" value={yearsInCommunity} />
                                 </CardContent>
                             </Card>
                         </div>

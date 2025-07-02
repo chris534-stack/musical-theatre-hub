@@ -14,7 +14,7 @@ const mockProfile: UserProfile = {
 
 When I'm not on stage, you can find me hiking Spencer Butte or trying out a new coffee shop downtown!`,
   roleInCommunity: 'Performer',
-  yearsInCommunity: '5+ years',
+  communityStartDate: '2019',
   galleryImageUrls: [
     'https://placehold.co/400x400.png',
     'https://placehold.co/400x400.png',

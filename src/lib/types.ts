@@ -100,7 +100,7 @@ export type UserProfile = {
   email: string;
   bio?: string;
   roleInCommunity?: 'Performer' | 'Technician' | 'Designer' | 'Director' | 'Audience' | 'Other';
-  yearsInCommunity?: string;
+  communityStartDate?: string;
   galleryImageUrls?: string[];
   coverPhotoUrl?: string;
 };

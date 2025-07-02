@@ -9,7 +9,7 @@ import { updateUserProfileAction } from '@/lib/actions';
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,7 +20,7 @@ const profileFormSchema = z.object({
     displayName: z.string().min(2, "Display name is required."),
     bio: z.string().optional(),
     roleInCommunity: z.enum(['Performer', 'Technician', 'Designer', 'Director', 'Audience', 'Other']),
-    yearsInCommunity: z.string().min(1, "This field is required."),
+    communityStartDate: z.string().regex(/^\d{4}$/, { message: "Please enter a valid 4-digit year." }).optional().or(z.literal("")),
     galleryImageUrls: z.array(z.object({ value: z.string().url("Must be a valid URL or empty.") })).optional(),
     coverPhotoUrl: z.string().url("Must be a valid URL or empty.").optional().or(z.literal("")),
 });
@@ -44,7 +44,7 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
             displayName: profile.displayName || '',
             bio: profile.bio || '',
             roleInCommunity: profile.roleInCommunity || 'Audience',
-            yearsInCommunity: profile.yearsInCommunity || 'Less than 1 year',
+            communityStartDate: profile.communityStartDate || '',
             galleryImageUrls: profile.galleryImageUrls?.map(url => ({ value: url })) || [],
             coverPhotoUrl: profile.coverPhotoUrl || '',
         },
@@ -90,34 +90,30 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
                             <FormField control={form.control} name="bio" render={({ field }) => (
                                 <FormItem><FormLabel>About Me / Bio</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
-                            <FormField control={form.control} name="roleInCommunity" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>My Role in the Community</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select your primary role" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {['Performer', 'Technician', 'Designer', 'Director', 'Audience', 'Other'].map(role => (
-                                                <SelectItem key={role} value={role}>{role}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="yearsInCommunity" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Years in the Eugene Theatre Community</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a time range" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {['Less than 1 year', '1-3 years', '3-5 years', '5+ years'].map(range => (
-                                                <SelectItem key={range} value={range}>{range}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="roleInCommunity" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>My Role in the Community</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select your primary role" /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {['Performer', 'Technician', 'Designer', 'Director', 'Audience', 'Other'].map(role => (
+                                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={form.control} name="communityStartDate" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Community Start Year</FormLabel>
+                                        <FormControl><Input placeholder="e.g., 2019" {...field} /></FormControl>
+                                        <FormDescription className="text-xs">The year you joined the community.</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
                              <FormField control={form.control} name="coverPhotoUrl" render={({ field }) => (
                                 <FormItem><FormLabel>Cover Photo URL (Optional)</FormLabel><FormControl><Input placeholder="https://example.com/cover.jpg" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
