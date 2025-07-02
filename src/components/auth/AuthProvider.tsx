@@ -22,12 +22,7 @@ const AuthContext = React.createContext<AuthContextType>({
 // --- FOR TESTING: To skip the login page, provide a mock user object here. ---
 // --- To return to normal behavior, set MOCK_USER to null. ---
 // --- DO NOT DEPLOY WITH A MOCK USER. ---
-const MOCK_USER: User | null = {
-    uid: 'mock-user-id-123',
-    displayName: 'Alex "The Thespian" Chen',
-    email: 'alex.chen@example.com',
-    photoURL: 'https://placehold.co/200x200.png',
-} as User;
+const MOCK_USER: User | null = null;
 
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
