@@ -1,5 +1,4 @@
 
-
 import { adminDb, admin } from './firebase-admin'; // Admin SDK for server-side functions
 import type { Event, Venue, EventStatus, NewsArticle, Review, UserProfile } from './types';
 import { startOfToday, addDays } from 'date-fns';
@@ -313,17 +312,21 @@ export async function getAllReviews(): Promise<Review[]> {
 export async function getReviewsByUserId(userId: string): Promise<Review[]> {
     const snapshot = await adminDb.collection('reviews')
         .where('reviewerId', '==', userId)
-        .orderBy('createdAt', 'desc')
         .get();
         
-    return snapshot.docs.map(doc => {
+    const reviews = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt.toDate().toISOString(),
+            createdAt: data.createdAt, // Keep as Timestamp for sorting
         } as Review;
     });
+
+    // Sort in-memory after fetching
+    reviews.sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime());
+
+    return reviews.map(r => ({ ...r, createdAt: r.createdAt.toDate().toISOString() }));
 }
 
 
