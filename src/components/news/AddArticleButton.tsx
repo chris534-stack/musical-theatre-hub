@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -13,9 +12,15 @@ import {
 } from '@/components/ui/dialog';
 import { AddArticleForm } from '@/components/news/AddArticleForm';
 import { Plus } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 export function AddArticleButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const { isAdmin } = useAuth();
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
