@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, MessageSquareQuote, Newspaper, User, Shield } from 'lucide-react';
+import { Home, CalendarDays, MessageSquareQuote, Newspaper, User, Shield, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth/AuthProvider';
 
@@ -12,6 +12,7 @@ const baseNavItems = [
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/reviews', label: 'Reviews', icon: MessageSquareQuote },
   { href: '/news', label: 'News', icon: Newspaper },
+  { href: '/about-us', label: 'About', icon: Info },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -41,7 +42,7 @@ export function MobileNav() {
               key={item.label}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center text-center px-0 py-2 rounded-md transition-colors w-16',
+                'flex flex-col items-center justify-center text-center px-2 py-2 rounded-md transition-colors',
                 isActive ? 'text-accent' : 'text-primary-foreground/70 hover:text-primary-foreground'
               )}
             >
