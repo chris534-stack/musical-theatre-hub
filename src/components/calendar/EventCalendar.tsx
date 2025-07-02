@@ -26,16 +26,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit, MessageSquareQuote, MessageSquareText } from 'lucide-react';
+import { FilterIcon, MapPin, Ticket, ExternalLink, CalendarDays, ChevronLeft, ChevronRight, Home, X, Edit, MessageSquareQuote, MessageSquareText, Plus } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AddEventButton } from '@/components/admin/AddEventButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { EventEditorModal } from '@/components/admin/EventEditorModal';
 import { ReviewSubmissionModal } from '@/components/reviews/ReviewSubmissionModal';
 import type { DayContentProps } from 'react-day-picker';
 import Link from 'next/link';
 import { ReviewList } from '@/components/reviews/ReviewList';
+import dynamic from 'next/dynamic';
+
+const AddEventButton = dynamic(
+    () => import('@/components/admin/AddEventButton').then(mod => mod.AddEventButton),
+    { ssr: false }
+);
 
 
 function getContrastingTextColor(color: string): string {
@@ -101,7 +106,6 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [touchStart, setTouchStart] = React.useState<number | null>(null);
   const [touchEnd, setTouchEnd] = React.useState<number | null>(null);
   const minSwipeDistance = 50;
-
   
   React.useEffect(() => {
     setIsClient(true);
