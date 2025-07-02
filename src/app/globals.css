@@ -59,7 +59,7 @@
     scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--secondary));
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground pb-20 md:pb-0;
   }
 
   /* Custom Scrollbar Styles for Webkit */

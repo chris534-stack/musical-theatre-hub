@@ -23,7 +23,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-            <div className="relative flex min-h-screen flex-col bg-background pb-20 md:pb-0">
+            <div className="relative flex min-h-screen flex-col bg-background">
               <Header />
               <main className="flex flex-1 flex-col">{children}</main>
               <Footer />
