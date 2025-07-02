@@ -24,3 +24,4 @@ if (!getApps().length) {
 
 // Export the initialized admin instance of Firestore.
 export const adminDb = admin.firestore();
+export { admin };
