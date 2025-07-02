@@ -351,7 +351,13 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     }
 
     try {
-        const bucket = admin.storage().bucket();
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+
+        if (!storageBucket) {
+            return { success: false, message: 'Firebase Storage is not configured. Please set the FIREBASE_STORAGE_BUCKET environment variable on the server.' };
+        }
+
+        const bucket = admin.storage().bucket(storageBucket);
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);

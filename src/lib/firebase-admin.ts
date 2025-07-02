@@ -5,12 +5,13 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 // environments with hot-reloading.
 if (!getApps().length) {
     const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
-    if (!storageBucket) {
-        throw new Error("Missing Firebase Storage Bucket configuration. Please ensure FIREBASE_STORAGE_BUCKET or NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is set in your environment variables.");
-    }
-
     const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+
+    // We prepare the config object but only add properties if they exist.
+    const config: admin.AppOptions = {};
+    if (storageBucket) {
+        config.storageBucket = storageBucket;
+    }
 
     if (privateKey) {
         // If a private key is provided, assume manual credential setup (e.g., local development)
@@ -21,21 +22,17 @@ if (!getApps().length) {
             throw new Error("Missing credentials for manual setup. When FIREBASE_ADMIN_PRIVATE_KEY is set, you must also provide FIREBASE_ADMIN_PROJECT_ID and FIREBASE_ADMIN_CLIENT_EMAIL.");
         }
 
-        initializeApp({
-            credential: cert({
-                projectId: projectId,
-                clientEmail: clientEmail,
-                privateKey: privateKey.replace(/\\n/g, '\n'),
-            }),
-            storageBucket: storageBucket,
-        });
-    } else {
-        // Otherwise, assume a managed environment with Application Default Credentials
-        // console.log("Initializing Firebase Admin SDK with Application Default Credentials.");
-        initializeApp({
-            storageBucket: storageBucket,
+        config.credential = cert({
+            projectId: projectId,
+            clientEmail: clientEmail,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
         });
     }
+    
+    // Initialize with the constructed config.
+    // If no privateKey is provided, it will use Application Default Credentials.
+    // If no storageBucket is provided, storage features will require explicit bucket definition.
+    initializeApp(config);
 }
 
 // Export the initialized admin instance of Firestore.
