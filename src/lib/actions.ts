@@ -351,7 +351,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     }
 
     try {
-        const bucket = admin.storage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+        const bucket = admin.storage().bucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
