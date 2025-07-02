@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, Dialog
 import { ReviewCard } from '@/components/reviews/ReviewCard';
 import { Badge } from '@/components/ui/badge';
 import { toTitleCase } from '@/lib/utils';
+import Link from 'next/link';
 
 export function ReviewCompact({ review }: { review: Review }) {
     const snippet = review.specialMomentsText.length > 100
@@ -17,7 +18,11 @@ export function ReviewCompact({ review }: { review: Review }) {
                 <div className="p-3 rounded-lg border bg-background cursor-pointer hover:bg-muted/50 transition-colors w-full text-left">
                     <div className="flex justify-between items-start gap-2 mb-2">
                         <div>
-                            <p className="font-semibold text-sm">{review.reviewerName}</p>
+                            <p className="font-semibold text-sm">
+                                <Link href={`/profile/${review.reviewerId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {review.reviewerName}
+                                </Link>
+                            </p>
                             <Badge variant="secondary" className="mt-1 text-xs text-center">{review.overallExperience}</Badge>
                         </div>
                     </div>

@@ -1,4 +1,5 @@
 
+
 export type Venue = {
   id: string;
   name: string;
@@ -90,4 +91,16 @@ export type ReviewerRequest = {
     userEmail: string;
     status: 'pending' | 'approved' | 'denied';
     createdAt: any;
+};
+
+export type UserProfile = {
+  userId: string;
+  displayName: string;
+  photoURL: string;
+  email: string;
+  bio?: string;
+  roleInCommunity?: 'Performer' | 'Technician' | 'Designer' | 'Director' | 'Audience' | 'Other';
+  yearsInCommunity?: string;
+  galleryImageUrls?: string[];
+  coverPhotoUrl?: string;
 };

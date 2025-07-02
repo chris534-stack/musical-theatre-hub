@@ -12,6 +12,7 @@ import { voteOnReviewAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import SignInPromptModal from '@/components/SignInPromptModal';
+import Link from 'next/link';
 
 function ReviewSection({ title, content }: { title: string, content: React.ReactNode }) {
     if (!content) return null;
@@ -69,7 +70,11 @@ export function ReviewCard({ review, hideHeader = false }: { review: Review, hid
                     <CardHeader>
                         <div className="flex justify-between items-start">
                             <div>
-                                <CardTitle className="text-base">{review.reviewerName}</CardTitle>
+                                <CardTitle className="text-base">
+                                     <Link href={`/profile/${review.reviewerId}`} className="hover:underline">
+                                        {review.reviewerName}
+                                    </Link>
+                                </CardTitle>
                                 <CardDescription className="text-xs mt-1">
                                     Reviewed performance on {new Date(review.performanceDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                                 </CardDescription>

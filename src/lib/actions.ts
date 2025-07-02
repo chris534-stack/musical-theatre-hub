@@ -1,10 +1,11 @@
 
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { addEvent, eventExists, addNewsArticle } from '@/lib/data';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Event, EventOccurrence, NewsArticle, Review, Venue } from '@/lib/types';
+import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 
@@ -72,8 +73,10 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
         cleanData[key] = data[key as keyof EventFormData];
       }
     }
-    // Ensure description is at least an empty string if it's undefined
+    // Ensure description and URL are at least an empty string if they're not provided
     cleanData.description = cleanData.description || '';
+    cleanData.url = cleanData.url || '';
+
 
     const eventRef = adminDb.collection('events').doc(eventId);
     await eventRef.update(cleanData);
@@ -239,6 +242,7 @@ export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' |
 
         revalidatePath('/calendar');
         revalidatePath('/reviews');
+        revalidatePath(`/profile/${data.reviewerId}`);
         return { success: true, message: 'Your review has been submitted. Thank you!' };
     } catch (error) {
         console.error('Failed to submit review:', error);
@@ -309,6 +313,30 @@ export async function requestToBeReviewerAction(data: {
 
     } catch (error) {
         console.error('Failed to submit reviewer request:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+// --- User Profile Actions ---
+
+export async function updateUserProfileAction(userId: string, data: Partial<UserProfile>) {
+    try {
+        // Sanitize data to prevent `undefined` values being sent to Firestore
+        const cleanData = Object.fromEntries(
+            Object.entries(data).filter(([, v]) => v !== undefined)
+        );
+        
+        await adminDb.collection('userProfiles').doc(userId).update(cleanData);
+
+        // Revalidate paths where this profile might be displayed
+        revalidatePath(`/profile/${userId}`);
+        revalidatePath('/reviews');
+        revalidatePath('/calendar');
+        
+        return { success: true, message: 'Profile updated successfully.' };
+    } catch (error) {
+        console.error('Failed to update user profile:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }

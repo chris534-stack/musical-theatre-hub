@@ -1,7 +1,9 @@
 
+
 import { adminDb } from './firebase-admin'; // Admin SDK for server-side functions
-import type { Event, Venue, EventStatus, NewsArticle, Review } from './types';
+import type { Event, Venue, EventStatus, NewsArticle, Review, UserProfile } from './types';
 import { startOfToday, addDays } from 'date-fns';
+import type { UserRecord } from 'firebase-admin/auth';
 
 const parseDateString = (dateString: string): Date => {
   // Manually parse date components to avoid timezone shift issues.
@@ -302,4 +304,59 @@ export async function getAllReviews(): Promise<Review[]> {
   }
 
   return reviews;
+}
+
+
+/**
+ * [SERVER-SIDE] Fetches all reviews by a specific user.
+ */
+export async function getReviewsByUserId(userId: string): Promise<Review[]> {
+    const snapshot = await adminDb.collection('reviews')
+        .where('reviewerId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .get();
+        
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt.toDate().toISOString(),
+        } as Review;
+    });
+}
+
+
+// --- User Profile Functions ---
+
+/**
+ * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
+ */
+export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
+    const docRef = adminDb.collection('userProfiles').doc(userId);
+    const docSnap = await docRef.get();
+
+    if (docSnap.exists) {
+        return docSnap.data() as UserProfile;
+    }
+
+    try {
+        // User exists in Auth, but not in our profiles collection. Let's create one.
+        const userRecord = await admin.auth().getUser(userId);
+        
+        const newProfile: UserProfile = {
+            userId: userRecord.uid,
+            displayName: userRecord.displayName || 'New User',
+            photoURL: userRecord.photoURL || '',
+            email: userRecord.email || '',
+        };
+        
+        await docRef.set(newProfile);
+        return newProfile;
+
+    } catch (error) {
+        console.error(`Failed to get user record or create profile for an authenticated user with ID: ${userId}`, error);
+        // This can happen if a user is deleted from Firebase Auth but their client session is still active.
+        return null;
+    }
 }
