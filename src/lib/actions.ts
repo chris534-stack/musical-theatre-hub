@@ -64,17 +64,22 @@ export async function addEventFromFormAction(data: EventFormData) {
 
 export async function updateEventAction(eventId: string, data: EventFormData) {
   try {
-    const eventUpdateData = {
-      ...data,
-      description: data.description || '',
-    };
-    
+    // Sanitize data: Firestore throws an error if any field value is `undefined`.
+    // We create a new object and only add fields that have a defined value.
+    const cleanData: { [key: string]: any } = {};
+    for (const key in data) {
+      if (data[key as keyof EventFormData] !== undefined) {
+        cleanData[key] = data[key as keyof EventFormData];
+      }
+    }
+    // Ensure description is at least an empty string if it's undefined
+    cleanData.description = cleanData.description || '';
+
     const eventRef = adminDb.collection('events').doc(eventId);
-    await eventRef.update(eventUpdateData);
+    await eventRef.update(cleanData);
 
     await revalidateAdminPaths();
     return { success: true, message: 'Event updated successfully.' };
-
   } catch (error) {
     console.error('Failed to update event:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -233,6 +238,7 @@ export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' |
         await adminDb.collection('reviews').add(reviewData);
 
         revalidatePath('/calendar');
+        revalidatePath('/reviews');
         return { success: true, message: 'Your review has been submitted. Thank you!' };
     } catch (error) {
         console.error('Failed to submit review:', error);
@@ -275,6 +281,7 @@ export async function voteOnReviewAction(reviewId: string, voteType: 'like' | 'd
         });
         
         revalidatePath('/calendar');
+        revalidatePath('/reviews');
         return { success: true };
 
     } catch (error) {
