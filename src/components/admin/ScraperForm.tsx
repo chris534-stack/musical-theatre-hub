@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useTransition, useState } from 'react';
+import { useTransition, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,6 +30,7 @@ export function ScraperForm({ venues, onSuccess }: { venues: Venue[], onSuccess?
   
   const [prefillData, setPrefillData] = useState<(ScrapeEventDetailsOutput & { sourceUrl?: string }) | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,11 +54,6 @@ export function ScraperForm({ venues, onSuccess }: { venues: Venue[], onSuccess?
       if (result.success && result.data) {
         setPrefillData(result.data);
         setIsEditorOpen(true);
-        if (onSuccess) {
-            // onSuccess used to close the parent dialog.
-            // We now control the flow, so we call it when the *final* form is submitted.
-            // onSuccess(); 
-        }
       } else {
         toast({
           variant: 'destructive',
@@ -79,6 +75,10 @@ export function ScraperForm({ venues, onSuccess }: { venues: Venue[], onSuccess?
                 const dataTransfer = new DataTransfer();
                 dataTransfer.items.add(file);
                 onChange(dataTransfer.files);
+                toast({
+                    title: "Image Pasted!",
+                    description: "The screenshot has been added from your clipboard.",
+                });
                 break;
             }
         }
@@ -110,34 +110,45 @@ export function ScraperForm({ venues, onSuccess }: { venues: Venue[], onSuccess?
                 <FormItem>
                 <FormLabel>Screenshot</FormLabel>
                     <div 
-                    className="relative flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground hover:border-primary/50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
-                    onPaste={(e) => handlePaste(e, field.onChange)}
-                    tabIndex={0} 
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                        (e.currentTarget.querySelector('input') as HTMLInputElement)?.click();
-                        }
-                    }}
-                >
-                    <FormControl>
-                            <Input 
+                      className="relative flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-primary/50"
+                      onPaste={(e) => handlePaste(e, field.onChange)}
+                      tabIndex={0}
+                    >
+                        <FormControl>
+                          <Input 
                             type="file" 
                             accept="image/*"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            className="sr-only"
+                            ref={(e) => {
+                                field.ref(e);
+                                if(fileInputRef) fileInputRef.current = e;
+                            }}
                             onChange={(e) => field.onChange(e.target.files)}
-                            ref={field.ref}
-                            name={field.name}
-                            onBlur={field.onBlur}
-                        />
-                    </FormControl>
-                    <div className="flex flex-col items-center pointer-events-none">
-                        <ClipboardPaste className="w-10 h-10" />
-                        <p className="mt-2 text-sm">
-                            <span className="font-semibold text-primary">Click to upload</span> or paste an image
-                        </p>
-                        <p className="text-xs">Supports PNG, JPG, GIF</p>
+                          />
+                        </FormControl>
+                        <div className="flex flex-col items-center text-center pointer-events-none">
+                            <ClipboardPaste className="w-10 h-10 mb-2" />
+                            <p className="font-semibold text-foreground">
+                                Paste an image from your clipboard
+                            </p>
+                            <p className="text-sm">Press Ctrl+V or ⌘+V in this box</p>
+                            
+                            <div className="my-4 flex items-center w-full max-w-xs">
+                                <div className="flex-grow border-t border-border"></div>
+                                <span className="flex-shrink mx-4 text-xs uppercase">Or</span>
+                                <div className="flex-grow border-t border-border"></div>
+                            </div>
+                            
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                className="pointer-events-auto"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                Upload a File
+                            </Button>
+                        </div>
                     </div>
-                </div>
                     {fileName && (
                     <div className="flex items-center gap-2 mt-2 text-sm font-medium">
                         <Paperclip className="w-4 h-4" />
@@ -148,7 +159,7 @@ export function ScraperForm({ venues, onSuccess }: { venues: Venue[], onSuccess?
                 </FormItem>
             )}
             />
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || !screenshotFile}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Scrape and Prefill Form
             </Button>
