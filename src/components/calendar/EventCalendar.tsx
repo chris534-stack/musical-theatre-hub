@@ -420,12 +420,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                             </div>
                           </CardDescription>
                         </div>
-                        {isAdmin && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit Event</span>
-                          </Button>
-                        )}
+                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit Event</span>
+                        </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="relative pt-0 pb-4">
