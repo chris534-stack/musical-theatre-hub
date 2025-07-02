@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ReviewCard } from '@/components/reviews/ReviewCard';
-import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -14,6 +13,13 @@ export function ReviewPreviewCard({ review }: { review: Review }) {
     const snippet = review.specialMomentsText.length > 150 
         ? review.specialMomentsText.substring(0, 150) + '...'
         : review.specialMomentsText;
+
+    const formattedDate = new Date(review.performanceDate).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC'
+    });
 
     return (
         <Dialog>
@@ -28,7 +34,7 @@ export function ReviewPreviewCard({ review }: { review: Review }) {
                                     </Link>
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-1">
-                                    Reviewed on {format(new Date(review.performanceDate), "MMM d, yyyy")}
+                                    Reviewed on {formattedDate}
                                 </CardDescription>
                             </div>
                             <Badge variant="secondary" className="text-center shrink-0">{review.overallExperience}</Badge>
@@ -54,7 +60,7 @@ export function ReviewPreviewCard({ review }: { review: Review }) {
                 <DialogHeader>
                     <DialogTitle>Review for {toTitleCase(review.showTitle)}</DialogTitle>
                     <DialogDescription>
-                        By <Link href={`/profile/${review.reviewerId}`} className="font-semibold text-primary hover:underline">{review.reviewerName}</Link>. Performance on {format(new Date(review.performanceDate), "MMM d, yyyy")}.
+                        By <Link href={`/profile/${review.reviewerId}`} className="font-semibold text-primary hover:underline">{review.reviewerName}</Link>. Performance on {formattedDate}.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[85vh] overflow-y-auto pr-6">

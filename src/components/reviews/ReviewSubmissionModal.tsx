@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ReviewForm } from '@/components/reviews/ReviewForm';
 import type { ExpandedCalendarEvent } from '@/lib/types';
 import { toTitleCase } from '@/lib/utils';
-import { format } from 'date-fns';
 
 interface ReviewSubmissionModalProps {
     isOpen: boolean;
@@ -16,13 +15,20 @@ interface ReviewSubmissionModalProps {
 export function ReviewSubmissionModal({ isOpen, onClose, event }: ReviewSubmissionModalProps) {
     if (!event) return null;
 
+    const formattedDate = new Date(event.date).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC'
+    });
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[725px]">
                 <DialogHeader>
                     <DialogTitle className="font-headline text-2xl">Reviewing: {toTitleCase(event.title)}</DialogTitle>
                     <DialogDescription>
-                        Performance Date: {format(new Date(event.date), "MMMM d, yyyy")}
+                        Performance Date: {formattedDate}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[75vh] overflow-y-auto pr-6">
