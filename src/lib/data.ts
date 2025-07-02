@@ -333,14 +333,14 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
  * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
  */
 export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
-    const docRef = adminDb.collection('userProfiles').doc(userId);
-    const docSnap = await docRef.get();
-
-    if (docSnap.exists) {
-        return docSnap.data() as UserProfile;
-    }
-
     try {
+        const docRef = adminDb.collection('userProfiles').doc(userId);
+        const docSnap = await docRef.get();
+
+        if (docSnap.exists) {
+            return docSnap.data() as UserProfile;
+        }
+
         // User exists in Auth, but not in our profiles collection. Let's create one.
         const userRecord = await admin.auth().getUser(userId);
         
@@ -355,8 +355,9 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
         return newProfile;
 
     } catch (error) {
-        console.error(`Failed to get user record or create profile for an authenticated user with ID: ${userId}`, error);
-        // This can happen if a user is deleted from Firebase Auth but their client session is still active.
+        console.error(`Failed to get or create user profile for ID: ${userId}`, error);
+        // This can happen if a user is deleted from Firebase Auth but their client session is still active,
+        // or if there's a database connection issue.
         return null;
     }
 }
