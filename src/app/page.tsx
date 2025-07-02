@@ -69,9 +69,9 @@ export default async function Home() {
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold font-headline text-primary">Featured This Month</h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="flex flex-wrap justify-center gap-8">
             {featuredEvents.map(event => (
-              <Card key={event.id} className="flex flex-col text-center shadow-lg hover:shadow-xl transition-shadow duration-300 min-h-[220px]">
+              <Card key={event.id} className="w-80 flex flex-col text-center shadow-lg hover:shadow-xl transition-shadow duration-300 min-h-[220px]">
                 <CardHeader>
                   <CardTitle className="font-headline font-bold text-primary">{toTitleCase(event.title)}</CardTitle>
                 </CardHeader>
