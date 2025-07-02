@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTransition } from 'react';
 import type { UserProfile } from '@/lib/types';
-import { updateUserProfileAction } from '@/lib/actions';
+import { updateUserProfileAction, uploadCoverPhotoAction } from '@/lib/actions';
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 
 const profileFormSchema = z.object({
     displayName: z.string().min(2, "Display name is required."),
     bio: z.string().optional(),
     roleInCommunity: z.enum(['Performer', 'Technician', 'Designer', 'Director', 'Audience', 'Other']),
     communityStartDate: z.string().regex(/^\d{4}$/, { message: "Please enter a valid 4-digit year." }).optional().or(z.literal("")),
-    coverPhotoUrl: z.string().url("Must be a valid URL or empty.").optional().or(z.literal("")),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -34,7 +33,8 @@ interface EditProfileSheetProps {
 }
 
 export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: EditProfileSheetProps) {
-    const [isPending, startTransition] = useTransition();
+    const [isTextUpdatePending, startTextUpdateTransition] = useTransition();
+    const [isPhotoUpdatePending, startPhotoUpdateTransition] = useTransition();
     const { toast } = useToast();
 
     const form = useForm<ProfileFormValues>({
@@ -44,14 +44,39 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
             bio: profile.bio || '',
             roleInCommunity: profile.roleInCommunity || 'Audience',
             communityStartDate: profile.communityStartDate || '',
-            coverPhotoUrl: profile.coverPhotoUrl || '',
         },
     });
+
+    const handleCoverPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('userId', profile.userId);
+
+        startPhotoUpdateTransition(async () => {
+            const result = await uploadCoverPhotoAction(formData);
+            if (result.success && result.url) {
+                toast({
+                    title: 'Cover Photo Updated!',
+                    description: 'Your new cover photo has been saved.',
+                });
+                onProfileUpdate({ ...profile, coverPhotoUrl: result.url });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Upload Failed',
+                    description: result.message,
+                });
+            }
+        });
+    };
 
     const onSubmit = (data: ProfileFormValues) => {
         const updateData: Partial<UserProfile> = { ...data };
 
-        startTransition(async () => {
+        startTextUpdateTransition(async () => {
             const result = await updateUserProfileAction(profile.userId, updateData);
 
             if (result.success) {
@@ -104,14 +129,38 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
                                     </FormItem>
                                 )} />
                             </div>
-                             <FormField control={form.control} name="coverPhotoUrl" render={({ field }) => (
-                                <FormItem><FormLabel>Cover Photo URL (Optional)</FormLabel><FormControl><Input placeholder="https://example.com/cover.jpg" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
+                            <div className="space-y-2">
+                                <FormLabel>Cover Photo</FormLabel>
+                                <div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => document.getElementById('cover-photo-input')?.click()}
+                                        disabled={isPhotoUpdatePending}
+                                    >
+                                        {isPhotoUpdatePending ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Upload className="mr-2 h-4 w-4" />
+                                        )}
+                                        Upload New Photo
+                                    </Button>
+                                    <Input
+                                        id="cover-photo-input"
+                                        type="file"
+                                        accept="image/*"
+                                        className="sr-only"
+                                        onChange={handleCoverPhotoChange}
+                                        disabled={isPhotoUpdatePending}
+                                    />
+                                </div>
+                                <FormDescription>Upload a new cover photo for your profile.</FormDescription>
+                            </div>
                         </div>
                         <SheetFooter>
                              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                            <Button type="submit" disabled={isPending}>
-                                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Button type="submit" disabled={isTextUpdatePending || isPhotoUpdatePending}>
+                                {isTextUpdatePending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save Changes
                             </Button>
                         </SheetFooter>

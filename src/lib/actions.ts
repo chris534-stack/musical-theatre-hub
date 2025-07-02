@@ -387,3 +387,48 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         return { success: false, message: `Upload failed: ${errorMessage}` };
     }
 }
+
+export async function uploadCoverPhotoAction(formData: FormData) {
+    const file = formData.get('photo') as File;
+    const userId = formData.get('userId') as string;
+
+    if (!file || !userId) {
+        return { success: false, message: 'Missing file or user ID.' };
+    }
+
+    try {
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+
+        if (!storageBucket) {
+            return { success: false, message: 'Firebase Storage is not configured. Please set the FIREBASE_STORAGE_BUCKET environment variable on the server.' };
+        }
+
+        const bucket = admin.storage().bucket(storageBucket);
+        const buffer = Buffer.from(await file.arrayBuffer());
+        
+        const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
+        const fileUpload = bucket.file(fileName);
+
+        await fileUpload.save(buffer, {
+            metadata: {
+                contentType: file.type,
+            },
+        });
+
+        await fileUpload.makePublic();
+        const publicUrl = fileUpload.publicUrl();
+
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.update({
+            coverPhotoUrl: publicUrl,
+        });
+
+        revalidatePath(`/profile/${userId}`);
+
+        return { success: true, url: publicUrl };
+    } catch (error) {
+        console.error('Failed to upload cover photo:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `Upload failed: ${errorMessage}` };
+    }
+}
