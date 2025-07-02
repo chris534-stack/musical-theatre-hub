@@ -77,4 +77,11 @@
   ::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--primary));
   }
+  
+  /* Add padding to the body on mobile to make space for the bottom nav */
+  @media (max-width: 767px) {
+    body {
+      padding-bottom: 5rem; /* Adjust this value to match mobile nav height */
+    }
+  }
 }
