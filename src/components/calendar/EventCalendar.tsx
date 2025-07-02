@@ -103,6 +103,12 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   React.useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (selectedDate) {
+        setCurrentMonth(selectedDate);
+    }
+  }, [selectedDate]);
   
   const isMobile = useIsMobile();
   
@@ -445,7 +451,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                         <Button variant="link" size="sm" asChild className="p-0 h-auto">
                           <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                             Visit Website
-                            <ExternalLink className="h-4 w-4" />
+                            <ExternalLink className="h-4 w-4 ml-1" />
                           </a>
                         </Button>
                       )}
@@ -453,14 +459,14 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                         <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
                             <Link href="/reviews" onClick={(e) => e.stopPropagation()}>
                                 View Reviews ({event.reviews.length})
-                                <MessageSquareText className="h-4 w-4" />
+                                <MessageSquareText className="h-4 w-4 ml-1" />
                             </Link>
                         </Button>
                       )}
                       {isReviewer && isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
                         <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
                           Leave a Review
-                          <MessageSquareQuote className="h-4 w-4" />
+                          <MessageSquareQuote className="h-4 w-4 ml-1" />
                         </Button>
                       )}
                     </div>
@@ -477,14 +483,12 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           )}
         </div>
       </div>
-      {isAdmin && (
-        <EventEditorModal
-            isOpen={!!editingEvent}
-            onClose={() => setEditingEvent(null)}
-            eventToEdit={editingEvent}
-            venues={venues}
-        />
-      )}
+      <EventEditorModal
+          isOpen={!!editingEvent}
+          onClose={() => setEditingEvent(null)}
+          eventToEdit={editingEvent}
+          venues={venues}
+      />
       <ReviewSubmissionModal
         isOpen={isReviewModalOpen}
         onClose={() => setReviewModalOpen(false)}
