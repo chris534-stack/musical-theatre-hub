@@ -2,7 +2,7 @@
 
 import type { UserProfile, Review } from '@/lib/types';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock } from 'lucide-react';
@@ -25,26 +25,30 @@ function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, la
     );
 }
 
-function calculateYearsInCommunity(startDate?: string): string | null {
-  if (!startDate?.trim() || !/^\d{4}$/.test(startDate.trim())) return null;
-  
-  const currentYear = new Date().getFullYear();
-  const startYear = parseInt(startDate.trim(), 10);
-
-  if (isNaN(startYear)) return null;
-
-  const years = currentYear - startYear;
-
-  if (years < 1) return "Less than a year";
-  if (years === 1) return "About 1 year";
-  return `About ${years} years`;
-}
-
-
 export default function ProfileClientPage({ initialProfile, initialReviews }: { initialProfile: UserProfile, initialReviews: Review[] }) {
     const { user, isAdmin } = useAuth();
     const [profile, setProfile] = useState(initialProfile);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
+
+    useEffect(() => {
+        function calculateYearsInCommunity(startDate?: string): string | null {
+            if (!startDate?.trim() || !/^\d{4}$/.test(startDate.trim())) return null;
+            
+            const currentYear = new Date().getFullYear();
+            const startYear = parseInt(startDate.trim(), 10);
+
+            if (isNaN(startYear)) return null;
+
+            const years = currentYear - startYear;
+
+            if (years < 1) return "Less than a year";
+            if (years === 1) return "About 1 year";
+            return `About ${years} years`;
+        }
+        
+        setYearsInCommunity(calculateYearsInCommunity(profile.communityStartDate));
+    }, [profile.communityStartDate]);
 
     const isOwner = user?.uid === profile.userId;
 
@@ -58,8 +62,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     };
     const RoleIcon = profile.roleInCommunity ? roleIcons[profile.roleInCommunity] : Users;
     
-    const yearsInCommunity = calculateYearsInCommunity(profile.communityStartDate);
-
     const onProfileUpdate = (updatedProfile: UserProfile) => {
         setProfile(updatedProfile);
     };

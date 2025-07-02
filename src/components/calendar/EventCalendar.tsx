@@ -93,8 +93,8 @@ function getContrastingTextColor(color: string): string {
 }
 
 export function EventCalendar({ events, venues }: { events: ExpandedCalendarEvent[], venues: Venue[] }) {
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
-  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>();
+  const [currentMonth, setCurrentMonth] = React.useState<Date | undefined>();
   const [selectedVenues, setSelectedVenues] = React.useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = React.useState<string[]>([]);
   const [isClient, setIsClient] = React.useState(false);
@@ -109,13 +109,19 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   
   React.useEffect(() => {
     setIsClient(true);
+    const today = new Date();
+    setSelectedDate(today);
+    setCurrentMonth(startOfMonth(today));
   }, []);
 
   useEffect(() => {
     if (selectedDate) {
-        setCurrentMonth(selectedDate);
+        // Do not set current month here if it's already set from the initial useEffect
+        if (!currentMonth) {
+            setCurrentMonth(startOfMonth(selectedDate));
+        }
     }
-  }, [selectedDate]);
+  }, [selectedDate, currentMonth]);
   
   const isMobile = useIsMobile();
   
@@ -216,6 +222,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   };
 
   const calendarDays = useMemo(() => {
+    if (!currentMonth) return [];
     const start = startOfWeek(startOfMonth(currentMonth));
     const end = endOfWeek(endOfMonth(currentMonth));
     return eachDayOfInterval({ start, end });
@@ -236,7 +243,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+    if (!touchStart || !touchEnd || !currentMonth) return;
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
@@ -252,8 +259,11 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     setTouchEnd(null);
   };
 
+  const handleMonthChange = (month: Date) => {
+    setCurrentMonth(month);
+  }
 
-  if (!isClient) {
+  if (!isClient || !currentMonth) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
         <div className="lg:col-span-2">
@@ -271,11 +281,11 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
       <CardHeader className="flex flex-row items-center justify-between py-4">
         <CardTitle className="font-headline text-2xl">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+          <Button variant="outline" size="icon" onClick={() => handleMonthChange(subMonths(currentMonth, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>Today</Button>
-          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+          <Button variant="outline" size="sm" onClick={() => handleMonthChange(startOfMonth(new Date()))}>Today</Button>
+          <Button variant="outline" size="icon" onClick={() => handleMonthChange(addMonths(currentMonth, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -368,7 +378,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           selected={selectedDate}
           onSelect={setSelectedDate}
           month={currentMonth}
-          onMonthChange={setCurrentMonth}
+          onMonthChange={handleMonthChange}
           className="w-full rounded-md border"
           classNames={{
               cell: "h-9 w-full text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
