@@ -37,6 +37,7 @@ import { useTransition, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
+import { EventEditorModal } from './EventEditorModal';
 
 type EventWithVenue = Event & { venue?: Venue };
 
@@ -61,7 +62,8 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+
   const handleStatusUpdate = (eventId: string, status: 'approved' | 'denied') => {
     startTransition(async () => {
       try {
@@ -98,6 +100,10 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
     setSelectedEventId(eventId);
     setIsAlertOpen(true);
   }
+
+  const handleEditClick = (event: Event) => {
+    setEditingEvent(event);
+  };
 
   const getStatusBadge = (status: EventStatus) => {
     switch(status) {
@@ -160,7 +166,7 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
                             <XCircle className="mr-2 h-4 w-4" /> Deny
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem disabled>
+                        <DropdownMenuItem onClick={() => handleEditClick(event)} disabled={isPending}>
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -198,6 +204,12 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <EventEditorModal
+        isOpen={!!editingEvent}
+        onClose={() => setEditingEvent(null)}
+        eventToEdit={editingEvent}
+        venues={venues}
+      />
     </>
   );
 }
