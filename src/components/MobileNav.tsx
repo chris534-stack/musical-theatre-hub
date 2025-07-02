@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, MessageSquareQuote, Newspaper, User, Shield, Info } from 'lucide-react';
+import { Home, CalendarDays, MessageSquareQuote, Newspaper, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth/AuthProvider';
 
@@ -12,7 +12,6 @@ const baseNavItems = [
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/reviews', label: 'Reviews', icon: MessageSquareQuote },
   { href: '/news', label: 'News', icon: Newspaper },
-  { href: '/about-us', label: 'About', icon: Info },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
