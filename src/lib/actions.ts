@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { addEvent, eventExists, addNewsArticle } from '@/lib/data';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
@@ -339,5 +339,45 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
         console.error('Failed to update user profile:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function uploadProfilePhotoAction(formData: FormData) {
+    const file = formData.get('photo') as File;
+    const userId = formData.get('userId') as string;
+
+    if (!file || !userId) {
+        return { success: false, message: 'Missing file or user ID.' };
+    }
+
+    try {
+        const bucket = admin.storage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const fileName = `${userId}/${Date.now()}-${file.name}`;
+        const fileUpload = bucket.file(fileName);
+
+        await fileUpload.save(buffer, {
+            metadata: {
+                contentType: file.type,
+            },
+        });
+
+        // Make the file public to get a URL
+        await fileUpload.makePublic();
+        const publicUrl = fileUpload.publicUrl();
+
+        // Update user profile in Firestore
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.update({
+            galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
+        });
+
+        revalidatePath(`/profile/${userId}`);
+
+        return { success: true, url: publicUrl };
+    } catch (error) {
+        console.error('Failed to upload photo:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `Upload failed: ${errorMessage}` };
     }
 }

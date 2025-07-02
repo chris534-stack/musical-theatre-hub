@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTransition } from 'react';
@@ -14,14 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, XCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const profileFormSchema = z.object({
     displayName: z.string().min(2, "Display name is required."),
     bio: z.string().optional(),
     roleInCommunity: z.enum(['Performer', 'Technician', 'Designer', 'Director', 'Audience', 'Other']),
     communityStartDate: z.string().regex(/^\d{4}$/, { message: "Please enter a valid 4-digit year." }).optional().or(z.literal("")),
-    galleryImageUrls: z.array(z.object({ value: z.string().url("Must be a valid URL or empty.") })).optional(),
     coverPhotoUrl: z.string().url("Must be a valid URL or empty.").optional().or(z.literal("")),
 });
 
@@ -45,21 +44,12 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
             bio: profile.bio || '',
             roleInCommunity: profile.roleInCommunity || 'Audience',
             communityStartDate: profile.communityStartDate || '',
-            galleryImageUrls: profile.galleryImageUrls?.map(url => ({ value: url })) || [],
             coverPhotoUrl: profile.coverPhotoUrl || '',
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: "galleryImageUrls",
-    });
-
     const onSubmit = (data: ProfileFormValues) => {
-        const updateData: Partial<UserProfile> = {
-            ...data,
-            galleryImageUrls: data.galleryImageUrls?.map(item => item.value).filter(Boolean),
-        };
+        const updateData: Partial<UserProfile> = { ...data };
 
         startTransition(async () => {
             const result = await updateUserProfileAction(profile.userId, updateData);
@@ -117,24 +107,6 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
                              <FormField control={form.control} name="coverPhotoUrl" render={({ field }) => (
                                 <FormItem><FormLabel>Cover Photo URL (Optional)</FormLabel><FormControl><Input placeholder="https://example.com/cover.jpg" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
-                            
-                            <div>
-                                <FormLabel>Photo Gallery URLs</FormLabel>
-                                <div className="space-y-2 pt-2">
-                                    {fields.map((field, index) => (
-                                        <div key={field.id} className="flex items-center gap-2">
-                                            <FormField control={form.control} name={`galleryImageUrls.${index}.value`} render={({ field }) => (
-                                                <FormItem className="flex-1">
-                                                    <FormControl><Input placeholder="https://example.com/photo.jpg" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><XCircle className="h-5 w-5 text-destructive" /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => append({ value: '' })}><PlusCircle className="mr-2 h-4 w-4" /> Add Photo URL</Button>
-                            </div>
                         </div>
                         <SheetFooter>
                              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>

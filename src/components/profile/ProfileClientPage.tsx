@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
+import { PhotoUploader } from '@/components/profile/PhotoUploader';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -65,6 +66,14 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const onProfileUpdate = (updatedProfile: UserProfile) => {
         setProfile(updatedProfile);
     };
+    
+    const handlePhotoUploadComplete = (newUrl: string) => {
+        setProfile(prev => ({
+            ...prev,
+            galleryImageUrls: [...(prev.galleryImageUrls || []), newUrl],
+        }));
+    };
+
 
     return (
         <>
@@ -149,13 +158,20 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                     <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized/>
                                                 </div>
                                             ))}
+                                            {isOwner && (
+                                                <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} />
+                                            )}
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                                            <Camera className="h-10 w-10 mb-2" />
-                                            <p className="font-medium">No Photos Yet</p>
-                                            {isOwner && <p className="text-sm">Click "Edit Profile" to add photos to your gallery.</p>}
-                                        </div>
+                                        isOwner ? (
+                                            <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} />
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                                                <Camera className="h-10 w-10 mb-2" />
+                                                <p className="font-medium">No Photos Yet</p>
+                                                <p className="text-sm">This user hasn't added any photos to their gallery.</p>
+                                            </div>
+                                        )
                                     )}
                                 </CardContent>
                             </Card>
