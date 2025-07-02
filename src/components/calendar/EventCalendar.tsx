@@ -98,6 +98,9 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [editingEvent, setEditingEvent] = React.useState<Event | null>(null);
   const [isReviewModalOpen, setReviewModalOpen] = React.useState(false);
   const [selectedEventForReview, setSelectedEventForReview] = React.useState<ExpandedCalendarEvent | null>(null);
+  const [touchStart, setTouchStart] = React.useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = React.useState<number | null>(null);
+  const minSwipeDistance = 50;
 
   
   React.useEffect(() => {
@@ -219,6 +222,33 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     return eachDayOfInterval({ start, end: endOfWeek(new Date()) }).map(d => format(d, 'EE'));
   }, []);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null); // Reset touch end on new touch start
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      setCurrentMonth(addMonths(currentMonth, 1));
+    } else if (isRightSwipe) {
+      setCurrentMonth(subMonths(currentMonth, 1));
+    }
+    
+    // Reset touch coordinates
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+
   if (!isClient) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
@@ -324,21 +354,27 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
       }
     
     return (
-      <Calendar
-        mode="single"
-        selected={selectedDate}
-        onSelect={setSelectedDate}
-        month={currentMonth}
-        onMonthChange={setCurrentMonth}
-        className="w-full rounded-md border"
-        classNames={{
-            cell: "h-9 w-full text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-            day_today: "bg-accent text-accent-foreground",
-            day_outside: "day-outside text-muted-foreground opacity-50",
-        }}
-        components={{ DayContent: CustomDayContent }}
-      />
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={setSelectedDate}
+          month={currentMonth}
+          onMonthChange={setCurrentMonth}
+          className="w-full rounded-md border"
+          classNames={{
+              cell: "h-9 w-full text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+              day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+              day_today: "bg-accent text-accent-foreground",
+              day_outside: "day-outside text-muted-foreground opacity-50",
+          }}
+          components={{ DayContent: CustomDayContent }}
+        />
+      </div>
     );
   };
 
@@ -426,12 +462,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                             </div>
                           </CardDescription>
                         </div>
-                        {isAdmin && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
-                                <Edit className="h-4 w-4" />
-                                <span className="sr-only">Edit Event</span>
-                            </Button>
-                        )}
+                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit Event</span>
+                        </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="relative pt-0 pb-4">
