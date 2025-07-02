@@ -47,6 +47,11 @@ export async function getAllEvents(options: GetAllEventsOptions = { includeOccur
   
   const events = snapshot.docs.map(doc => {
     const data = doc.data();
+    // Defensively map occurrences to ensure time is always a string.
+    const occurrences = (options.includeOccurrences && data.occurrences) 
+      ? data.occurrences.map((o: any) => ({ date: o.date, time: o.time || '' })) 
+      : [];
+
     return {
       id: doc.id,
       title: data.title,
@@ -55,8 +60,7 @@ export async function getAllEvents(options: GetAllEventsOptions = { includeOccur
       type: data.type,
       status: data.status,
       url: data.url,
-      // Conditionally include occurrences, defaulting to an empty array if not present
-      occurrences: options.includeOccurrences ? (data.occurrences || []) : [],
+      occurrences: occurrences,
     } as Event;
   });
   
@@ -80,7 +84,12 @@ export async function getAllEvents(options: GetAllEventsOptions = { includeOccur
 export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
     const q = adminDb.collection('events').where('status', '==', status);
     const snapshot = await q.get();
-    const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+    const events = snapshot.docs.map(doc => {
+        const data = doc.data();
+        // Defensively map occurrences to ensure time is always a string.
+        const occurrences = (data.occurrences || []).map((o: any) => ({ date: o.date, time: o.time || ''}));
+        return { id: doc.id, ...data, occurrences } as Event
+    });
 
     // Sort events by the date of their first occurrence
     events.sort((a, b) => {

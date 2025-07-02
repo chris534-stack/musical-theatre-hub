@@ -25,7 +25,7 @@ const eventFormSchema = z.object({
   type: z.string().min(1, 'Type is required.'),
   occurrences: z.array(z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format.'),
-    time: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be in HH:mm 24-hour format.'),
+    time: z.string().regex(/^$|^\d{2}:\d{2}$/, 'Time must be in HH:mm format or empty.'),
   })).min(1, 'At least one occurrence is required.'),
 });
 
@@ -56,13 +56,17 @@ export function EventEditorForm({ initialData, eventToEdit, venues, onSuccess }:
     }
     if (initialData) {
         const foundVenue = venues.find(v => v.name === initialData.venue);
+        const mappedOccurrences = initialData.occurrences?.length 
+            ? initialData.occurrences.map(o => ({ date: o.date, time: o.time || '' }))
+            : [{ date: '', time: '' }];
+
         return {
             title: toTitleCase(initialData.title) || '',
             description: initialData.description || '',
             url: initialData.sourceUrl || '',
             venueId: foundVenue?.id || '',
             type: 'Special Event',
-            occurrences: initialData.occurrences?.length ? initialData.occurrences : [{ date: '', time: '' }],
+            occurrences: mappedOccurrences,
         };
     }
     return {
