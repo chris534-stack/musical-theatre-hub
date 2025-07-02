@@ -50,6 +50,9 @@
 }
 
 @layer base {
+  html {
+    overflow-y: scroll;
+  }
   * {
     @apply border-border;
     scrollbar-width: thin;
