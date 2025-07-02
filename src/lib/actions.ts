@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { addEvent, eventExists, addNewsArticle } from '@/lib/data';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Event, EventOccurrence, NewsArticle, Review } from '@/lib/types';
+import type { Event, EventOccurrence, NewsArticle, Review, Venue } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 
@@ -13,6 +13,7 @@ export async function revalidateAdminPaths() {
   revalidatePath('/admin');
   revalidatePath('/calendar');
   revalidatePath('/');
+  revalidatePath('/about-us');
 }
 
 export async function scrapeEventAction(url: string | undefined, screenshotDataUri: string) {
@@ -79,6 +80,55 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
   }
+}
+
+export async function updateEventStatusAction(eventId: string, status: 'approved' | 'denied') {
+    try {
+        const eventRef = adminDb.collection('events').doc(eventId);
+        await eventRef.update({ status });
+        await revalidateAdminPaths();
+        return { success: true, message: `Event status updated to ${status}.` };
+    } catch (error) {
+        console.error('Failed to update event status:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function deleteEventAction(eventId: string) {
+    try {
+        await adminDb.collection('events').doc(eventId).delete();
+        await revalidateAdminPaths();
+        return { success: true, message: 'Event deleted successfully.' };
+    } catch (error) {
+        console.error('Failed to delete event:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function updateVenueAction(venueId: string, data: Partial<Omit<Venue, 'id'>>) {
+    try {
+        await adminDb.collection('venues').doc(venueId).update(data);
+        await revalidateAdminPaths();
+        return { success: true, message: 'Venue updated successfully.' };
+    } catch (error) {
+        console.error('Failed to update venue:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function deleteVenueAction(venueId: string) {
+    try {
+        await adminDb.collection('venues').doc(venueId).delete();
+        await revalidateAdminPaths();
+        return { success: true, message: 'Venue deleted successfully.' };
+    } catch (error) {
+        console.error('Failed to delete venue:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
 }
 
 export async function scrapeArticleAction(url: string) {

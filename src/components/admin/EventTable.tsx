@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -31,8 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MoreHorizontal, CheckCircle, XCircle, Edit, Clock, Trash2 } from 'lucide-react';
 import type { Event, Venue, EventStatus } from '@/lib/types';
-import { revalidateAdminPaths } from '@/lib/actions';
-import { updateEvent, deleteEvent } from '@/lib/data-client';
+import { updateEventStatusAction, deleteEventAction } from '@/lib/actions';
 import { useTransition, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -66,12 +66,11 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
 
   const handleStatusUpdate = (eventId: string, status: 'approved' | 'denied') => {
     startTransition(async () => {
-      try {
-        await updateEvent(eventId, { status });
-        await revalidateAdminPaths();
-        toast({ title: 'Success', description: `Event status updated to ${status}.` });
-      } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update event status.' });
+      const result = await updateEventStatusAction(eventId, status);
+      if (result.success) {
+        toast({ title: 'Success', description: result.message });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.message });
       }
     });
   };
@@ -79,19 +78,16 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
   const handleDeleteConfirm = () => {
     if (!selectedEventId) return;
     
-    // Store id and close dialog before starting transition
-    // to avoid race conditions with state updates.
     const eventIdToDelete = selectedEventId;
     setIsAlertOpen(false);
     setSelectedEventId(null);
     
     startTransition(async () => {
-      try {
-        await deleteEvent(eventIdToDelete);
-        await revalidateAdminPaths();
-        toast({ title: 'Success', description: 'Event has been deleted.' });
-      } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete event.' });
+      const result = await deleteEventAction(eventIdToDelete);
+      if (result.success) {
+        toast({ title: 'Success', description: result.message });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.message });
       }
     });
   }
@@ -162,7 +158,7 @@ export function EventTable({ events, venues }: { events: EventWithVenue[], venue
                           </DropdownMenuItem>
                         )}
                         {event.status !== 'denied' && (
-                          <DropdownMenuItem onClick={() => handleStatusUpdate(event.id, 'denied')} disabled={isPending} className="text-destructive focus:text-destructive">
+                          <DropdownMenuItem onClick={() => handleStatusUpdate(event.id, 'denied')} disabled={isPending}>
                             <XCircle className="mr-2 h-4 w-4" /> Deny
                           </DropdownMenuItem>
                         )}
