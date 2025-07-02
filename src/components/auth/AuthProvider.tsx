@@ -19,6 +19,17 @@ const AuthContext = React.createContext<AuthContextType>({
   isReviewer: false,
 });
 
+// --- FOR TESTING: To skip the login page, provide a mock user object here. ---
+// --- To return to normal behavior, set MOCK_USER to null. ---
+// --- DO NOT DEPLOY WITH A MOCK USER. ---
+const MOCK_USER: User | null = {
+    uid: 'mock-user-id-123',
+    displayName: 'Alex "The Thespian" Chen',
+    email: 'alex.chen@example.com',
+    photoURL: 'https://placehold.co/200x200.png',
+} as User;
+
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -26,6 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isReviewer, setIsReviewer] = React.useState(false);
 
   React.useEffect(() => {
+    // --- DEVELOPMENT OVERRIDE TO SKIP LOGIN ---
+    if (MOCK_USER) {
+        setUser(MOCK_USER);
+        // For testing, the mock user is both an admin and a reviewer
+        setIsAdmin(true);
+        setIsReviewer(true);
+        setLoading(false);
+        return; // Skip the real auth listener
+    }
+    // --- END OVERRIDE ---
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
 
