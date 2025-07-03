@@ -358,16 +358,6 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         }
 
         const profileRef = adminDb.collection('userProfiles').doc(userId);
-
-        let currentUrls: string[] = [];
-        const doc = await profileRef.get();
-        if (doc.exists) {
-            const profileData = doc.data() as UserProfile | undefined;
-            currentUrls = profileData?.galleryImageUrls || [];
-            if (currentUrls.length >= GALLERY_PHOTO_LIMIT) {
-                return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
-            }
-        }
         
         // This is the most reliable way to get the default storage bucket.
         const bucket = admin.storage().bucket();
@@ -375,7 +365,16 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             console.error('Server configuration error: Default storage bucket not found in Firebase Admin SDK.');
             return { success: false, message: 'Sorry, uploads aren\'t working at this time. Please try again later.' };
         }
-
+        
+        const doc = await profileRef.get();
+        if (doc.exists) {
+            const profileData = doc.data() as UserProfile | undefined;
+            const currentUrls = profileData?.galleryImageUrls || [];
+            if (currentUrls.length >= GALLERY_PHOTO_LIMIT) {
+                return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
+            }
+        }
+        
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
@@ -384,7 +383,9 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         await fileUpload.makePublic();
         const publicUrl = fileUpload.publicUrl();
 
-        await profileRef.set({ galleryImageUrls: [...currentUrls, publicUrl] }, { merge: true });
+        await profileRef.update({ 
+            galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl) 
+        });
 
         revalidatePath(`/profile/${userId}`);
 
@@ -392,8 +393,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        return { success: false, message: `Upload failed: An unexpected server error occurred. Please try again.` };
+        return { success: false, message: `Sorry, uploads aren't working at this time. Please try again later.` };
     }
 }
 
@@ -437,16 +437,17 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl:string) 
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
         });
-
-        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!bucketName) {
-            throw new Error('Storage bucket name is not configured on the server.');
+        
+        const bucket = admin.storage().bucket();
+        if (!bucket.name) {
+            console.warn('Could not delete file from storage: Default bucket not configured.');
+            revalidatePath(`/profile/${userId}`);
+            return { success: true, message: 'Photo reference deleted, but file may remain in storage.' };
         }
 
-        const urlPrefix = `https://storage.googleapis.com/${bucketName}/`;
+        const urlPrefix = `https://storage.googleapis.com/${bucket.name}/`;
         if (photoUrl.startsWith(urlPrefix)) {
             const filePath = decodeURIComponent(photoUrl.substring(urlPrefix.length));
-            const bucket = admin.storage().bucket(bucketName);
             await bucket.file(filePath).delete();
         } else {
             console.warn(`Could not delete file from storage: URL format not recognized. URL: ${photoUrl}`);
