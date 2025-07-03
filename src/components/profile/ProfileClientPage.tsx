@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, GripVertical, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -16,7 +16,10 @@ import { PhotoUploader } from '@/components/profile/PhotoUploader';
 import { GalleryViewer } from './GalleryViewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
-import { uploadProfilePhotoAction } from '@/lib/actions';
+import { uploadProfilePhotoAction, updateGalleryOrderAction } from '@/lib/actions';
+import { DragDropContext, Draggable, type OnDragEndResponder } from '@hello-pangea/dnd';
+import { StrictModeDroppable } from '@/components/dnd/StrictModeDroppable';
+import { cn } from '@/lib/utils';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -44,7 +47,16 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
 
     const headerPhotoInputRef = useRef<HTMLInputElement>(null);
     const [isPhotoUpdatePending, startPhotoUpdateTransition] = useTransition();
+    const [isReorderPending, startReorderTransition] = useTransition();
     const { toast } = useToast();
+    
+    const [isReordering, setIsReordering] = useState(false);
+    const [orderedGalleryUrls, setOrderedGalleryUrls] = useState<string[]>([]);
+    
+    useEffect(() => {
+        setOrderedGalleryUrls(profile.galleryImageUrls || []);
+    }, [profile.galleryImageUrls]);
+
 
     useEffect(() => {
         function calculateYearsInCommunity(startDate?: string): string | null {
@@ -115,6 +127,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     };
 
     const handleOpenGallery = (index: number) => {
+        if (isReordering) return;
         setSelectedImageIndex(index);
         setIsGalleryViewerOpen(true);
     };
@@ -129,6 +142,32 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const pages = [];
     for (let i = 0; i < itemsToShowInGrid.length; i += PHOTOS_PER_PAGE) {
         pages.push(itemsToShowInGrid.slice(i, i + PHOTOS_PER_PAGE));
+    }
+
+    const onDragEnd: OnDragEndResponder = (result) => {
+        const { source, destination } = result;
+        if (!destination) {
+            return;
+        }
+
+        const items = Array.from(orderedGalleryUrls);
+        const [reorderedItem] = items.splice(source.index, 1);
+        items.splice(destination.index, 0, reorderedItem);
+
+        setOrderedGalleryUrls(items);
+    };
+    
+    const handleSaveReorder = () => {
+        startReorderTransition(async () => {
+            const result = await updateGalleryOrderAction(profile.userId, orderedGalleryUrls);
+            if (result.success) {
+                toast({ title: 'Success', description: 'Your gallery order has been saved.' });
+                setProfile(prev => ({ ...prev, galleryImageUrls: orderedGalleryUrls }));
+                setIsReordering(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: result.message });
+            }
+        });
     }
 
     return (
@@ -206,31 +245,79 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                         <div className="lg:col-span-2 space-y-8">
                             <Card>
                                 <CardHeader className="flex flex-row justify-between items-center">
-                                    <CardTitle>Gallery ({currentPhotoCount}/{GALLERY_PHOTO_LIMIT})</CardTitle>
-                                    {isOwner && canUpload && currentPhotoCount >= PHOTOS_PER_PAGE && (
-                                        <>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => headerPhotoInputRef.current?.click()}
-                                                disabled={isPhotoUpdatePending}
-                                            >
-                                                <Upload className="mr-2 h-4 w-4" />
-                                                Upload
-                                            </Button>
-                                            <input
-                                                type="file"
-                                                ref={headerPhotoInputRef}
-                                                className="sr-only"
-                                                accept="image/*"
-                                                onChange={handleHeaderPhotoUpload}
-                                                disabled={isPhotoUpdatePending}
-                                            />
-                                        </>
+                                    <CardTitle>{isReordering ? "Reorder Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>
+                                     {isOwner && (
+                                        <div className="flex items-center gap-2">
+                                            {isReordering ? (
+                                                <>
+                                                    <Button variant="outline" size="sm" onClick={() => setIsReordering(false)} disabled={isReorderPending}>Cancel</Button>
+                                                    <Button size="sm" onClick={handleSaveReorder} disabled={isReorderPending}>
+                                                        {isReorderPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                        Save Order
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}>Reorder</Button>}
+                                                    {canUpload && (
+                                                        <>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => headerPhotoInputRef.current?.click()}
+                                                                disabled={isPhotoUpdatePending}
+                                                            >
+                                                                {isPhotoUpdatePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                                                Upload
+                                                            </Button>
+                                                            <input
+                                                                type="file"
+                                                                ref={headerPhotoInputRef}
+                                                                className="sr-only"
+                                                                accept="image/*"
+                                                                onChange={handleHeaderPhotoUpload}
+                                                                disabled={isPhotoUpdatePending}
+                                                            />
+                                                        </>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
                                     )}
                                 </CardHeader>
                                 <CardContent>
-                                    {itemsToShowInGrid.length === 0 ? (
+                                    {isReordering ? (
+                                        <DragDropContext onDragEnd={onDragEnd}>
+                                            <StrictModeDroppable droppableId="gallery-reorder">
+                                                {(provided) => (
+                                                    <div 
+                                                        {...provided.droppableProps} 
+                                                        ref={provided.innerRef} 
+                                                        className="grid grid-cols-2 md:grid-cols-3 gap-4"
+                                                    >
+                                                        {orderedGalleryUrls.map((url, index) => (
+                                                            <Draggable key={url} draggableId={url} index={index}>
+                                                                {(provided, snapshot) => (
+                                                                    <div
+                                                                        ref={provided.innerRef}
+                                                                        {...provided.draggableProps}
+                                                                        style={provided.draggableProps.style}
+                                                                        className={cn(snapshot.isDragging && "shadow-2xl z-50", "relative group aspect-square rounded-lg overflow-hidden")}
+                                                                    >
+                                                                        <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized />
+                                                                        <div {...provided.dragHandleProps} className="absolute top-2 right-2 p-1.5 bg-black/40 text-white/80 rounded-md cursor-grab active:cursor-grabbing hover:bg-black/60 transition-colors">
+                                                                            <GripVertical className="h-5 w-5" />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </Draggable>
+                                                        ))}
+                                                        {provided.placeholder}
+                                                    </div>
+                                                )}
+                                            </StrictModeDroppable>
+                                        </DragDropContext>
+                                    ) : itemsToShowInGrid.length === 0 ? (
                                         isOwner && canUpload ? (
                                             <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
                                         ) : !canUpload ? (

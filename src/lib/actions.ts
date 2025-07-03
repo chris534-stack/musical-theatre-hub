@@ -363,10 +363,9 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
-        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
         if (!storageBucket) {
-            return { success: false, message: 'Firebase Storage is not configured. Please set the FIREBASE_STORAGE_BUCKET environment variable on the server.' };
+            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
         }
 
         const bucket = admin.storage().bucket(storageBucket);
@@ -408,10 +407,9 @@ export async function uploadCoverPhotoAction(formData: FormData) {
     }
 
     try {
-        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
         if (!storageBucket) {
-            return { success: false, message: 'Firebase Storage is not configured. Please set the FIREBASE_STORAGE_BUCKET environment variable on the server.' };
+            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
         }
 
         const bucket = admin.storage().bucket(storageBucket);
@@ -441,5 +439,21 @@ export async function uploadCoverPhotoAction(formData: FormData) {
         console.error('Failed to upload cover photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `Upload failed: ${errorMessage}` };
+    }
+}
+
+export async function updateGalleryOrderAction(userId: string, orderedUrls: string[]) {
+    try {
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.update({
+            galleryImageUrls: orderedUrls,
+        });
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Gallery order updated successfully.' };
+    } catch (error) {
+        console.error('Failed to update gallery order:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }

@@ -3,7 +3,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { DragDropContext, Draggable, type OnDragEndResponder } from '@hello-pangea/dnd';
-import { StrictModeDroppable } from './StrictModeDroppable';
+import { StrictModeDroppable } from '@/components/dnd/StrictModeDroppable';
 import { NewsArticleCard } from '@/components/news/NewsArticleCard';
 import type { NewsArticle } from '@/lib/types';
 import { updateNewsArticleOrderAction } from '@/lib/actions';
