@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -92,11 +93,10 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         setProfile(updatedProfile);
     };
     
-    const handlePhotoUploadComplete = (newUrl: string) => {
-        const updatedUrls = [...(profile.galleryImageUrls || []), newUrl];
-        setProfile(prev => ({ ...prev, galleryImageUrls: updatedUrls }));
+    const handlePhotoUploadComplete = (newUrls: string[]) => {
+        setProfile(prev => ({ ...prev, galleryImageUrls: newUrls }));
         if (isReordering) {
-            setOrderedGalleryUrls(updatedUrls);
+            setOrderedGalleryUrls(newUrls);
         }
     };
 
@@ -110,12 +110,12 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
 
         startPhotoUpdateTransition(async () => {
             const result = await uploadProfilePhotoAction(formData);
-            if (result.success && result.url) {
+            if (result.success && result.urls) {
                 toast({
                     title: 'Upload successful!',
                     description: 'Your photo has been added to the gallery.',
                 });
-                handlePhotoUploadComplete(result.url);
+                handlePhotoUploadComplete(result.urls);
             } else {
                 toast({
                     variant: 'destructive',
@@ -301,7 +301,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                 <CardContent>
                                     {itemsToShowInGrid.length === 0 ? (
                                         isOwner && canUpload ? (
-                                            <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
+                                            <PhotoUploader userId={profile.userId} onUploadComplete={(url) => handlePhotoUploadComplete([url])} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
                                         ) : !canUpload ? (
                                             <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
                                                 <GalleryVerticalEnd className="h-10 w-10 mb-2" />
@@ -348,7 +348,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                                                 {pageItems.map((item, itemIndex) => {
                                                                     if (item === 'uploader') {
-                                                                        return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
+                                                                        return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={(url) => handlePhotoUploadComplete([...(profile.galleryImageUrls||[]), url])} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
                                                                     }
                                                                     const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex;
                                                                     return (

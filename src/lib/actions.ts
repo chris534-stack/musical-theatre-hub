@@ -357,56 +357,40 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     }
 
     const profileRef = adminDb.collection('userProfiles').doc(userId);
-    let publicUrl = '';
 
     try {
-        // Step 1: Upload the file to Storage to get the URL
+        // Step 1: Check the limit BEFORE doing any uploads or writes.
+        const doc = await profileRef.get();
+        const profileData = doc.data() as UserProfile | undefined;
+        const currentPhotoCount = profileData?.galleryImageUrls?.length || 0;
+
+        if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
+            return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
+        }
+
+        // Step 2: Upload the file to Storage
         const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
         if (!storageBucket) {
             throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
         }
-
         const bucket = admin.storage().bucket(storageBucket);
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
 
-        await fileUpload.save(buffer, {
-            metadata: {
-                contentType: file.type,
-            },
-        });
-
+        await fileUpload.save(buffer, { metadata: { contentType: file.type } });
         await fileUpload.makePublic();
-        publicUrl = fileUpload.publicUrl();
+        const publicUrl = fileUpload.publicUrl();
 
-        // Step 2: Update Firestore using a transaction for safety
-        await adminDb.runTransaction(async (transaction) => {
-            const doc = await transaction.get(profileRef);
-            
-            let currentUrls: string[] = [];
-            if (doc.exists) {
-                const profileData = doc.data() as UserProfile;
-                currentUrls = profileData.galleryImageUrls || [];
-            }
-            
-            if (currentUrls.length >= GALLERY_PHOTO_LIMIT) {
-                 // This throw will be caught by the outer catch block
-                throw new Error(`You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.`);
-            }
-
-            const newUrls = [...currentUrls, publicUrl];
-            
-            if (doc.exists) {
-                transaction.update(profileRef, { galleryImageUrls: newUrls });
-            } else {
-                 // This case should be rare, but we handle it by creating the document
-                transaction.set(profileRef, { galleryImageUrls: newUrls }, { merge: true });
-            }
-        });
+        // Step 3: Update Firestore with the new URL.
+        const currentUrls = profileData?.galleryImageUrls || [];
+        const newUrls = [...currentUrls, publicUrl];
+        await profileRef.update({ galleryImageUrls: newUrls });
 
         revalidatePath(`/profile/${userId}`);
-        return { success: true, url: publicUrl };
+
+        // Return the complete, updated list of URLs
+        return { success: true, urls: newUrls };
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
