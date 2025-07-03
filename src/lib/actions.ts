@@ -359,34 +359,36 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     const profileRef = adminDb.collection('userProfiles').doc(userId);
 
     try {
-        // Step 1: Check the limit BEFORE doing any uploads or writes.
+        let currentUrls: string[] = [];
         const doc = await profileRef.get();
-        const profileData = doc.data() as UserProfile | undefined;
-        const currentPhotoCount = profileData?.galleryImageUrls?.length || 0;
-
-        if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
-            return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
+        if (doc.exists) {
+            const profileData = doc.data() as UserProfile | undefined;
+            currentUrls = profileData?.galleryImageUrls || [];
+            if (currentUrls.length >= GALLERY_PHOTO_LIMIT) {
+                return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
+            }
+        }
+        
+        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        if (!storageBucketName) {
+            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
         }
 
-        // Step 2: Upload the file to Storage
-        const storageBucket = admin.storage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+        const bucket = admin.storage().bucket(storageBucketName);
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
-        const fileUpload = storageBucket.file(fileName);
+        const fileUpload = bucket.file(fileName);
 
         await fileUpload.save(buffer, { metadata: { contentType: file.type } });
         await fileUpload.makePublic();
         const publicUrl = fileUpload.publicUrl();
 
-        // Step 3: Update Firestore with the new URL.
-        const currentUrls = profileData?.galleryImageUrls || [];
         const newUrls = [...currentUrls, publicUrl];
-        await profileRef.update({ galleryImageUrls: newUrls });
+        await profileRef.set({ galleryImageUrls: newUrls }, { merge: true });
 
         revalidatePath(`/profile/${userId}`);
 
-        // Return the complete, updated list of URLs
-        return { success: true, urls: newUrls };
+        return { success: true };
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
@@ -405,11 +407,16 @@ export async function uploadCoverPhotoAction(formData: FormData) {
     }
 
     try {
-        const storageBucket = admin.storage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+         if (!storageBucketName) {
+            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
+        }
+
+        const bucket = admin.storage().bucket(storageBucketName);
         const buffer = Buffer.from(await file.arrayBuffer());
         
         const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
-        const fileUpload = storageBucket.file(fileName);
+        const fileUpload = bucket.file(fileName);
 
         await fileUpload.save(buffer, {
             metadata: {
@@ -427,7 +434,7 @@ export async function uploadCoverPhotoAction(formData: FormData) {
 
         revalidatePath(`/profile/${userId}`);
 
-        return { success: true, url: publicUrl };
+        return { success: true };
     } catch (error) {
         console.error('Failed to upload cover photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -446,6 +453,38 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
         return { success: true, message: 'Gallery order updated successfully.' };
     } catch (error) {
         console.error('Failed to update gallery order:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function deleteProfilePhotoAction(userId: string, photoUrl:string) {
+    try {
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        
+        await profileRef.update({
+            galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
+        });
+
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        if (!bucketName) {
+            throw new Error('Storage bucket name is not configured on the server.');
+        }
+
+        const urlPrefix = `https://storage.googleapis.com/${bucketName}/`;
+        if (photoUrl.startsWith(urlPrefix)) {
+            const filePath = decodeURIComponent(photoUrl.substring(urlPrefix.length));
+            const bucket = admin.storage().bucket(bucketName);
+            await bucket.file(filePath).delete();
+        } else {
+            console.warn(`Could not delete file from storage: URL format not recognized. URL: ${photoUrl}`);
+        }
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Photo deleted successfully.' };
+
+    } catch (error) {
+        console.error('Failed to delete photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }

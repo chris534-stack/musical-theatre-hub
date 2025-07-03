@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -17,8 +17,11 @@ import { PhotoUploader } from '@/components/profile/PhotoUploader';
 import { GalleryViewer } from './GalleryViewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
-import { uploadProfilePhotoAction, updateGalleryOrderAction } from '@/lib/actions';
+import { uploadProfilePhotoAction, updateGalleryOrderAction, deleteProfilePhotoAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -53,6 +56,12 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [orderedGalleryUrls, setOrderedGalleryUrls] = useState<string[]>([]);
     const [selectedPhotoToMove, setSelectedPhotoToMove] = useState<string | null>(null);
     
+    // New state for deletion mode
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+    const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
+    const [isDeletePending, startDeleteTransition] = useTransition();
+
     useEffect(() => {
         setProfile(initialProfile);
         setOrderedGalleryUrls(initialProfile.galleryImageUrls || []);
@@ -131,7 +140,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     };
 
     const handleOpenGallery = (index: number) => {
-        if (isReordering) return;
+        if (isReordering || isDeleting) return;
         setSelectedImageIndex(index);
         setIsGalleryViewerOpen(true);
     };
@@ -144,8 +153,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
             const result = await updateGalleryOrderAction(profile.userId, orderedGalleryUrls);
             if (result.success) {
                 toast({ title: 'Success', description: 'Your gallery order has been saved.' });
-                // We don't need to update local state here; revalidation handles it.
-                // However, we should exit the reordering UI state.
                 setIsReordering(false);
                 setSelectedPhotoToMove(null);
             } else {
@@ -181,9 +188,34 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         }
     };
 
+    const handleManagePhotosClick = () => {
+        if (isReordering) setIsReordering(false);
+        setIsDeleting(!isDeleting);
+    }
+    
+    const handleDeleteClick = (url: string) => {
+        setPhotoToDelete(url);
+        setIsAlertOpen(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (!photoToDelete) return;
+        
+        startDeleteTransition(async () => {
+            const result = await deleteProfilePhotoAction(profile.userId, photoToDelete);
+            if (result.success) {
+                toast({ title: "Photo Deleted", description: "The photo has been removed from the gallery." });
+            } else {
+                toast({ variant: 'destructive', title: "Deletion Failed", description: result.message });
+            }
+            setIsAlertOpen(false);
+            setPhotoToDelete(null);
+        });
+    };
+
     const itemsToShowInGrid = [
         ...(isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || [])),
-        ...(isOwner && !isReordering && canUpload && currentPhotoCount < PHOTOS_PER_PAGE ? ['uploader'] : [])
+        ...(isOwner && !isReordering && !isDeleting && canUpload && currentPhotoCount < PHOTOS_PER_PAGE ? ['uploader'] : [])
     ];
     const pages = [];
     for (let i = 0; i < itemsToShowInGrid.length; i += PHOTOS_PER_PAGE) {
@@ -261,10 +293,10 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                             <Card>
                                 <CardHeader className="flex flex-row justify-between items-center">
                                     <div className="flex flex-col">
-                                        <CardTitle>{isReordering ? "Reorder Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>
+                                        <CardTitle>{isReordering ? "Reorder Photos" : isDeleting ? "Delete Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>
                                         {isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}
                                     </div>
-                                     {isOwner && (
+                                     {(isOwner || isAdmin) && (
                                         <div className="flex items-center gap-2">
                                             {isReordering ? (
                                                 <>
@@ -276,8 +308,13 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                 </>
                                             ) : (
                                                 <>
-                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="mr-2 h-4 w-4"/>Reorder</Button>}
-                                                    {canUpload && (currentPhotoCount >= PHOTOS_PER_PAGE) && (
+                                                    {!isDeleting && currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="mr-2 h-4 w-4"/>Reorder</Button>}
+                                                    {currentPhotoCount > 0 && 
+                                                        <Button variant="outline" size="sm" onClick={handleManagePhotosClick}>
+                                                            <Trash2 className="mr-2 h-4 w-4"/>{isDeleting ? 'Done' : 'Manage'}
+                                                        </Button>
+                                                    }
+                                                    {!isReordering && !isDeleting && canUpload && (currentPhotoCount >= PHOTOS_PER_PAGE) && (
                                                         <>
                                                             <Button
                                                                 variant="outline"
@@ -304,6 +341,15 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                     )}
                                 </CardHeader>
                                 <CardContent>
+                                    {isDeleting && (
+                                        <Alert variant="destructive" className="mb-4">
+                                            <ShieldAlert className="h-4 w-4" />
+                                            <AlertTitle>Deletion Mode</AlertTitle>
+                                            <AlertDescription>
+                                                Click the trash icon on any photo to permanently delete it. This action cannot be undone. Please ensure photos adhere to community guidelines.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                     {itemsToShowInGrid.length === 0 ? (
                                         isOwner && canUpload ? (
                                             <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
@@ -321,71 +367,66 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                             </div>
                                         )
                                     ) : (
-                                        isReordering ? (
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                {orderedGalleryUrls.map((url, index) => {
-                                                    const isSelectedForMove = selectedPhotoToMove === url;
-                                                    return (
-                                                        <div
-                                                            key={url}
-                                                            onClick={() => handleReorderClick(url, index)}
-                                                            className={cn(
-                                                                "aspect-square relative rounded-lg overflow-hidden group cursor-pointer transition-all duration-200",
-                                                                isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg",
-                                                                selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105"
-                                                            )}
-                                                        >
-                                                            <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized />
-                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                                                                {selectedPhotoToMove && !isSelectedForMove && (
-                                                                    <p className="text-white font-bold text-sm bg-black/50 p-2 rounded-md opacity-0 group-hover:opacity-100">Place Here</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <Carousel opts={{ align: "start" }} className="w-full relative px-10">
-                                                <CarouselContent>
-                                                    {pages.map((pageItems, pageIndex) => (
-                                                        <CarouselItem key={pageIndex}>
-                                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                                {pageItems.map((item, itemIndex) => {
-                                                                    if (item === 'uploader') {
-                                                                        return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
-                                                                    }
-                                                                    const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex;
-                                                                    return (
-                                                                        <div 
-                                                                            key={item} 
-                                                                            className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
-                                                                            onClick={() => handleOpenGallery(originalImageIndex)}
-                                                                        >
-                                                                            <Image 
-                                                                                src={item} 
-                                                                                alt={`Gallery image ${originalImageIndex + 1}`} 
-                                                                                fill 
-                                                                                className="object-cover transition-colors duration-300 group-hover:brightness-90"
-                                                                                data-ai-hint="production photo" 
-                                                                                unoptimized
-                                                                            />
-                                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                                        <Carousel opts={{ align: "start" }} className="w-full relative px-10">
+                                            <CarouselContent>
+                                                {pages.map((pageItems, pageIndex) => (
+                                                    <CarouselItem key={pageIndex}>
+                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                            {pageItems.map((item, itemIndex) => {
+                                                                if (item === 'uploader') {
+                                                                    return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
+                                                                }
+                                                                const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex;
+                                                                const url = isReordering ? orderedGalleryUrls[originalImageIndex] : item;
+                                                                const isSelectedForMove = selectedPhotoToMove === url;
+                                                                
+                                                                return (
+                                                                    <div
+                                                                        key={url}
+                                                                        onClick={() => isReordering ? handleReorderClick(url, originalImageIndex) : handleOpenGallery(originalImageIndex)}
+                                                                        className={cn(
+                                                                            "aspect-square relative rounded-lg overflow-hidden group transition-all duration-200",
+                                                                            (isReordering || !isDeleting) && "cursor-pointer",
+                                                                            isReordering && isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg",
+                                                                            isReordering && selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105"
+                                                                        )}
+                                                                    >
+                                                                        <Image src={url} alt={`Gallery image ${originalImageIndex + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized />
+                                                                        <div className={cn(
+                                                                            "absolute inset-0 bg-black/0 transition-colors flex items-center justify-center",
+                                                                            !isDeleting && !isReordering && "group-hover:bg-black/20",
+                                                                            isReordering && "group-hover:bg-black/40",
+                                                                            isDeleting && "group-hover:bg-black/50"
+                                                                        )} >
+                                                                            {isReordering && selectedPhotoToMove && !isSelectedForMove && (
+                                                                                <p className="text-white font-bold text-sm bg-black/50 p-2 rounded-md opacity-0 group-hover:opacity-100">Place Here</p>
+                                                                            )}
                                                                         </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </CarouselItem>
-                                                    ))}
-                                                </CarouselContent>
-                                                {pages.length > 1 && (
-                                                    <>
-                                                        <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
-                                                        <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
-                                                    </>
-                                                )}
-                                            </Carousel>
-                                        )
+                                                                        {isDeleting && (
+                                                                            <Button
+                                                                                variant="destructive"
+                                                                                size="icon"
+                                                                                className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                                                                                onClick={(e) => { e.stopPropagation(); handleDeleteClick(url); }}
+                                                                                disabled={isDeletePending}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </CarouselItem>
+                                                ))}
+                                            </CarouselContent>
+                                            {pages.length > 1 && !isReordering && !isDeleting &&(
+                                                <>
+                                                    <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
+                                                    <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
+                                                </>
+                                            )}
+                                        </Carousel>
                                     )}
                                 </CardContent>
                             </Card>
@@ -405,15 +446,32 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                     </div>
                 </div>
             </div>
-            {profile.galleryImageUrls && profile.galleryImageUrls.length > 0 && (
-                <GalleryViewer
-                    isOpen={isGalleryViewerOpen}
-                    onClose={() => setIsGalleryViewerOpen(false)}
-                    images={profile.galleryImageUrls}
-                    startIndex={selectedImageIndex}
-                    userName={profile.displayName}
-                />
-            )}
+            
+            <GalleryViewer
+                isOpen={isGalleryViewerOpen}
+                onClose={() => setIsGalleryViewerOpen(false)}
+                images={profile.galleryImageUrls || []}
+                startIndex={selectedImageIndex}
+                userName={profile.displayName}
+            />
+            
+            <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the photo from the gallery and from storage.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteConfirm} disabled={isDeletePending}>
+                            {isDeletePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {isOwner && (
                 <EditProfileSheet 
                     isOpen={isSheetOpen} 
