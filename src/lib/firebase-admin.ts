@@ -4,7 +4,7 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 // This is a safeguard to prevent re-initialization, which can happen in development
 // environments with hot-reloading.
 if (!getApps().length) {
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
     const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
     // We prepare the config object but only add properties if they exist.
