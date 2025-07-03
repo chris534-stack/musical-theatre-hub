@@ -70,18 +70,18 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
     <div
       className={cn(
         "flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg",
-        isGridItem && "aspect-square p-4 h-full"
+        isGridItem && "aspect-square p-2 sm:p-4 h-full"
       )}
     >
         {isPending ? (
             <div className="flex flex-col items-center">
-                <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin mb-2" />
-                <p className="font-medium text-sm sm:text-base">Uploading...</p>
+                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mb-2" />
+                <p className="font-medium text-xs sm:text-sm">Uploading...</p>
             </div>
         ) : (
             <>
                 <Form {...form}>
-                    <form className="flex flex-col items-center">
+                    <form className="flex flex-col items-center justify-center h-full">
                         <FormField
                             control={form.control}
                             name="photo"
@@ -100,12 +100,13 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
                                 </FormItem>
                             )}
                         />
-                         <UploadCloud className="h-8 w-8 sm:h-10 sm:w-10 mb-2" />
-                         <p className="font-medium text-foreground text-sm sm:text-base">Add to Gallery</p>
-                         <p className="text-xs sm:text-sm mt-1 mb-4">You can add {photosRemaining} more photo{photosRemaining !== 1 ? 's' : ''}.</p>
+                         <UploadCloud className="h-6 w-6 sm:h-8 sm:w-8 mb-1" />
+                         <p className="font-medium text-foreground text-xs sm:text-sm">Add to Gallery</p>
+                         <p className="text-[10px] sm:text-xs leading-tight mt-1 mb-2">You can add {photosRemaining} more photo{photosRemaining !== 1 ? 's' : ''}.</p>
                          <Button
                             type="button"
                             size="sm"
+                            className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isPending}
                          >
