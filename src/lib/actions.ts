@@ -369,11 +369,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         }
 
         // Step 2: Upload the file to Storage
-        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!storageBucket) {
-            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
-        }
-        const bucket = admin.storage().bucket(storageBucket);
+        const storageBucket = admin.storage().bucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
@@ -389,8 +385,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
 
         revalidatePath(`/profile/${userId}`);
 
-        // Return the complete, updated list of URLs
-        return { success: true, urls: newUrls };
+        return { success: true };
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
@@ -409,12 +404,7 @@ export async function uploadCoverPhotoAction(formData: FormData) {
     }
 
     try {
-        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!storageBucket) {
-            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
-        }
-
-        const bucket = admin.storage().bucket(storageBucket);
+        const storageBucket = admin.storage().bucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         
         const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
@@ -436,7 +426,7 @@ export async function uploadCoverPhotoAction(formData: FormData) {
 
         revalidatePath(`/profile/${userId}`);
 
-        return { success: true, url: publicUrl };
+        return { success: true };
     } catch (error) {
         console.error('Failed to upload cover photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -463,3 +453,4 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
     
 
     
+

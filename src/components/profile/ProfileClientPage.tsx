@@ -54,8 +54,9 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [selectedPhotoToMove, setSelectedPhotoToMove] = useState<string | null>(null);
     
     useEffect(() => {
-        setOrderedGalleryUrls(profile.galleryImageUrls || []);
-    }, [profile.galleryImageUrls]);
+        setProfile(initialProfile);
+        setOrderedGalleryUrls(initialProfile.galleryImageUrls || []);
+    }, [initialProfile]);
 
 
     useEffect(() => {
@@ -89,15 +90,18 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     };
     const RoleIcon = profile.roleInCommunity ? roleIcons[profile.roleInCommunity] : Users;
     
-    const onProfileUpdate = (updatedProfile: UserProfile) => {
-        setProfile(updatedProfile);
+    const onProfileUpdate = () => {
+        // This function is intentionally left empty.
+        // Server actions use `revalidatePath`, and the Next.js router
+        // will automatically handle refreshing the page with the new data.
+        // This avoids client-side state mismatches.
     };
     
-    const handlePhotoUploadComplete = (newUrls: string[]) => {
-        setProfile(prev => ({ ...prev, galleryImageUrls: newUrls }));
-        if (isReordering) {
-            setOrderedGalleryUrls(newUrls);
-        }
+    const handlePhotoUploadComplete = () => {
+        // This function is intentionally left empty.
+        // Server actions use `revalidatePath`, and the Next.js router
+        // will automatically handle refreshing the page with the new data.
+        // This avoids client-side state mismatches.
     };
 
     const handleHeaderPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,12 +114,12 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
 
         startPhotoUpdateTransition(async () => {
             const result = await uploadProfilePhotoAction(formData);
-            if (result.success && result.urls) {
+            if (result.success) {
                 toast({
                     title: 'Upload successful!',
                     description: 'Your photo has been added to the gallery.',
                 });
-                handlePhotoUploadComplete(result.urls);
+                handlePhotoUploadComplete();
             } else {
                 toast({
                     variant: 'destructive',
@@ -140,7 +144,8 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
             const result = await updateGalleryOrderAction(profile.userId, orderedGalleryUrls);
             if (result.success) {
                 toast({ title: 'Success', description: 'Your gallery order has been saved.' });
-                setProfile(prev => ({ ...prev, galleryImageUrls: orderedGalleryUrls }));
+                // We don't need to update local state here; revalidation handles it.
+                // However, we should exit the reordering UI state.
                 setIsReordering(false);
                 setSelectedPhotoToMove(null);
             } else {

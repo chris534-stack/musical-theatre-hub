@@ -29,7 +29,7 @@ interface EditProfileSheetProps {
     isOpen: boolean;
     onClose: () => void;
     profile: UserProfile;
-    onProfileUpdate: (updatedProfile: UserProfile) => void;
+    onProfileUpdate: () => void;
 }
 
 export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: EditProfileSheetProps) {
@@ -57,12 +57,12 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
 
         startPhotoUpdateTransition(async () => {
             const result = await uploadCoverPhotoAction(formData);
-            if (result.success && result.url) {
+            if (result.success) {
                 toast({
                     title: 'Cover Photo Updated!',
                     description: 'Your new cover photo has been saved.',
                 });
-                onProfileUpdate({ ...profile, coverPhotoUrl: result.url });
+                onProfileUpdate();
             } else {
                 toast({
                     variant: 'destructive',
@@ -81,7 +81,7 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
 
             if (result.success) {
                 toast({ title: 'Profile Updated!', description: 'Your changes have been saved.' });
-                onProfileUpdate({ ...profile, ...updateData });
+                onProfileUpdate();
                 onClose();
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: result.message });

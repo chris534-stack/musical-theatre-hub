@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 
 interface PhotoUploaderProps {
   userId: string;
-  onUploadComplete: (newImageUrls: string[]) => void;
+  onUploadComplete: () => void;
   isGridItem?: boolean; // To style it as a grid item or as the main content
   limit: number;
   currentCount: number;
@@ -48,12 +48,12 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
 
         startTransition(async () => {
             const result = await uploadProfilePhotoAction(formData);
-            if (result.success && result.urls) {
+            if (result.success) {
                 toast({
                     title: 'Upload successful!',
                     description: 'Your photo has been added to the gallery.',
                 });
-                onUploadComplete(result.urls);
+                onUploadComplete();
                 form.reset(); // Reset form after successful upload
             } else {
                 toast({
