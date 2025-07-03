@@ -437,12 +437,13 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl:string) 
             galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
         });
         
-        const bucket = admin.storage().bucket();
-        if (!bucket.name) {
-            console.warn('Could not delete file from storage: Default bucket not configured.');
+        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        if (!storageBucketName) {
+            console.warn('Could not delete file from storage: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET not configured.');
             revalidatePath(`/profile/${userId}`);
             return { success: true, message: 'Photo reference deleted, but file may remain in storage.' };
         }
+        const bucket = admin.storage().bucket(storageBucketName);
 
         const urlPrefix = `https://storage.googleapis.com/${bucket.name}/`;
         if (photoUrl.startsWith(urlPrefix)) {
@@ -489,5 +490,3 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
-
-    
