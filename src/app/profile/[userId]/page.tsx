@@ -1,4 +1,5 @@
 
+
 import { notFound } from 'next/navigation';
 import { getOrCreateUserProfile, getReviewsByUserId } from '@/lib/data';
 import ProfileClientPage from '@/components/profile/ProfileClientPage';
@@ -11,13 +12,18 @@ export default async function ProfilePage({ params }: { params: { userId: string
   const { userId } = params;
   
   try {
-    const profile = await getOrCreateUserProfile(userId);
+    const rawProfile = await getOrCreateUserProfile(userId);
 
-    if (!profile) {
+    if (!rawProfile) {
       notFound();
     }
     
-    const reviews = await getReviewsByUserId(userId);
+    const rawReviews = await getReviewsByUserId(userId);
+
+    // Force serialization to prevent "unexpected response" errors.
+    // This strips any non-serializable data (like raw Timestamps) before passing to the client component.
+    const profile = JSON.parse(JSON.stringify(rawProfile));
+    const reviews = JSON.parse(JSON.stringify(rawReviews));
     
     return (
       <Suspense fallback={<ProfileLoading />}>

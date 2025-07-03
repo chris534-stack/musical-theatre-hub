@@ -357,15 +357,13 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             return { success: false, message: 'Missing file or user ID.' };
         }
 
-        const profileRef = adminDb.collection('userProfiles').doc(userId);
-        
-        // This is the most reliable way to get the default storage bucket.
-        const bucket = admin.storage().bucket();
-        if (!bucket.name) {
-            console.error('Server configuration error: Default storage bucket not found in Firebase Admin SDK.');
-            return { success: false, message: 'Sorry, uploads aren\'t working at this time. Please try again later.' };
+        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        if (!storageBucketName) {
+            console.error('Server configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set.');
+            return { success: false, message: "Sorry, uploads aren't working at this time. Please try again later." };
         }
         
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
         const doc = await profileRef.get();
         if (doc.exists) {
             const profileData = doc.data() as UserProfile | undefined;
@@ -375,6 +373,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
+        const bucket = admin.storage().bucket(storageBucketName);
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
@@ -393,7 +392,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
-        return { success: false, message: `Sorry, uploads aren't working at this time. Please try again later.` };
+        return { success: false, message: "Sorry, uploads aren't working at this time. Please try again later." };
     }
 }
 
