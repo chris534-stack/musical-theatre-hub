@@ -397,6 +397,7 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
 
 /**
  * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
+ * This function guarantees a serializable UserProfile object.
  */
 export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
     try {
@@ -404,19 +405,20 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
         const docSnap = await docRef.get();
 
         if (docSnap.exists) {
-            const data = docSnap.data();
-            // Sanitize the data to ensure no undefined fields are passed
-            return {
-                userId: data?.userId || userId,
-                displayName: data?.displayName || 'New User',
-                photoURL: data?.photoURL || '',
-                email: data?.email || '',
-                bio: data?.bio || '',
-                roleInCommunity: data?.roleInCommunity || 'Audience',
-                communityStartDate: data?.communityStartDate || '',
-                galleryImageUrls: data?.galleryImageUrls || [],
-                coverPhotoUrl: data?.coverPhotoUrl || '',
+            const data = docSnap.data() || {};
+            // Manually build the profile object to ensure all fields are serializable
+            const profile: UserProfile = {
+                userId: data.userId || userId,
+                displayName: data.displayName || 'New User',
+                photoURL: data.photoURL || '',
+                email: data.email || '',
+                bio: data.bio || '',
+                roleInCommunity: data.roleInCommunity || 'Audience',
+                communityStartDate: String(data.communityStartDate || ''),
+                galleryImageUrls: data.galleryImageUrls || [],
+                coverPhotoUrl: data.coverPhotoUrl || '',
             };
+            return profile;
         }
 
         // User exists in Auth, but not in our profiles collection. Let's create one.
@@ -444,5 +446,3 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
         return null;
     }
 }
-
-    
