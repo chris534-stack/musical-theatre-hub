@@ -131,7 +131,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     const types = new Set<string>();
     const tags = new Set<string>();
     events.forEach(e => {
-        types.add(e.type.trim().toLowerCase());
+        const eventType = e.type.trim().toLowerCase();
+        if (eventType !== 'performance') {
+            types.add(eventType);
+        }
         e.tags?.forEach(tag => tags.add(tag.trim().toLowerCase()));
     });
     return {
