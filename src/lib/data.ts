@@ -12,46 +12,43 @@ const parseDateString = (dateString: string): Date => {
   return new Date(year, month - 1, day);
 };
 
-// Helper to safely convert Firestore Timestamps, strings, or other values to a serializable ISO string.
-const toISOString = (dateValue: any): string => {
+/**
+ * [SERVER-SIDE] Safely converts a Firestore Timestamp, Date object, or string into a serializable ISO string.
+ * Returns a default epoch date string if the input is invalid or null.
+ */
+function safeToISOString(dateValue: any): string {
     if (!dateValue) {
-        return new Date(0).toISOString(); // Default for null/undefined
+        return new Date(0).toISOString();
     }
-
-    // Case 1: Firestore Timestamp
+    // Handle Firestore Timestamp
     if (typeof dateValue.toDate === 'function') {
         try {
             return dateValue.toDate().toISOString();
-        } catch (e) {
-            return new Date(0).toISOString(); // Handle potential errors from toDate()
+        } catch {
+            return new Date(0).toISOString();
         }
     }
-
-    // Case 2: JavaScript Date object
+    // Handle JS Date object
     if (dateValue instanceof Date) {
         if (!isNaN(dateValue.getTime())) {
             return dateValue.toISOString();
         }
-        return new Date(0).toISOString(); // Handle invalid Date object
+        return new Date(0).toISOString();
     }
-    
-    // Case 3: String or Number
+    // Handle string or number
     if (typeof dateValue === 'string' || typeof dateValue === 'number') {
         try {
-            // An empty string creates an invalid date, which is handled by the isNaN check.
             const d = new Date(dateValue);
-            // Check if the constructor created a valid date
             if (!isNaN(d.getTime())) {
                 return d.toISOString();
             }
-        } catch (e) {
-            // new Date() can throw on certain inputs, though it's rare.
+        } catch {
+            // new Date() can throw, so we catch it.
         }
     }
-    
-    // If all else fails, return a default value.
+    // Fallback for any other type or invalid value
     return new Date(0).toISOString();
-};
+}
 
 
 // --- Venue Functions ---
@@ -234,7 +231,7 @@ export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Prom
     return { 
         id: doc.id, 
         ...data,
-        createdAt: toISOString(data?.createdAt),
+        createdAt: safeToISOString(data?.createdAt),
     } as NewsArticle;
 }
 
@@ -249,7 +246,7 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
         return {
             id: doc.id,
             ...data,
-            createdAt: toISOString(data.createdAt),
+            createdAt: safeToISOString(data.createdAt),
             order: data.order,
         } as NewsArticle;
     });
@@ -283,16 +280,15 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
  * [SERVER-SIDE] Helper function to convert a Firestore review document into a clean, serializable Review object.
  */
 function sanitizeReview(doc: admin.firestore.DocumentSnapshot): Review {
-    const data = doc.data() || {}; // Use empty object as fallback for non-existent doc.data()
-    
+    const data = doc.data() || {};
     return {
         id: doc.id,
         showId: data.showId || '',
         showTitle: data.showTitle || 'Untitled Show',
-        performanceDate: toISOString(data.performanceDate),
+        performanceDate: safeToISOString(data.performanceDate),
         reviewerId: data.reviewerId || '',
         reviewerName: data.reviewerName || 'Anonymous',
-        createdAt: toISOString(data.createdAt),
+        createdAt: safeToISOString(data.createdAt),
         overallExperience: data.overallExperience || '',
         specialMomentsText: data.specialMomentsText || '',
         recommendations: data.recommendations || [],
@@ -338,7 +334,7 @@ function createMockReview(event: Event): Review {
         id: 'mock-review-1',
         showId: event.id,
         showTitle: event.title,
-        performanceDate: toISOString(performanceDate),
+        performanceDate: safeToISOString(performanceDate),
         reviewerId: 'mock-user-id',
         reviewerName: 'Casey Critic',
         createdAt: new Date().toISOString(),
