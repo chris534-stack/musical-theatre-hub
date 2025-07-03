@@ -279,6 +279,36 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
 
 // --- Review Functions ---
 
+/**
+ * [SERVER-SIDE] Helper function to convert a Firestore review document into a clean, serializable Review object.
+ */
+function sanitizeReview(doc: admin.firestore.DocumentSnapshot): Review {
+    const data = doc.data() || {}; // Use empty object as fallback for non-existent doc.data()
+    
+    return {
+        id: doc.id,
+        showId: data.showId || '',
+        showTitle: data.showTitle || 'Untitled Show',
+        performanceDate: toISOString(data.performanceDate),
+        reviewerId: data.reviewerId || '',
+        reviewerName: data.reviewerName || 'Anonymous',
+        createdAt: toISOString(data.createdAt),
+        overallExperience: data.overallExperience || '',
+        specialMomentsText: data.specialMomentsText || '',
+        recommendations: data.recommendations || [],
+        showHeartText: data.showHeartText || '',
+        communityImpactText: data.communityImpactText || '',
+        ticketInfo: data.ticketInfo || '',
+        valueConsiderationText: data.valueConsiderationText || '',
+        timeWellSpentText: data.timeWellSpentText || '',
+        likes: data.likes || 0,
+        dislikes: data.dislikes || 0,
+        votedBy: data.votedBy || [],
+        disclosureText: data.disclosureText || '',
+    };
+}
+
+
 // Helper function to find a suitable event for the mock review
 function findEventForMockReview(events: Event[]): Event | null {
     const today = startOfToday();
@@ -333,31 +363,7 @@ function createMockReview(event: Event): Review {
  */
 export async function getAllReviews(): Promise<Review[]> {
   const snapshot = await adminDb.collection('reviews').orderBy('createdAt', 'desc').get();
-  const reviews = snapshot.docs.map(doc => {
-    const data = doc.data();
-    
-    return {
-        id: doc.id,
-        showId: data.showId || '',
-        showTitle: data.showTitle || 'Untitled Show',
-        performanceDate: toISOString(data.performanceDate),
-        reviewerId: data.reviewerId || '',
-        reviewerName: data.reviewerName || 'Anonymous',
-        createdAt: toISOString(data.createdAt),
-        overallExperience: data.overallExperience || '',
-        specialMomentsText: data.specialMomentsText || '',
-        recommendations: data.recommendations || [],
-        showHeartText: data.showHeartText || '',
-        communityImpactText: data.communityImpactText || '',
-        ticketInfo: data.ticketInfo || '',
-        valueConsiderationText: data.valueConsiderationText || '',
-        timeWellSpentText: data.timeWellSpentText || '',
-        likes: data.likes || 0,
-        dislikes: data.dislikes || 0,
-        votedBy: data.votedBy || [],
-        disclosureText: data.disclosureText || '',
-    };
-  });
+  const reviews = snapshot.docs.map(sanitizeReview);
   
   // If no real reviews exist, create a mock one for demonstration.
   if (reviews.length === 0) {
@@ -381,33 +387,7 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
         .where('reviewerId', '==', userId)
         .get();
         
-    const reviews = snapshot.docs.map(doc => {
-        const data = doc.data();
-
-        // Create a new, plain object to guarantee serializability
-        const cleanReview: Review = {
-            id: doc.id,
-            showId: data.showId || '',
-            showTitle: data.showTitle || 'Untitled Show',
-            performanceDate: toISOString(data.performanceDate),
-            reviewerId: data.reviewerId || '',
-            reviewerName: data.reviewerName || 'Anonymous',
-            createdAt: toISOString(data.createdAt),
-            overallExperience: data.overallExperience || '',
-            specialMomentsText: data.specialMomentsText || '',
-            recommendations: data.recommendations || [],
-            showHeartText: data.showHeartText || '',
-            communityImpactText: data.communityImpactText || '',
-            ticketInfo: data.ticketInfo || '',
-            valueConsiderationText: data.valueConsiderationText || '',
-            timeWellSpentText: data.timeWellSpentText || '',
-            likes: data.likes || 0,
-            dislikes: data.dislikes || 0,
-            votedBy: data.votedBy || [],
-            disclosureText: data.disclosureText || '',
-        };
-        return cleanReview;
-    });
+    const reviews = snapshot.docs.map(sanitizeReview);
 
     // Sort in-code to avoid needing a composite index in Firestore.
     // Use localeCompare for safe string comparison.

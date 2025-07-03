@@ -369,7 +369,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         }
 
         // Step 2: Upload the file to Storage
-        const storageBucket = admin.storage().bucket();
+        const storageBucket = admin.storage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = storageBucket.file(fileName);
@@ -385,7 +385,8 @@ export async function uploadProfilePhotoAction(formData: FormData) {
 
         revalidatePath(`/profile/${userId}`);
 
-        return { success: true };
+        // Return the complete, updated list of URLs
+        return { success: true, urls: newUrls };
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
@@ -404,7 +405,7 @@ export async function uploadCoverPhotoAction(formData: FormData) {
     }
 
     try {
-        const storageBucket = admin.storage().bucket();
+        const storageBucket = admin.storage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
         const buffer = Buffer.from(await file.arrayBuffer());
         
         const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
@@ -426,7 +427,7 @@ export async function uploadCoverPhotoAction(formData: FormData) {
 
         revalidatePath(`/profile/${userId}`);
 
-        return { success: true };
+        return { success: true, url: publicUrl };
     } catch (error) {
         console.error('Failed to upload cover photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -449,9 +450,3 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
-
-    
-
-    
-
-
