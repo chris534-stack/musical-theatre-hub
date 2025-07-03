@@ -12,23 +12,45 @@ const parseDateString = (dateString: string): Date => {
   return new Date(year, month - 1, day);
 };
 
-// Helper to safely convert Firestore Timestamps or strings to an ISO string
+// Helper to safely convert Firestore Timestamps, strings, or other values to a serializable ISO string.
 const toISOString = (dateValue: any): string => {
     if (!dateValue) {
-        return new Date(0).toISOString(); // Return epoch for null/undefined dates
+        return new Date(0).toISOString(); // Default for null/undefined
     }
-    if (typeof dateValue === 'string') {
-        // If it's already a string, assume it's valid or parseable
-        const d = new Date(dateValue);
-        return isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+
+    // Case 1: Firestore Timestamp
+    if (typeof dateValue.toDate === 'function') {
+        try {
+            return dateValue.toDate().toISOString();
+        } catch (e) {
+            return new Date(0).toISOString(); // Handle potential errors from toDate()
+        }
     }
-    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
-        // This is a Firestore Timestamp
-        return dateValue.toDate().toISOString();
+
+    // Case 2: JavaScript Date object
+    if (dateValue instanceof Date) {
+        if (!isNaN(dateValue.getTime())) {
+            return dateValue.toISOString();
+        }
+        return new Date(0).toISOString(); // Handle invalid Date object
     }
-    // Fallback for other types (like JS Date objects)
-    const d = new Date(dateValue);
-    return isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+    
+    // Case 3: String or Number
+    if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+        try {
+            // An empty string creates an invalid date, which is handled by the isNaN check.
+            const d = new Date(dateValue);
+            // Check if the constructor created a valid date
+            if (!isNaN(d.getTime())) {
+                return d.toISOString();
+            }
+        } catch (e) {
+            // new Date() can throw on certain inputs, though it's rare.
+        }
+    }
+    
+    // If all else fails, return a default value.
+    return new Date(0).toISOString();
 };
 
 

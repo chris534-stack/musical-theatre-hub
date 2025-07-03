@@ -90,7 +90,7 @@ export type ReviewerRequest = {
     userName: string;
     userEmail: string;
     status: 'pending' | 'approved' | 'denied';
-    createdAt: any;
+    createdAt: string;
 };
 
 export type UserProfile = {
