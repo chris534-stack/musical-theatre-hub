@@ -1,8 +1,10 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Image from 'next/image';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface GalleryViewerProps {
     isOpen: boolean;
@@ -23,13 +25,22 @@ export function GalleryViewer({ isOpen, onClose, images, startIndex = 0, userNam
                 <DialogHeader className="sr-only">
                     <DialogTitle>Image Gallery for {userName || 'User'}</DialogTitle>
                     <DialogDescription>
-                        A carousel of images from the user's gallery. Use the left and right arrows to navigate.
+                        A carousel of images from the user's gallery. Use the left and right arrows to navigate or press Esc to close.
                     </DialogDescription>
                 </DialogHeader>
+                
+                <DialogClose asChild>
+                    <Button variant="ghost" size="icon" className="absolute top-4 right-4 z-50 text-white bg-black/30 hover:bg-black/60 hover:text-white">
+                        <X className="h-6 w-6" />
+                        <span className="sr-only">Close</span>
+                    </Button>
+                </DialogClose>
+
                 <Carousel
                     opts={{
                         startIndex: startIndex,
                         loop: true,
+                        duration: 20, // Faster transition to feel less choppy
                     }}
                     className="w-full max-w-5xl"
                 >

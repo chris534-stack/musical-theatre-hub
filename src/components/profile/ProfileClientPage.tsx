@@ -173,10 +173,11 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                         src={url} 
                                                         alt={`Gallery image ${index + 1}`} 
                                                         fill 
-                                                        className="object-cover group-hover:scale-105 transition-transform duration-300" 
+                                                        className="object-cover"
                                                         data-ai-hint="production photo" 
                                                         unoptimized
                                                     />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
                                                 </div>
                                             ))}
                                             {isOwner && (
