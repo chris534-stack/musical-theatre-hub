@@ -165,15 +165,18 @@ interface ArticleFormData {
 
 export async function saveNewsArticleAction(data: ArticleFormData) {
     try {
-        const newsCollection = adminDb.collection('news');
-        const snapshot = await newsCollection.count().get();
-        const articleCount = snapshot.data().count;
-
         const newArticleData = {
             ...data,
             createdAt: new Date().toISOString(),
-            order: articleCount,
+            order: 0, // Default order, will be updated if needed
         };
+
+        const newsCollection = adminDb.collection('news');
+        const snapshot = await newsCollection.orderBy('order', 'desc').limit(1).get();
+        if (!snapshot.empty) {
+            const lastArticle = snapshot.docs[0].data();
+            newArticleData.order = (lastArticle.order || 0) + 1;
+        }
 
         await addNewsArticle(newArticleData as Omit<NewsArticle, 'id'>);
         revalidatePath('/news');
@@ -354,17 +357,10 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     }
 
     const profileRef = adminDb.collection('userProfiles').doc(userId);
+    let publicUrl = '';
 
     try {
-        const docSnap = await profileRef.get();
-        if (docSnap.exists) {
-            const profileData = docSnap.data() as UserProfile;
-            const currentPhotoCount = profileData.galleryImageUrls?.length || 0;
-            if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
-                return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
-            }
-        }
-        
+        // Step 1: Upload the file to Storage to get the URL
         const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
         if (!storageBucket) {
             throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
@@ -381,24 +377,44 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             },
         });
 
-        // Make the file public to get a URL
         await fileUpload.makePublic();
-        const publicUrl = fileUpload.publicUrl();
+        publicUrl = fileUpload.publicUrl();
 
-        // Update user profile in Firestore
-        await profileRef.update({
-            galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
+        // Step 2: Update Firestore using a transaction for safety
+        await adminDb.runTransaction(async (transaction) => {
+            const doc = await transaction.get(profileRef);
+            
+            let currentUrls: string[] = [];
+            if (doc.exists) {
+                const profileData = doc.data() as UserProfile;
+                currentUrls = profileData.galleryImageUrls || [];
+            }
+            
+            if (currentUrls.length >= GALLERY_PHOTO_LIMIT) {
+                 // This throw will be caught by the outer catch block
+                throw new Error(`You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.`);
+            }
+
+            const newUrls = [...currentUrls, publicUrl];
+            
+            if (doc.exists) {
+                transaction.update(profileRef, { galleryImageUrls: newUrls });
+            } else {
+                 // This case should be rare, but we handle it by creating the document
+                transaction.set(profileRef, { galleryImageUrls: newUrls }, { merge: true });
+            }
         });
 
         revalidatePath(`/profile/${userId}`);
-
         return { success: true, url: publicUrl };
+
     } catch (error) {
         console.error('Failed to upload photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `Upload failed: ${errorMessage}` };
     }
 }
+
 
 export async function uploadCoverPhotoAction(formData: FormData) {
     const file = formData.get('photo') as File;
