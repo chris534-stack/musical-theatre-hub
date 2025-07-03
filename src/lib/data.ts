@@ -206,7 +206,7 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt.toDate().toISOString(),
+            createdAt: data.createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
             order: data.order, // This might be undefined for old articles
         } as NewsArticle;
     });
@@ -339,7 +339,8 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
         
     const reviews = snapshot.docs.map(doc => {
         const data = doc.data();
-        return {
+        // Create a new, plain object to guarantee serializability
+        const cleanReview: Review = {
             id: doc.id,
             showId: data.showId || '',
             showTitle: data.showTitle || 'Untitled Show',
@@ -360,6 +361,7 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
             votedBy: data.votedBy || [],
             disclosureText: data.disclosureText || '',
         };
+        return cleanReview;
     });
 
     // Sort in-code to avoid needing a composite index in Firestore
