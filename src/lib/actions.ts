@@ -169,11 +169,13 @@ export async function saveNewsArticleAction(data: ArticleFormData) {
         const snapshot = await newsCollection.count().get();
         const articleCount = snapshot.data().count;
 
-        await addNewsArticle({
+        const newArticleData = {
             ...data,
-            createdAt: new Date(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
             order: articleCount,
-        });
+        };
+
+        await addNewsArticle(newArticleData as Omit<NewsArticle, 'id'>);
         revalidatePath('/news');
         return { success: true, message: 'Article added successfully.' };
     } catch (error) {
@@ -214,7 +216,7 @@ export async function addListingRequestAction(data: {
         const requestData = {
             ...data,
             status: 'new',
-            createdAt: new Date(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
         await adminDb.collection('listingRequests').add(requestData);
@@ -235,7 +237,7 @@ export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' |
             likes: 0,
             dislikes: 0,
             votedBy: [],
-            createdAt: new Date(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
         await adminDb.collection('reviews').add(reviewData);
@@ -304,7 +306,7 @@ export async function requestToBeReviewerAction(data: {
         const requestData = {
             ...data,
             status: 'pending',
-            createdAt: new Date(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
         await adminDb.collection('reviewerRequests').add(requestData);

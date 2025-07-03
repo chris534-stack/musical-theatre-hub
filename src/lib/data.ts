@@ -188,10 +188,20 @@ export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Prom
     const docRef = await adminDb.collection('news').add(articleData);
     const doc = await docRef.get();
     const data = doc.data();
+
+    let createdAtString: string;
+    if (data?.createdAt && typeof data.createdAt.toDate === 'function') {
+        createdAtString = data.createdAt.toDate().toISOString();
+    } else if (typeof data?.createdAt === 'string') {
+        createdAtString = data.createdAt;
+    } else {
+        createdAtString = new Date(0).toISOString();
+    }
+
     return { 
         id: doc.id, 
         ...data,
-        createdAt: data?.createdAt.toDate().toISOString()
+        createdAt: createdAtString
     } as NewsArticle;
 }
 
@@ -203,11 +213,21 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
     
     const articles = snapshot.docs.map(doc => {
         const data = doc.data();
+
+        let createdAtString: string;
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            createdAtString = data.createdAt.toDate().toISOString();
+        } else if (typeof data.createdAt === 'string') {
+            createdAtString = data.createdAt;
+        } else {
+            createdAtString = new Date(0).toISOString();
+        }
+
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
-            order: data.order, // This might be undefined for old articles
+            createdAt: createdAtString,
+            order: data.order,
         } as NewsArticle;
     });
 
@@ -292,6 +312,16 @@ export async function getAllReviews(): Promise<Review[]> {
   const snapshot = await adminDb.collection('reviews').orderBy('createdAt', 'desc').get();
   const reviews = snapshot.docs.map(doc => {
     const data = doc.data();
+    
+    let createdAtString: string;
+    if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+        createdAtString = data.createdAt.toDate().toISOString();
+    } else if (typeof data.createdAt === 'string') {
+        createdAtString = data.createdAt;
+    } else {
+        createdAtString = new Date(0).toISOString();
+    }
+
     return {
         id: doc.id,
         showId: data.showId || '',
@@ -299,7 +329,7 @@ export async function getAllReviews(): Promise<Review[]> {
         performanceDate: data.performanceDate || '',
         reviewerId: data.reviewerId || '',
         reviewerName: data.reviewerName || 'Anonymous',
-        createdAt: data.createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
+        createdAt: createdAtString,
         overallExperience: data.overallExperience || '',
         specialMomentsText: data.specialMomentsText || '',
         recommendations: data.recommendations || [],
@@ -339,6 +369,16 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
         
     const reviews = snapshot.docs.map(doc => {
         const data = doc.data();
+        
+        let createdAtString: string;
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            createdAtString = data.createdAt.toDate().toISOString();
+        } else if (typeof data.createdAt === 'string') {
+            createdAtString = data.createdAt;
+        } else {
+            createdAtString = new Date(0).toISOString();
+        }
+
         // Create a new, plain object to guarantee serializability
         const cleanReview: Review = {
             id: doc.id,
@@ -347,7 +387,7 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
             performanceDate: data.performanceDate || '',
             reviewerId: data.reviewerId || '',
             reviewerName: data.reviewerName || 'Anonymous',
-            createdAt: data.createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
+            createdAt: createdAtString,
             overallExperience: data.overallExperience || '',
             specialMomentsText: data.specialMomentsText || '',
             recommendations: data.recommendations || [],
