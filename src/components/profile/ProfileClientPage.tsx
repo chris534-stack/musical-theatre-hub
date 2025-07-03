@@ -17,7 +17,7 @@ import { PhotoUploader } from '@/components/profile/PhotoUploader';
 import { GalleryViewer } from './GalleryViewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
-import { updateGalleryOrderAction, deleteProfilePhotoAction, setProfilePhotoAction, setCoverPhotoAction } from '@/lib/actions';
+import { updateGalleryOrderAction, deleteProfilePhotoAction, setProfilePhotoAction, setCoverPhotoAction, uploadProfilePhotoAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -48,6 +48,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     const [isReorderPending, startReorderTransition] = useTransition();
+    const [isUploadPending, startUploadTransition] = useTransition();
     const { toast } = useToast();
     
     const [isReordering, setIsReordering] = useState(false);
@@ -58,6 +59,8 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
     const [isDeletePending, startDeleteTransition] = useTransition();
+
+    const headerFileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setProfile(initialProfile);
@@ -108,6 +111,36 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         // Server actions use `revalidatePath`, and the Next.js router
         // will automatically handle refreshing the page with the new data.
         // This avoids client-side state mismatches.
+    };
+    
+    const handleHeaderUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+
+        const file = files[0];
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('userId', profile.userId);
+
+        startUploadTransition(async () => {
+            const result = await uploadProfilePhotoAction(formData);
+            if (result.success) {
+                toast({
+                    title: 'Upload successful!',
+                    description: 'Your photo has been added to the gallery.',
+                });
+                onProfileUpdate(); // This will trigger a re-render with fresh data due to revalidatePath
+                if(headerFileInputRef.current) {
+                    headerFileInputRef.current.value = ""; // Reset file input
+                }
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Upload failed',
+                    description: result.message,
+                });
+            }
+        });
     };
 
     const handleOpenGallery = (index: number) => {
@@ -195,6 +228,14 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
 
     return (
         <>
+            <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                ref={headerFileInputRef}
+                onChange={handleHeaderUpload}
+                disabled={isUploadPending}
+            />
             <div className="w-full pb-16">
                 <div className="h-48 md:h-64 bg-secondary relative">
                     <Image
@@ -267,7 +308,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                         <CardTitle>{isReordering ? "Reorder Photos" : isDeleting ? "Delete Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>
                                         {isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}
                                     </div>
-                                     {(isOwner || isAdmin) && (
+                                    {(isOwner || isAdmin) && (
                                         <div className="flex items-center gap-2">
                                             {isReordering ? (
                                                 <>
@@ -277,14 +318,21 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                         Save Order
                                                     </Button>
                                                 </>
+                                            ) : isDeleting ? (
+                                                <Button variant="outline" size="sm" onClick={handleManagePhotosClick}>
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Done
+                                                </Button>
                                             ) : (
                                                 <>
-                                                    {!isDeleting && currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="mr-2 h-4 w-4"/>Reorder</Button>}
-                                                    {currentPhotoCount > 0 && 
-                                                        <Button variant="outline" size="sm" onClick={handleManagePhotosClick}>
-                                                            <Trash2 className="mr-2 h-4 w-4"/>{isDeleting ? 'Done' : 'Manage'}
+                                                    {isOwner && canUpload && (
+                                                        <Button size="sm" onClick={() => headerFileInputRef.current?.click()} disabled={isUploadPending}>
+                                                            {isUploadPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                                            Upload
                                                         </Button>
-                                                    }
+                                                    )}
+                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="mr-2 h-4 w-4" />Reorder</Button>}
+                                                    {currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="mr-2 h-4 w-4" />Manage</Button>}
                                                 </>
                                             )}
                                         </div>

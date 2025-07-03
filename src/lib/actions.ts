@@ -369,8 +369,12 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
-        // The default bucket is configured in firebase-admin.ts, so we can call bucket() without a name.
-        const bucket = admin.storage().bucket();
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        if (!bucketName) {
+            throw new Error('Storage bucket name is not configured on the server.');
+        }
+        const bucket = admin.storage().bucket(bucketName);
+
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
@@ -411,6 +415,23 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 export async function deleteProfilePhotoAction(userId: string, photoUrl:string) {
     try {
         const profileRef = adminDb.collection('userProfiles').doc(userId);
+        
+        const doc = await profileRef.get();
+        if (!doc.exists) {
+            throw new Error("User profile not found.");
+        }
+        const data = doc.data() as UserProfile;
+        
+        // Ensure cover photo isn't deleted if it's the same as a gallery photo
+        if (data.coverPhotoUrl === photoUrl) {
+            await profileRef.update({ coverPhotoUrl: '' });
+        }
+        
+        // Ensure profile photo isn't deleted if it's the same as a gallery photo
+        if (data.photoURL === photoUrl) {
+            const userRecord = await admin.auth().getUser(userId);
+            await profileRef.update({ photoURL: userRecord.photoURL || '' });
+        }
         
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
