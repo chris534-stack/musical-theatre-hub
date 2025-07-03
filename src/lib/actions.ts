@@ -369,11 +369,8 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
-        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!bucketName) {
-            throw new Error('Storage bucket name is not configured on the server.');
-        }
-        const bucket = admin.storage().bucket(bucketName);
+        // Use the default bucket from the initialized admin app. This is more reliable.
+        const bucket = admin.storage().bucket();
 
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
