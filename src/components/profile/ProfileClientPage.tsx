@@ -5,7 +5,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -32,6 +32,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [profile, setProfile] = useState(initialProfile);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
+    const GALLERY_PHOTO_LIMIT = 50;
 
     // New state for the gallery viewer
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
@@ -83,7 +84,9 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         setSelectedImageIndex(index);
         setIsGalleryViewerOpen(true);
     };
-
+    
+    const currentPhotoCount = profile.galleryImageUrls?.length || 0;
+    const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
 
     return (
         <>
@@ -159,7 +162,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                         {/* Right Column (Gallery, Reviews) */}
                         <div className="lg:col-span-2 space-y-8">
                             <Card>
-                                <CardHeader><CardTitle>Gallery</CardTitle></CardHeader>
+                                <CardHeader><CardTitle>Gallery ({currentPhotoCount}/{GALLERY_PHOTO_LIMIT})</CardTitle></CardHeader>
                                 <CardContent>
                                     {profile.galleryImageUrls && profile.galleryImageUrls.length > 0 ? (
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -173,20 +176,27 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                         src={url} 
                                                         alt={`Gallery image ${index + 1}`} 
                                                         fill 
-                                                        className="object-cover"
+                                                        className="object-cover transition-colors duration-300 group-hover:brightness-90"
                                                         data-ai-hint="production photo" 
                                                         unoptimized
                                                     />
                                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
                                                 </div>
                                             ))}
-                                            {isOwner && (
-                                                <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} />
+                                            {isOwner && canUpload && (
+                                                <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
+                                            )}
+                                            {isOwner && !canUpload && (
+                                                <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-4 border-2 border-dashed rounded-lg aspect-square h-full">
+                                                    <GalleryVerticalEnd className="h-10 w-10 mb-2" />
+                                                    <p className="font-medium text-foreground">Gallery Full</p>
+                                                    <p className="text-sm mt-1">You've reached the photo limit.</p>
+                                                </div>
                                             )}
                                         </div>
                                     ) : (
                                         isOwner ? (
-                                            <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} />
+                                            <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
                                         ) : (
                                             <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
                                                 <Camera className="h-10 w-10 mb-2" />

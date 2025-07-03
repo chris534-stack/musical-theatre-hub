@@ -16,6 +16,8 @@ interface PhotoUploaderProps {
   userId: string;
   onUploadComplete: (newImageUrl: string) => void;
   isGridItem?: boolean; // To style it as a grid item or as the main content
+  limit: number;
+  currentCount: number;
 }
 
 const formSchema = z.object({
@@ -24,10 +26,11 @@ const formSchema = z.object({
     .refine((files) => files?.[0]?.type.startsWith("image/"), "Only image files are accepted."),
 });
 
-export function PhotoUploader({ userId, onUploadComplete, isGridItem = false }: PhotoUploaderProps) {
+export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, limit, currentCount }: PhotoUploaderProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photosRemaining = limit - currentCount;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -97,7 +100,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false }: 
                         />
                          <UploadCloud className="h-10 w-10 mb-2" />
                          <p className="font-medium text-foreground">Add to Gallery</p>
-                         <p className="text-sm mt-1 mb-4">Click below to upload a photo.</p>
+                         <p className="text-sm mt-1 mb-4">You can add {photosRemaining} more photo{photosRemaining !== 1 ? 's' : ''}.</p>
                          <Button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}

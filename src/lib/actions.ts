@@ -345,12 +345,24 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 export async function uploadProfilePhotoAction(formData: FormData) {
     const file = formData.get('photo') as File;
     const userId = formData.get('userId') as string;
+    const GALLERY_PHOTO_LIMIT = 50;
 
     if (!file || !userId) {
         return { success: false, message: 'Missing file or user ID.' };
     }
 
+    const profileRef = adminDb.collection('userProfiles').doc(userId);
+
     try {
+        const docSnap = await profileRef.get();
+        if (docSnap.exists) {
+            const profileData = docSnap.data() as UserProfile;
+            const currentPhotoCount = profileData.galleryImageUrls?.length || 0;
+            if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
+                return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
+            }
+        }
+        
         const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
         if (!storageBucket) {
@@ -373,7 +385,6 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         const publicUrl = fileUpload.publicUrl();
 
         // Update user profile in Firestore
-        const profileRef = adminDb.collection('userProfiles').doc(userId);
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
         });
