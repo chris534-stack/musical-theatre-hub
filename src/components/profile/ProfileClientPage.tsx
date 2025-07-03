@@ -47,8 +47,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-    const headerPhotoInputRef = useRef<HTMLInputElement>(null);
-    const [isPhotoUpdatePending, startPhotoUpdateTransition] = useTransition();
     const [isReorderPending, startReorderTransition] = useTransition();
     const { toast } = useToast();
     
@@ -56,7 +54,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [orderedGalleryUrls, setOrderedGalleryUrls] = useState<string[]>([]);
     const [selectedPhotoToMove, setSelectedPhotoToMove] = useState<string | null>(null);
     
-    // New state for deletion mode
     const [isDeleting, setIsDeleting] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
@@ -111,32 +108,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         // Server actions use `revalidatePath`, and the Next.js router
         // will automatically handle refreshing the page with the new data.
         // This avoids client-side state mismatches.
-    };
-
-    const handleHeaderPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('photo', file);
-        formData.append('userId', profile.userId);
-
-        startPhotoUpdateTransition(async () => {
-            const result = await uploadProfilePhotoAction(formData);
-            if (result.success) {
-                toast({
-                    title: 'Upload successful!',
-                    description: 'Your photo has been added to the gallery.',
-                });
-                handlePhotoUploadComplete();
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Upload failed',
-                    description: result.message,
-                });
-            }
-        });
     };
 
     const handleOpenGallery = (index: number) => {
@@ -314,27 +285,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                             <Trash2 className="mr-2 h-4 w-4"/>{isDeleting ? 'Done' : 'Manage'}
                                                         </Button>
                                                     }
-                                                    {!isReordering && !isDeleting && canUpload && (currentPhotoCount >= PHOTOS_PER_PAGE) && (
-                                                        <>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => headerPhotoInputRef.current?.click()}
-                                                                disabled={isPhotoUpdatePending}
-                                                            >
-                                                                {isPhotoUpdatePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                                                Upload
-                                                            </Button>
-                                                            <input
-                                                                type="file"
-                                                                ref={headerPhotoInputRef}
-                                                                className="sr-only"
-                                                                accept="image/*"
-                                                                onChange={handleHeaderPhotoUpload}
-                                                                disabled={isPhotoUpdatePending}
-                                                            />
-                                                        </>
-                                                    )}
                                                 </>
                                             )}
                                         </div>
@@ -453,6 +403,8 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                 images={profile.galleryImageUrls || []}
                 startIndex={selectedImageIndex}
                 userName={profile.displayName}
+                userId={profile.userId}
+                isOwner={isOwner}
             />
             
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>

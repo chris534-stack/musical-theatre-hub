@@ -392,47 +392,6 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     }
 }
 
-
-export async function uploadCoverPhotoAction(formData: FormData) {
-    const file = formData.get('photo') as File;
-    const userId = formData.get('userId') as string;
-
-    if (!file || !userId) {
-        return { success: false, message: 'Missing file or user ID.' };
-    }
-
-    try {
-        // The default bucket is configured in firebase-admin.ts, so we can call bucket() without a name.
-        const bucket = admin.storage().bucket();
-        const buffer = Buffer.from(await file.arrayBuffer());
-        
-        const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
-        const fileUpload = bucket.file(fileName);
-
-        await fileUpload.save(buffer, {
-            metadata: {
-                contentType: file.type,
-            },
-        });
-
-        await fileUpload.makePublic();
-        const publicUrl = fileUpload.publicUrl();
-
-        const profileRef = adminDb.collection('userProfiles').doc(userId);
-        await profileRef.set({
-            coverPhotoUrl: publicUrl,
-        }, { merge: true });
-
-        revalidatePath(`/profile/${userId}`);
-
-        return { success: true };
-    } catch (error) {
-        console.error('Failed to upload cover photo:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        return { success: false, message: `Upload failed: ${errorMessage}` };
-    }
-}
-
 export async function updateGalleryOrderAction(userId: string, orderedUrls: string[]) {
     try {
         const profileRef = adminDb.collection('userProfiles').doc(userId);
@@ -476,6 +435,34 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl:string) 
 
     } catch (error) {
         console.error('Failed to delete photo:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function setProfilePhotoAction(userId: string, photoUrl: string) {
+    try {
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.set({ photoURL: photoUrl }, { merge: true });
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Profile photo updated successfully.' };
+    } catch (error) {
+        console.error('Failed to set profile photo:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function setCoverPhotoAction(userId: string, photoUrl: string) {
+    try {
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.set({ coverPhotoUrl: photoUrl }, { merge: true });
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Cover photo updated successfully.' };
+    } catch (error) {
+        console.error('Failed to set cover photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
