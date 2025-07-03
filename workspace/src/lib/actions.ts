@@ -169,11 +169,13 @@ export async function saveNewsArticleAction(data: ArticleFormData) {
         const snapshot = await newsCollection.count().get();
         const articleCount = snapshot.data().count;
 
-        await addNewsArticle({
+        const newArticleData = {
             ...data,
-            createdAt: new Date(),
+            createdAt: new Date().toISOString(),
             order: articleCount,
-        });
+        };
+
+        await addNewsArticle(newArticleData as Omit<NewsArticle, 'id'>);
         revalidatePath('/news');
         return { success: true, message: 'Article added successfully.' };
     } catch (error) {
@@ -214,7 +216,7 @@ export async function addListingRequestAction(data: {
         const requestData = {
             ...data,
             status: 'new',
-            createdAt: new Date(),
+            createdAt: new Date().toISOString(),
         };
 
         await adminDb.collection('listingRequests').add(requestData);
@@ -235,7 +237,7 @@ export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' |
             likes: 0,
             dislikes: 0,
             votedBy: [],
-            createdAt: new Date(),
+            createdAt: new Date().toISOString(),
         };
 
         await adminDb.collection('reviews').add(reviewData);
@@ -304,7 +306,7 @@ export async function requestToBeReviewerAction(data: {
         const requestData = {
             ...data,
             status: 'pending',
-            createdAt: new Date(),
+            createdAt: new Date().toISOString(),
         };
 
         await adminDb.collection('reviewerRequests').add(requestData);
@@ -345,14 +347,30 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 export async function uploadProfilePhotoAction(formData: FormData) {
     const file = formData.get('photo') as File;
     const userId = formData.get('userId') as string;
+    const GALLERY_PHOTO_LIMIT = 50;
 
     if (!file || !userId) {
         return { success: false, message: 'Missing file or user ID.' };
     }
 
+    const profileRef = adminDb.collection('userProfiles').doc(userId);
+
     try {
-        // Use the default bucket that was configured during Admin SDK initialization
-        const bucket = admin.storage().bucket();
+        const docSnap = await profileRef.get();
+        if (docSnap.exists) {
+            const profileData = docSnap.data() as UserProfile;
+            const currentPhotoCount = profileData.galleryImageUrls?.length || 0;
+            if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
+                return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
+            }
+        }
+        
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+        if (!storageBucket) {
+            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
+        }
+
+        const bucket = admin.storage().bucket(storageBucket);
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
@@ -368,7 +386,6 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         const publicUrl = fileUpload.publicUrl();
 
         // Update user profile in Firestore
-        const profileRef = adminDb.collection('userProfiles').doc(userId);
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
         });
@@ -392,7 +409,12 @@ export async function uploadCoverPhotoAction(formData: FormData) {
     }
 
     try {
-        const bucket = admin.storage().bucket();
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+        if (!storageBucket) {
+            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
+        }
+
+        const bucket = admin.storage().bucket(storageBucket);
         const buffer = Buffer.from(await file.arrayBuffer());
         
         const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
@@ -421,3 +443,21 @@ export async function uploadCoverPhotoAction(formData: FormData) {
         return { success: false, message: `Upload failed: ${errorMessage}` };
     }
 }
+
+export async function updateGalleryOrderAction(userId: string, orderedUrls: string[]) {
+    try {
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.update({
+            galleryImageUrls: orderedUrls,
+        });
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Gallery order updated successfully.' };
+    } catch (error) {
+        console.error('Failed to update gallery order:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+    
