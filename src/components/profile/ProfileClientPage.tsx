@@ -1,11 +1,12 @@
+
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -13,6 +14,9 @@ import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
 import { PhotoUploader } from '@/components/profile/PhotoUploader';
 import { GalleryViewer } from './GalleryViewer';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { useToast } from '@/hooks/use-toast';
+import { uploadProfilePhotoAction } from '@/lib/actions';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -33,10 +37,14 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
     const GALLERY_PHOTO_LIMIT = 50;
+    const PHOTOS_PER_PAGE = 6;
 
-    // New state for the gallery viewer
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+    const headerPhotoInputRef = useRef<HTMLInputElement>(null);
+    const [isPhotoUpdatePending, startPhotoUpdateTransition] = useTransition();
+    const { toast } = useToast();
 
     useEffect(() => {
         function calculateYearsInCommunity(startDate?: string): string | null {
@@ -80,6 +88,32 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         }));
     };
 
+    const handleHeaderPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('userId', profile.userId);
+
+        startPhotoUpdateTransition(async () => {
+            const result = await uploadProfilePhotoAction(formData);
+            if (result.success && result.url) {
+                toast({
+                    title: 'Upload successful!',
+                    description: 'Your photo has been added to the gallery.',
+                });
+                handlePhotoUploadComplete(result.url);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Upload failed',
+                    description: result.message,
+                });
+            }
+        });
+    };
+
     const handleOpenGallery = (index: number) => {
         setSelectedImageIndex(index);
         setIsGalleryViewerOpen(true);
@@ -87,6 +121,15 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     
     const currentPhotoCount = profile.galleryImageUrls?.length || 0;
     const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
+
+    const itemsToShowInGrid = [
+        ...(profile.galleryImageUrls || []),
+        ...(isOwner && canUpload && currentPhotoCount < PHOTOS_PER_PAGE ? ['uploader'] : [])
+    ];
+    const pages = [];
+    for (let i = 0; i < itemsToShowInGrid.length; i += PHOTOS_PER_PAGE) {
+        pages.push(itemsToShowInGrid.slice(i, i + PHOTOS_PER_PAGE));
+    }
 
     return (
         <>
@@ -162,41 +205,40 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                         {/* Right Column (Gallery, Reviews) */}
                         <div className="lg:col-span-2 space-y-8">
                             <Card>
-                                <CardHeader><CardTitle>Gallery ({currentPhotoCount}/{GALLERY_PHOTO_LIMIT})</CardTitle></CardHeader>
+                                <CardHeader className="flex flex-row justify-between items-center">
+                                    <CardTitle>Gallery ({currentPhotoCount}/{GALLERY_PHOTO_LIMIT})</CardTitle>
+                                    {isOwner && canUpload && currentPhotoCount >= PHOTOS_PER_PAGE && (
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => headerPhotoInputRef.current?.click()}
+                                                disabled={isPhotoUpdatePending}
+                                            >
+                                                <Upload className="mr-2 h-4 w-4" />
+                                                Upload
+                                            </Button>
+                                            <input
+                                                type="file"
+                                                ref={headerPhotoInputRef}
+                                                className="sr-only"
+                                                accept="image/*"
+                                                onChange={handleHeaderPhotoUpload}
+                                                disabled={isPhotoUpdatePending}
+                                            />
+                                        </>
+                                    )}
+                                </CardHeader>
                                 <CardContent>
-                                    {profile.galleryImageUrls && profile.galleryImageUrls.length > 0 ? (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                            {profile.galleryImageUrls.map((url, index) => (
-                                                <div 
-                                                    key={index} 
-                                                    className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
-                                                    onClick={() => handleOpenGallery(index)}
-                                                >
-                                                    <Image 
-                                                        src={url} 
-                                                        alt={`Gallery image ${index + 1}`} 
-                                                        fill 
-                                                        className="object-cover transition-colors duration-300 group-hover:brightness-90"
-                                                        data-ai-hint="production photo" 
-                                                        unoptimized
-                                                    />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-                                                </div>
-                                            ))}
-                                            {isOwner && canUpload && (
-                                                <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
-                                            )}
-                                            {isOwner && !canUpload && (
-                                                <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-4 border-2 border-dashed rounded-lg aspect-square h-full">
-                                                    <GalleryVerticalEnd className="h-10 w-10 mb-2" />
-                                                    <p className="font-medium text-foreground">Gallery Full</p>
-                                                    <p className="text-sm mt-1">You've reached the photo limit.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        isOwner ? (
+                                    {itemsToShowInGrid.length === 0 ? (
+                                        isOwner && canUpload ? (
                                             <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
+                                        ) : !canUpload ? (
+                                            <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                                                <GalleryVerticalEnd className="h-10 w-10 mb-2" />
+                                                <p className="font-medium text-foreground">Gallery Full</p>
+                                                <p className="text-sm mt-1">You've reached the photo limit.</p>
+                                            </div>
                                         ) : (
                                             <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
                                                 <Camera className="h-10 w-10 mb-2" />
@@ -204,6 +246,46 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                 <p className="text-sm">This user hasn't added any photos to their gallery.</p>
                                             </div>
                                         )
+                                    ) : (
+                                        <Carousel opts={{ align: "start" }} className="w-full relative px-10">
+                                            <CarouselContent>
+                                                {pages.map((pageItems, pageIndex) => (
+                                                    <CarouselItem key={pageIndex}>
+                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                            {pageItems.map((item, itemIndex) => {
+                                                                if (item === 'uploader') {
+                                                                    return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
+                                                                }
+                                                                const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex;
+                                                                return (
+                                                                    <div 
+                                                                        key={item} 
+                                                                        className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
+                                                                        onClick={() => handleOpenGallery(originalImageIndex)}
+                                                                    >
+                                                                        <Image 
+                                                                            src={item} 
+                                                                            alt={`Gallery image ${originalImageIndex + 1}`} 
+                                                                            fill 
+                                                                            className="object-cover transition-colors duration-300 group-hover:brightness-90"
+                                                                            data-ai-hint="production photo" 
+                                                                            unoptimized
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </CarouselItem>
+                                                ))}
+                                            </CarouselContent>
+                                            {pages.length > 1 && (
+                                                <>
+                                                    <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
+                                                    <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
+                                                </>
+                                            )}
+                                        </Carousel>
                                     )}
                                 </CardContent>
                             </Card>
@@ -242,4 +324,5 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
             )}
         </>
     );
-}
+
+    
