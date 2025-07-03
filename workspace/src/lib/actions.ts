@@ -365,9 +365,10 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
-        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+        const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!storageBucket) {
-            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
+             console.error('Server configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set.');
+            return { success: false, message: 'Server configuration error: Storage destination not found.' };
         }
 
         const bucket = admin.storage().bucket(storageBucket);
@@ -409,9 +410,9 @@ export async function uploadCoverPhotoAction(formData: FormData) {
     }
 
     try {
-        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+        const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!storageBucket) {
-            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
+            throw new Error("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable not set.");
         }
 
         const bucket = admin.storage().bucket(storageBucket);
