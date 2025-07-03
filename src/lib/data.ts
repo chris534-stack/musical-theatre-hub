@@ -189,19 +189,10 @@ export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Prom
     const doc = await docRef.get();
     const data = doc.data();
 
-    let createdAtString: string;
-    if (data?.createdAt && typeof data.createdAt.toDate === 'function') {
-        createdAtString = data.createdAt.toDate().toISOString();
-    } else if (typeof data?.createdAt === 'string') {
-        createdAtString = data.createdAt;
-    } else {
-        createdAtString = new Date(0).toISOString();
-    }
-
     return { 
         id: doc.id, 
         ...data,
-        createdAt: createdAtString
+        createdAt: data?.createdAt || new Date(0).toISOString(),
     } as NewsArticle;
 }
 
@@ -213,20 +204,10 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
     
     const articles = snapshot.docs.map(doc => {
         const data = doc.data();
-
-        let createdAtString: string;
-        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-            createdAtString = data.createdAt.toDate().toISOString();
-        } else if (typeof data.createdAt === 'string') {
-            createdAtString = data.createdAt;
-        } else {
-            createdAtString = new Date(0).toISOString();
-        }
-
         return {
             id: doc.id,
             ...data,
-            createdAt: createdAtString,
+            createdAt: data.createdAt || new Date(0).toISOString(),
             order: data.order,
         } as NewsArticle;
     });
@@ -313,15 +294,6 @@ export async function getAllReviews(): Promise<Review[]> {
   const reviews = snapshot.docs.map(doc => {
     const data = doc.data();
     
-    let createdAtString: string;
-    if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-        createdAtString = data.createdAt.toDate().toISOString();
-    } else if (typeof data.createdAt === 'string') {
-        createdAtString = data.createdAt;
-    } else {
-        createdAtString = new Date(0).toISOString();
-    }
-
     return {
         id: doc.id,
         showId: data.showId || '',
@@ -329,7 +301,7 @@ export async function getAllReviews(): Promise<Review[]> {
         performanceDate: data.performanceDate || '',
         reviewerId: data.reviewerId || '',
         reviewerName: data.reviewerName || 'Anonymous',
-        createdAt: createdAtString,
+        createdAt: data.createdAt || new Date(0).toISOString(),
         overallExperience: data.overallExperience || '',
         specialMomentsText: data.specialMomentsText || '',
         recommendations: data.recommendations || [],
@@ -369,15 +341,6 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
         
     const reviews = snapshot.docs.map(doc => {
         const data = doc.data();
-        
-        let createdAtString: string;
-        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-            createdAtString = data.createdAt.toDate().toISOString();
-        } else if (typeof data.createdAt === 'string') {
-            createdAtString = data.createdAt;
-        } else {
-            createdAtString = new Date(0).toISOString();
-        }
 
         // Create a new, plain object to guarantee serializability
         const cleanReview: Review = {
@@ -387,7 +350,7 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
             performanceDate: data.performanceDate || '',
             reviewerId: data.reviewerId || '',
             reviewerName: data.reviewerName || 'Anonymous',
-            createdAt: createdAtString,
+            createdAt: data.createdAt || new Date(0).toISOString(),
             overallExperience: data.overallExperience || '',
             specialMomentsText: data.specialMomentsText || '',
             recommendations: data.recommendations || [],

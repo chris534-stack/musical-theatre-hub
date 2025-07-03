@@ -171,7 +171,7 @@ export async function saveNewsArticleAction(data: ArticleFormData) {
 
         const newArticleData = {
             ...data,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: new Date().toISOString(),
             order: articleCount,
         };
 
@@ -216,7 +216,7 @@ export async function addListingRequestAction(data: {
         const requestData = {
             ...data,
             status: 'new',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: new Date().toISOString(),
         };
 
         await adminDb.collection('listingRequests').add(requestData);
@@ -237,7 +237,7 @@ export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' |
             likes: 0,
             dislikes: 0,
             votedBy: [],
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: new Date().toISOString(),
         };
 
         await adminDb.collection('reviews').add(reviewData);
@@ -306,7 +306,7 @@ export async function requestToBeReviewerAction(data: {
         const requestData = {
             ...data,
             status: 'pending',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: new Date().toISOString(),
         };
 
         await adminDb.collection('reviewerRequests').add(requestData);
