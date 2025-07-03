@@ -369,12 +369,8 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
-        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!storageBucketName) {
-            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
-        }
-
-        const bucket = admin.storage().bucket(storageBucketName);
+        // The default bucket is configured in firebase-admin.ts, so we can call bucket() without a name.
+        const bucket = admin.storage().bucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const fileUpload = bucket.file(fileName);
@@ -383,8 +379,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         await fileUpload.makePublic();
         const publicUrl = fileUpload.publicUrl();
 
-        const newUrls = [...currentUrls, publicUrl];
-        await profileRef.set({ galleryImageUrls: newUrls }, { merge: true });
+        await profileRef.set({ galleryImageUrls: [...currentUrls, publicUrl] }, { merge: true });
 
         revalidatePath(`/profile/${userId}`);
 
@@ -407,12 +402,8 @@ export async function uploadCoverPhotoAction(formData: FormData) {
     }
 
     try {
-        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-         if (!storageBucketName) {
-            throw new Error("FIREBASE_STORAGE_BUCKET environment variable not set.");
-        }
-
-        const bucket = admin.storage().bucket(storageBucketName);
+        // The default bucket is configured in firebase-admin.ts, so we can call bucket() without a name.
+        const bucket = admin.storage().bucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         
         const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
