@@ -17,7 +17,7 @@ import { PhotoUploader } from '@/components/profile/PhotoUploader';
 import { GalleryViewer } from './GalleryViewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
-import { uploadProfilePhotoAction, updateGalleryOrderAction, deleteProfilePhotoAction } from '@/lib/actions';
+import { updateGalleryOrderAction, deleteProfilePhotoAction, setProfilePhotoAction, setCoverPhotoAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -186,7 +186,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
 
     const itemsToShowInGrid = [
         ...(isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || [])),
-        ...(isOwner && !isReordering && !isDeleting && canUpload && currentPhotoCount < PHOTOS_PER_PAGE ? ['uploader'] : [])
+        ...(isOwner && !isReordering && !isDeleting && canUpload ? ['uploader'] : [])
     ];
     const pages = [];
     for (let i = 0; i < itemsToShowInGrid.length; i += PHOTOS_PER_PAGE) {
@@ -211,7 +211,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                     <div className="flex flex-col md:flex-row md:items-end md:gap-8">
                         <div className="flex-shrink-0">
                             <Avatar className="h-36 w-36 border-4 border-background ring-2 ring-primary">
-                                <AvatarImage src={profile.photoURL} alt={profile.displayName} />
+                                <AvatarImage src={profile.photoURL} alt={profile.displayName} className="object-cover" />
                                 <AvatarFallback>{profile.displayName.charAt(0)}</AvatarFallback>
                             </Avatar>
                         </div>
