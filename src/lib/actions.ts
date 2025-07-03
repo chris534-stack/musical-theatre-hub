@@ -34,6 +34,7 @@ interface EventFormData {
   url?: string;
   venueId: string;
   type: string;
+  tags?: string[];
   occurrences: EventOccurrence[];
 }
 
@@ -48,6 +49,7 @@ export async function addEventFromFormAction(data: EventFormData) {
     const newEvent: Omit<Event, 'id'> = {
       ...data,
       description: data.description || '',
+      tags: data.tags || [],
       status: 'approved',
     };
 
@@ -76,6 +78,7 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
     // Ensure description and URL are at least an empty string if they're not provided
     cleanData.description = cleanData.description || '';
     cleanData.url = cleanData.url || '';
+    cleanData.tags = cleanData.tags || [];
 
 
     const eventRef = adminDb.collection('events').doc(eventId);

@@ -74,13 +74,13 @@ interface GetAllEventsOptions {
  */
 export async function getAllEvents(options: GetAllEventsOptions = { includeOccurrences: true }): Promise<Event[]> {
   let query = adminDb.collection('events').select(
-    'id', 'title', 'description', 'venueId', 'type', 'status', 'url'
+    'id', 'title', 'description', 'venueId', 'type', 'tags', 'status', 'url'
   );
 
   // Only add 'occurrences' to the select statement if needed
   if (options.includeOccurrences) {
     query = adminDb.collection('events').select(
-        'id', 'title', 'description', 'venueId', 'type', 'status', 'url', 'occurrences'
+        'id', 'title', 'description', 'venueId', 'type', 'tags', 'status', 'url', 'occurrences'
     );
   }
 
@@ -99,6 +99,7 @@ export async function getAllEvents(options: GetAllEventsOptions = { includeOccur
       description: data.description,
       venueId: data.venueId,
       type: data.type,
+      tags: data.tags || [],
       status: data.status,
       url: data.url,
       occurrences: occurrences,
@@ -129,7 +130,7 @@ export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
         const data = doc.data();
         // Defensively map occurrences to ensure time is always a string.
         const occurrences = (data.occurrences || []).map((o: any) => ({ date: o.date, time: o.time || ''}));
-        return { id: doc.id, ...data, occurrences } as Event
+        return { id: doc.id, ...data, tags: data.tags || [], occurrences } as Event
     });
 
     // Sort events by the date of their first occurrence

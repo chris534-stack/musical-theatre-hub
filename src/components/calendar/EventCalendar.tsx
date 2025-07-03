@@ -36,6 +36,7 @@ import type { DayContentProps } from 'react-day-picker';
 import Link from 'next/link';
 import { ReviewList } from '@/components/reviews/ReviewList';
 import dynamic from 'next/dynamic';
+import { Badge } from '@/components/ui/badge';
 
 const AddEventButton = dynamic(
     () => import('@/components/admin/AddEventButton').then(mod => mod.AddEventButton),
@@ -97,6 +98,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const [currentMonth, setCurrentMonth] = React.useState<Date | undefined>();
   const [selectedVenues, setSelectedVenues] = React.useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = React.useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [isClient, setIsClient] = React.useState(false);
   const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
   const { user, isAdmin, isReviewer } = useAuth();
@@ -125,9 +127,17 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   
   const isMobile = useIsMobile();
   
-  const eventTypes = useMemo(() => {
-    const allTypes = events.map(e => e.type.trim().toLowerCase());
-    return Array.from(new Set(allTypes));
+  const { eventTypes, allTags } = useMemo(() => {
+    const types = new Set<string>();
+    const tags = new Set<string>();
+    events.forEach(e => {
+        types.add(e.type.trim().toLowerCase());
+        e.tags?.forEach(tag => tags.add(tag.trim().toLowerCase()));
+    });
+    return {
+      eventTypes: Array.from(types).sort(),
+      allTags: Array.from(tags).sort(),
+    };
   }, [events]);
 
   const filteredEvents = useMemo(() => {
@@ -137,9 +147,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     return events.filter(event => {
       const venueMatch = selectedVenues.length === 0 || selectedVenues.includes(event.venueId);
       const typeMatch = selectedTypes.length === 0 || selectedTypes.includes(event.type.trim().toLowerCase());
-      return venueMatch && typeMatch;
+      const tagsMatch = selectedTags.length === 0 || event.tags?.some(tag => selectedTags.includes(tag.trim().toLowerCase()));
+      return venueMatch && typeMatch && tagsMatch;
     });
-  }, [events, selectedVenues, selectedTypes, selectedEventId]);
+  }, [events, selectedVenues, selectedTypes, selectedTags, selectedEventId]);
   
   const eventsByDate = useMemo(() => {
     const map = new Map<string, ExpandedCalendarEvent[]>();
@@ -168,6 +179,12 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   const handleTypeToggle = (type: string) => {
     setSelectedTypes(prev => 
       prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+  
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
   };
 
@@ -210,6 +227,7 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
         url: selectedOccurrence.url,
         venueId: selectedOccurrence.venueId,
         type: selectedOccurrence.type,
+        tags: selectedOccurrence.tags,
         status: selectedOccurrence.status,
         occurrences: allOccurrencesForEvent,
     };
@@ -440,6 +458,22 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       ))}
                     </div>
                   </div>
+                  {allTags.length > 0 && (
+                    <>
+                        <Separator />
+                        <div>
+                        <h4 className="font-semibold mb-2">Tags</h4>
+                        <div className="space-y-2">
+                          {allTags.map(tag => (
+                            <div key={tag} className="flex items-center space-x-2">
+                              <Checkbox id={`tag-${tag}`} checked={selectedTags.includes(tag)} onCheckedChange={() => handleTagToggle(tag)} />
+                              <Label htmlFor={`tag-${tag}`} className="cursor-pointer capitalize">{toTitleCase(tag.replace('-', ' '))}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
@@ -483,6 +517,13 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                       </div>
                     </CardHeader>
                     <CardContent className="relative pt-0 pb-4">
+                      {event.tags && event.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {event.tags.map(tag => (
+                                <Badge key={tag} variant="outline">{toTitleCase(tag)}</Badge>
+                            ))}
+                        </div>
+                      )}
                       <p className={cn("text-sm text-muted-foreground", !isSelected && "line-clamp-3")}>
                         {event.description}
                       </p>

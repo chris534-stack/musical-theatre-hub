@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTransition } from 'react';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const eventFormSchema = z.object({
   url: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
   venueId: z.string().min(1, 'Venue is required.'),
   type: z.string().min(1, 'Type is required.'),
+  tags: z.string().optional(),
   occurrences: z.array(z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format.'),
     time: z.string().regex(/^$|^\d{2}:\d{2}$/, 'Time must be in HH:mm format or empty.'),
@@ -51,6 +52,7 @@ export function EventEditorForm({ initialData, eventToEdit, venues, onSuccess }:
             url: eventToEdit.url || '',
             venueId: eventToEdit.venueId || '',
             type: eventToEdit.type || 'Special Event',
+            tags: eventToEdit.tags?.join(', ') || '',
             occurrences: eventToEdit.occurrences?.length ? eventToEdit.occurrences : [{ date: '', time: '' }],
         };
     }
@@ -66,11 +68,12 @@ export function EventEditorForm({ initialData, eventToEdit, venues, onSuccess }:
             url: initialData.sourceUrl || '',
             venueId: foundVenue?.id || '',
             type: 'Special Event',
+            tags: initialData.tags?.join(', ') || '',
             occurrences: mappedOccurrences,
         };
     }
     return {
-        title: '', description: '', url: '', venueId: '', type: 'Special Event', occurrences: [{ date: '', time: '' }],
+        title: '', description: '', url: '', venueId: '', type: 'Special Event', tags: '', occurrences: [{ date: '', time: '' }],
     };
   };
 
@@ -86,9 +89,13 @@ export function EventEditorForm({ initialData, eventToEdit, venues, onSuccess }:
 
   const onSubmit = (data: EventFormValues) => {
     startTransition(async () => {
+      const tagsArray = data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+      
+      const payload = { ...data, tags: tagsArray };
+
       const result = isEditMode
-        ? await updateEventAction(eventToEdit.id, data)
-        : await addEventFromFormAction(data);
+        ? await updateEventAction(eventToEdit.id, payload)
+        : await addEventFromFormAction(payload);
 
       if (result.success) {
         toast({
@@ -183,6 +190,21 @@ export function EventEditorForm({ initialData, eventToEdit, venues, onSuccess }:
             )}
             />
         </div>
+
+        <FormField
+          control={form.control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tags (Optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Comedy, Drama, Family-Friendly" {...field} />
+              </FormControl>
+              <FormDescription>Separate tags with a comma.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div>
             <FormLabel>Occurrences</FormLabel>

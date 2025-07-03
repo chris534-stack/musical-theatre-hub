@@ -24,6 +24,7 @@ export type Event = {
   occurrences: EventOccurrence[];
   venueId: string;
   type: EventType;
+  tags?: string[];
   status: EventStatus;
   url?: string;
 };
