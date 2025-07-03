@@ -335,10 +335,9 @@ export async function getAllReviews(): Promise<Review[]> {
 export async function getReviewsByUserId(userId: string): Promise<Review[]> {
     const snapshot = await adminDb.collection('reviews')
         .where('reviewerId', '==', userId)
-        .orderBy('createdAt', 'desc')
         .get();
         
-    return snapshot.docs.map(doc => {
+    const reviews = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
             id: doc.id,
@@ -362,6 +361,11 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
             disclosureText: data.disclosureText || '',
         };
     });
+
+    // Sort in-code to avoid needing a composite index in Firestore
+    reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return reviews;
 }
 
 
