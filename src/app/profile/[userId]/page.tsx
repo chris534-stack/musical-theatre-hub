@@ -14,7 +14,9 @@ export default async function ProfilePage({ params }: { params: { userId: string
     notFound();
   }
   
-  const reviewsData = await getReviewsByUserId(userId);
+  // Temporarily disable review fetching to isolate the error source.
+  // const reviewsData = await getReviewsByUserId(userId);
+  const reviewsData = [];
   
   // Force serialization to definitively fix or expose the root cause of the error.
   const profile = JSON.parse(JSON.stringify(profileData));
