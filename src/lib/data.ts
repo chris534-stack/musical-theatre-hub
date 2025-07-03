@@ -12,6 +12,26 @@ const parseDateString = (dateString: string): Date => {
   return new Date(year, month - 1, day);
 };
 
+// Helper to safely convert Firestore Timestamps or strings to an ISO string
+const toISOString = (dateValue: any): string => {
+    if (!dateValue) {
+        return new Date(0).toISOString(); // Return epoch for null/undefined dates
+    }
+    if (typeof dateValue === 'string') {
+        // If it's already a string, assume it's valid or parseable
+        const d = new Date(dateValue);
+        return isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+    }
+    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
+        // This is a Firestore Timestamp
+        return dateValue.toDate().toISOString();
+    }
+    // Fallback for other types (like JS Date objects)
+    const d = new Date(dateValue);
+    return isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+};
+
+
 // --- Venue Functions ---
 
 /**
@@ -192,7 +212,7 @@ export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Prom
     return { 
         id: doc.id, 
         ...data,
-        createdAt: data?.createdAt || new Date(0).toISOString(),
+        createdAt: toISOString(data?.createdAt),
     } as NewsArticle;
 }
 
@@ -207,7 +227,7 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt || new Date(0).toISOString(),
+            createdAt: toISOString(data.createdAt),
             order: data.order,
         } as NewsArticle;
     });
@@ -301,7 +321,7 @@ export async function getAllReviews(): Promise<Review[]> {
         performanceDate: data.performanceDate || '',
         reviewerId: data.reviewerId || '',
         reviewerName: data.reviewerName || 'Anonymous',
-        createdAt: data.createdAt || new Date(0).toISOString(),
+        createdAt: toISOString(data.createdAt),
         overallExperience: data.overallExperience || '',
         specialMomentsText: data.specialMomentsText || '',
         recommendations: data.recommendations || [],
@@ -350,7 +370,7 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
             performanceDate: data.performanceDate || '',
             reviewerId: data.reviewerId || '',
             reviewerName: data.reviewerName || 'Anonymous',
-            createdAt: data.createdAt || new Date(0).toISOString(),
+            createdAt: toISOString(data.createdAt),
             overallExperience: data.overallExperience || '',
             specialMomentsText: data.specialMomentsText || '',
             recommendations: data.recommendations || [],
