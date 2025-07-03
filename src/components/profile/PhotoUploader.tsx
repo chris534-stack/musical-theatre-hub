@@ -75,8 +75,8 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
     >
         {isPending ? (
             <div className="flex flex-col items-center">
-                <Loader2 className="h-10 w-10 animate-spin mb-2" />
-                <p className="font-medium">Uploading...</p>
+                <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin mb-2" />
+                <p className="font-medium text-sm sm:text-base">Uploading...</p>
             </div>
         ) : (
             <>
@@ -100,11 +100,12 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
                                 </FormItem>
                             )}
                         />
-                         <UploadCloud className="h-10 w-10 mb-2" />
-                         <p className="font-medium text-foreground">Add to Gallery</p>
-                         <p className="text-sm mt-1 mb-4">You can add {photosRemaining} more photo{photosRemaining !== 1 ? 's' : ''}.</p>
+                         <UploadCloud className="h-8 w-8 sm:h-10 sm:w-10 mb-2" />
+                         <p className="font-medium text-foreground text-sm sm:text-base">Add to Gallery</p>
+                         <p className="text-xs sm:text-sm mt-1 mb-4">You can add {photosRemaining} more photo{photosRemaining !== 1 ? 's' : ''}.</p>
                          <Button
                             type="button"
+                            size="sm"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isPending}
                          >
