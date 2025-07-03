@@ -72,7 +72,7 @@ export type Review = {
     likes: number;
     dislikes: number;
     votedBy: string[];
-    disclosureText?: string;
+    disclosureText: string;
 };
 
 // An "Expanded Event" is a single performance instance, derived from a parent Event

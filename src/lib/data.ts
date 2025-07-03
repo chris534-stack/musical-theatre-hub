@@ -1,4 +1,5 @@
 
+
 import { adminDb, admin } from './firebase-admin'; // Admin SDK for server-side functions
 import type { Event, Venue, EventStatus, NewsArticle, Review, UserProfile } from './types';
 import { startOfToday, addDays } from 'date-fns';
@@ -293,9 +294,25 @@ export async function getAllReviews(): Promise<Review[]> {
     const data = doc.data();
     return {
         id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate().toISOString(),
-    } as Review;
+        showId: data.showId || '',
+        showTitle: data.showTitle || 'Untitled Show',
+        performanceDate: data.performanceDate || '',
+        reviewerId: data.reviewerId || '',
+        reviewerName: data.reviewerName || 'Anonymous',
+        createdAt: data.createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
+        overallExperience: data.overallExperience || '',
+        specialMomentsText: data.specialMomentsText || '',
+        recommendations: data.recommendations || [],
+        showHeartText: data.showHeartText || '',
+        communityImpactText: data.communityImpactText || '',
+        ticketInfo: data.ticketInfo || '',
+        valueConsiderationText: data.valueConsiderationText || '',
+        timeWellSpentText: data.timeWellSpentText || '',
+        likes: data.likes || 0,
+        dislikes: data.dislikes || 0,
+        votedBy: data.votedBy || [],
+        disclosureText: data.disclosureText || '',
+    };
   });
   
   // If no real reviews exist, create a mock one for demonstration.
@@ -318,50 +335,32 @@ export async function getAllReviews(): Promise<Review[]> {
 export async function getReviewsByUserId(userId: string): Promise<Review[]> {
     const snapshot = await adminDb.collection('reviews')
         .where('reviewerId', '==', userId)
+        .orderBy('createdAt', 'desc')
         .get();
         
-    const reviewsWithTimestamp = snapshot.docs.map(doc => {
+    return snapshot.docs.map(doc => {
         const data = doc.data();
         return {
             id: doc.id,
-            ...data,
-            createdAt: data.createdAt, // This is a Timestamp or undefined
+            showId: data.showId || '',
+            showTitle: data.showTitle || 'Untitled Show',
+            performanceDate: data.performanceDate || '',
+            reviewerId: data.reviewerId || '',
+            reviewerName: data.reviewerName || 'Anonymous',
+            createdAt: data.createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
+            overallExperience: data.overallExperience || '',
+            specialMomentsText: data.specialMomentsText || '',
+            recommendations: data.recommendations || [],
+            showHeartText: data.showHeartText || '',
+            communityImpactText: data.communityImpactText || '',
+            ticketInfo: data.ticketInfo || '',
+            valueConsiderationText: data.valueConsiderationText || '',
+            timeWellSpentText: data.timeWellSpentText || '',
+            likes: data.likes || 0,
+            dislikes: data.dislikes || 0,
+            votedBy: data.votedBy || [],
+            disclosureText: data.disclosureText || '',
         };
-    });
-
-    // Sort in-memory after fetching, handling possibly undefined dates
-    reviewsWithTimestamp.sort((a, b) => {
-        const timeB = b.createdAt?.toDate?.().getTime() ?? 0;
-        const timeA = a.createdAt?.toDate?.().getTime() ?? 0;
-        return timeB - timeA;
-    });
-
-    // Map to the final serializable type
-    return reviewsWithTimestamp.map(r => {
-        const { createdAt, ...rest } = r;
-        const reviewData: Review = {
-            id: rest.id,
-            showId: rest.showId,
-            showTitle: rest.showTitle,
-            performanceDate: rest.performanceDate,
-            reviewerId: rest.reviewerId,
-            reviewerName: rest.reviewerName,
-            overallExperience: rest.overallExperience,
-            specialMomentsText: rest.specialMomentsText,
-            recommendations: rest.recommendations || [],
-            showHeartText: rest.showHeartText,
-            communityImpactText: rest.communityImpactText,
-            ticketInfo: rest.ticketInfo,
-            valueConsiderationText: rest.valueConsiderationText,
-            timeWellSpentText: rest.timeWellSpentText,
-            likes: rest.likes || 0,
-            dislikes: rest.dislikes || 0,
-            votedBy: rest.votedBy || [],
-            disclosureText: rest.disclosureText,
-            // Convert to string, providing a default for safety
-            createdAt: createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
-        };
-        return reviewData;
     });
 }
 
@@ -377,7 +376,19 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
         const docSnap = await docRef.get();
 
         if (docSnap.exists) {
-            return docSnap.data() as UserProfile;
+            const data = docSnap.data();
+            // Sanitize the data to ensure no undefined fields are passed
+            return {
+                userId: data?.userId || userId,
+                displayName: data?.displayName || 'New User',
+                photoURL: data?.photoURL || '',
+                email: data?.email || '',
+                bio: data?.bio || '',
+                roleInCommunity: data?.roleInCommunity || 'Audience',
+                communityStartDate: data?.communityStartDate || '',
+                galleryImageUrls: data?.galleryImageUrls || [],
+                coverPhotoUrl: data?.coverPhotoUrl || '',
+            };
         }
 
         // User exists in Auth, but not in our profiles collection. Let's create one.
@@ -388,6 +399,11 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             displayName: userRecord.displayName || 'New User',
             photoURL: userRecord.photoURL || '',
             email: userRecord.email || '',
+            bio: '',
+            roleInCommunity: 'Audience',
+            communityStartDate: '',
+            galleryImageUrls: [],
+            coverPhotoUrl: '',
         };
         
         await docRef.set(newProfile);
