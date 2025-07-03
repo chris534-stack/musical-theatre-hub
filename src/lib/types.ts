@@ -49,7 +49,7 @@ export type NewsArticle = {
   title: string;
   summary: string;
   imageUrl?: string;
-  createdAt: any;
+  createdAt: string;
   order: number;
 };
 
@@ -60,7 +60,7 @@ export type Review = {
     performanceDate: string; // YYYY-MM-DD
     reviewerId: string;
     reviewerName: string;
-    createdAt: any;
+    createdAt: string;
     overallExperience: string;
     specialMomentsText: string;
     recommendations: string[];

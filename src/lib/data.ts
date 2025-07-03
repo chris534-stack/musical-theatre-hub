@@ -185,7 +185,13 @@ export async function eventExists(title: string, venueId: string): Promise<boole
  */
 export async function addNewsArticle(articleData: Omit<NewsArticle, 'id'>): Promise<NewsArticle> {
     const docRef = await adminDb.collection('news').add(articleData);
-    return { id: docRef.id, ...articleData };
+    const doc = await docRef.get();
+    const data = doc.data();
+    return { 
+        id: doc.id, 
+        ...data,
+        createdAt: data?.createdAt.toDate().toISOString()
+    } as NewsArticle;
 }
 
 /**
@@ -314,19 +320,49 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
         .where('reviewerId', '==', userId)
         .get();
         
-    const reviews = snapshot.docs.map(doc => {
+    const reviewsWithTimestamp = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt, // Keep as Timestamp for sorting
-        } as Review;
+            createdAt: data.createdAt, // This is a Timestamp or undefined
+        };
     });
 
-    // Sort in-memory after fetching
-    reviews.sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime());
+    // Sort in-memory after fetching, handling possibly undefined dates
+    reviewsWithTimestamp.sort((a, b) => {
+        const timeB = b.createdAt?.toDate?.().getTime() ?? 0;
+        const timeA = a.createdAt?.toDate?.().getTime() ?? 0;
+        return timeB - timeA;
+    });
 
-    return reviews.map(r => ({ ...r, createdAt: r.createdAt.toDate().toISOString() }));
+    // Map to the final serializable type
+    return reviewsWithTimestamp.map(r => {
+        const { createdAt, ...rest } = r;
+        const reviewData: Review = {
+            id: rest.id,
+            showId: rest.showId,
+            showTitle: rest.showTitle,
+            performanceDate: rest.performanceDate,
+            reviewerId: rest.reviewerId,
+            reviewerName: rest.reviewerName,
+            overallExperience: rest.overallExperience,
+            specialMomentsText: rest.specialMomentsText,
+            recommendations: rest.recommendations || [],
+            showHeartText: rest.showHeartText,
+            communityImpactText: rest.communityImpactText,
+            ticketInfo: rest.ticketInfo,
+            valueConsiderationText: rest.valueConsiderationText,
+            timeWellSpentText: rest.timeWellSpentText,
+            likes: rest.likes || 0,
+            dislikes: rest.dislikes || 0,
+            votedBy: rest.votedBy || [],
+            disclosureText: rest.disclosureText,
+            // Convert to string, providing a default for safety
+            createdAt: createdAt?.toDate?.().toISOString() ?? new Date(0).toISOString(),
+        };
+        return reviewData;
+    });
 }
 
 
