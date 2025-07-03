@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
 import { PhotoUploader } from '@/components/profile/PhotoUploader';
+import { GalleryViewer } from './GalleryViewer';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -31,6 +32,10 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [profile, setProfile] = useState(initialProfile);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
+
+    // New state for the gallery viewer
+    const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     useEffect(() => {
         function calculateYearsInCommunity(startDate?: string): string | null {
@@ -72,6 +77,11 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
             ...prev,
             galleryImageUrls: [...(prev.galleryImageUrls || []), newUrl],
         }));
+    };
+
+    const handleOpenGallery = (index: number) => {
+        setSelectedImageIndex(index);
+        setIsGalleryViewerOpen(true);
     };
 
 
@@ -154,8 +164,19 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                     {profile.galleryImageUrls && profile.galleryImageUrls.length > 0 ? (
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                             {profile.galleryImageUrls.map((url, index) => (
-                                                <div key={index} className="aspect-square relative rounded-lg overflow-hidden">
-                                                    <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized/>
+                                                <div 
+                                                    key={index} 
+                                                    className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
+                                                    onClick={() => handleOpenGallery(index)}
+                                                >
+                                                    <Image 
+                                                        src={url} 
+                                                        alt={`Gallery image ${index + 1}`} 
+                                                        fill 
+                                                        className="object-cover group-hover:scale-105 transition-transform duration-300" 
+                                                        data-ai-hint="production photo" 
+                                                        unoptimized
+                                                    />
                                                 </div>
                                             ))}
                                             {isOwner && (
@@ -191,6 +212,14 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                     </div>
                 </div>
             </div>
+            {profile.galleryImageUrls && profile.galleryImageUrls.length > 0 && (
+                <GalleryViewer
+                    isOpen={isGalleryViewerOpen}
+                    onClose={() => setIsGalleryViewerOpen(false)}
+                    images={profile.galleryImageUrls}
+                    startIndex={selectedImageIndex}
+                />
+            )}
             {isOwner && (
                 <EditProfileSheet 
                     isOpen={isSheetOpen} 
