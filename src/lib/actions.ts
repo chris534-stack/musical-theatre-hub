@@ -419,9 +419,9 @@ export async function uploadCoverPhotoAction(formData: FormData) {
         const publicUrl = fileUpload.publicUrl();
 
         const profileRef = adminDb.collection('userProfiles').doc(userId);
-        await profileRef.update({
+        await profileRef.set({
             coverPhotoUrl: publicUrl,
-        });
+        }, { merge: true });
 
         revalidatePath(`/profile/${userId}`);
 
@@ -480,3 +480,5 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl:string) 
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
+    
