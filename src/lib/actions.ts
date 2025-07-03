@@ -372,7 +372,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         const storageBucket = admin.storage().bucket();
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
-        const fileUpload = bucket.file(fileName);
+        const fileUpload = storageBucket.file(fileName);
 
         await fileUpload.save(buffer, { metadata: { contentType: file.type } });
         await fileUpload.makePublic();
@@ -408,7 +408,7 @@ export async function uploadCoverPhotoAction(formData: FormData) {
         const buffer = Buffer.from(await file.arrayBuffer());
         
         const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
-        const fileUpload = bucket.file(fileName);
+        const fileUpload = storageBucket.file(fileName);
 
         await fileUpload.save(buffer, {
             metadata: {
@@ -453,4 +453,5 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
     
 
     
+
 
