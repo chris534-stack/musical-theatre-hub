@@ -319,19 +319,19 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                 </>
                                             ) : isDeleting ? (
                                                 <Button variant="outline" size="sm" onClick={handleManagePhotosClick}>
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Trash2 className="sm:mr-2 h-4 w-4" />
                                                     <span className="hidden sm:inline">Done</span>
                                                 </Button>
                                             ) : (
                                                 <>
                                                     {isOwner && canUpload && (
                                                         <Button size="sm" onClick={() => headerFileInputRef.current?.click()} disabled={isUploadPending}>
-                                                            {isUploadPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                                            {isUploadPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="sm:mr-2 h-4 w-4" />}
                                                             <span className="hidden sm:inline">Upload</span>
                                                         </Button>
                                                     )}
-                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="h-4 w-4" /><span className="hidden sm:inline">Reorder</span></Button>}
-                                                    {currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="h-4 w-4" /><span className="hidden sm:inline">Manage</span></Button>}
+                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Reorder</span></Button>}
+                                                    {currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Manage</span></Button>}
                                                 </>
                                             )}
                                         </div>
@@ -417,7 +417,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                     </CarouselItem>
                                                 ))}
                                             </CarouselContent>
-                                            {pages.length > 1 && !isReordering && !isDeleting &&(
+                                            {pages.length > 1 && !isDeleting && (
                                                 <>
                                                     <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-10" />
                                                     <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-10" />
