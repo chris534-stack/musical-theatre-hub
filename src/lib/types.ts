@@ -57,7 +57,7 @@ export type Review = {
     id: string;
     showId: string;
     showTitle: string;
-    performanceDate: string; // YYYY-MM-DD
+    performanceDate: string; // ISO String format
     reviewerId: string;
     reviewerName: string;
     createdAt: string;
