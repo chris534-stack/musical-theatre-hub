@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -42,7 +41,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
     const GALLERY_PHOTO_LIMIT = 50;
-    const PHOTOS_PER_PAGE = 6;
+    const PHOTOS_PER_PAGE = 4; // Changed for 2x2 grid
 
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -303,13 +302,13 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
 
                         <div className="lg:col-span-2 space-y-8">
                             <Card>
-                                <CardHeader className="flex flex-row justify-between items-center">
+                                <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div className="flex flex-col">
                                         <CardTitle>{isReordering ? "Reorder Photos" : isDeleting ? "Delete Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>
                                         {isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}
                                     </div>
                                     {(isOwner || isAdmin) && (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 self-end sm:self-auto">
                                             {isReordering ? (
                                                 <>
                                                     <Button variant="outline" size="sm" onClick={handleCancelReorder} disabled={isReorderPending}>Cancel</Button>
@@ -365,11 +364,11 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                             </div>
                                         )
                                     ) : (
-                                        <Carousel opts={{ align: "start" }} className="w-full relative px-10">
+                                        <Carousel opts={{ align: "start" }} className="w-full relative px-8">
                                             <CarouselContent>
                                                 {pages.map((pageItems, pageIndex) => (
                                                     <CarouselItem key={pageIndex}>
-                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                        <div className="grid grid-cols-2 gap-4">
                                                             {pageItems.map((item, itemIndex) => {
                                                                 if (item === 'uploader') {
                                                                     return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
@@ -420,8 +419,8 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                             </CarouselContent>
                                             {pages.length > 1 && !isReordering && !isDeleting &&(
                                                 <>
-                                                    <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
-                                                    <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
+                                                    <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-10" />
+                                                    <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-10" />
                                                 </>
                                             )}
                                         </Carousel>
