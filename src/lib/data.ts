@@ -409,8 +409,9 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
         return cleanReview;
     });
 
-    // Sort in-code to avoid needing a composite index in Firestore
-    reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // Sort in-code to avoid needing a composite index in Firestore.
+    // Use localeCompare for safe string comparison.
+    reviews.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
     return reviews;
 }
