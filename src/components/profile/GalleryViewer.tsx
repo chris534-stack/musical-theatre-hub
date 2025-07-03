@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Image from 'next/image';
 
@@ -9,9 +9,10 @@ interface GalleryViewerProps {
     onClose: () => void;
     images: string[];
     startIndex?: number;
+    userName?: string;
 }
 
-export function GalleryViewer({ isOpen, onClose, images, startIndex = 0 }: GalleryViewerProps) {
+export function GalleryViewer({ isOpen, onClose, images, startIndex = 0, userName }: GalleryViewerProps) {
     if (!images || images.length === 0) {
         return null;
     }
@@ -19,6 +20,12 @@ export function GalleryViewer({ isOpen, onClose, images, startIndex = 0 }: Galle
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-screen-xl w-full h-full max-h-screen p-0 m-0 bg-black/80 border-none flex items-center justify-center">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>Image Gallery for {userName || 'User'}</DialogTitle>
+                    <DialogDescription>
+                        A carousel of images from the user's gallery. Use the left and right arrows to navigate.
+                    </DialogDescription>
+                </DialogHeader>
                 <Carousel
                     opts={{
                         startIndex: startIndex,

@@ -218,6 +218,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                     onClose={() => setIsGalleryViewerOpen(false)}
                     images={profile.galleryImageUrls}
                     startIndex={selectedImageIndex}
+                    userName={profile.displayName}
                 />
             )}
             {isOwner && (
