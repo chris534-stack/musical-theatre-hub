@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -259,10 +260,12 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                         <div className="mt-6 md:mt-0 flex-grow flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                             <div>
                                 <h1 className="text-3xl font-bold font-headline">{profile.displayName}</h1>
-                                <p className="text-muted-foreground flex items-center gap-2 mt-1">
-                                    <Mail className="h-4 w-4" />
-                                    {profile.email}
-                                </p>
+                                {(isOwner || profile.showEmail) && (
+                                    <p className="text-muted-foreground flex items-center gap-2 mt-1">
+                                        <Mail className="h-4 w-4" />
+                                        {profile.email}
+                                    </p>
+                                )}
                             </div>
                             <div className="flex gap-2">
                                 {isOwner && (
@@ -417,7 +420,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                     </CarouselItem>
                                                 ))}
                                             </CarouselContent>
-                                            {pages.length > 1 && !isDeleting && (
+                                            {pages.length > 1 && (isReordering || !isDeleting) && (
                                                 <>
                                                     <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-10" />
                                                     <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-10" />

@@ -103,4 +103,5 @@ export type UserProfile = {
   communityStartDate?: string;
   galleryImageUrls?: string[];
   coverPhotoUrl?: string;
+  showEmail?: boolean;
 };

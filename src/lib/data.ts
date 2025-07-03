@@ -417,6 +417,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
                 communityStartDate: String(data.communityStartDate || ''),
                 galleryImageUrls: data.galleryImageUrls || [],
                 coverPhotoUrl: data.coverPhotoUrl || '',
+                showEmail: data.showEmail || false,
             };
             return profile;
         }
@@ -434,6 +435,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             communityStartDate: '',
             galleryImageUrls: [],
             coverPhotoUrl: '',
+            showEmail: false,
         };
         
         await docRef.set(newProfile);

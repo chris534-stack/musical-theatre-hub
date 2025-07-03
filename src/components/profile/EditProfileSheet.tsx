@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -16,12 +17,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 const profileFormSchema = z.object({
     displayName: z.string().min(2, "Display name is required."),
     bio: z.string().optional(),
     roleInCommunity: z.enum(['Performer', 'Technician', 'Designer', 'Director', 'Audience', 'Other']),
     communityStartDate: z.string().regex(/^\d{4}$/, { message: "Please enter a valid 4-digit year." }).optional().or(z.literal("")),
+    showEmail: z.boolean().default(false).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -44,6 +47,7 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
             bio: profile.bio || '',
             roleInCommunity: profile.roleInCommunity || 'Audience',
             communityStartDate: profile.communityStartDate || '',
+            showEmail: profile.showEmail || false,
         },
     });
 
@@ -108,6 +112,32 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
                                 <FormDescription>
                                     To change your profile or cover photo, upload a new image to your gallery first. Then, open the photo in the fullscreen viewer and use the "Use As" button.
                                 </FormDescription>
+                            </div>
+
+                             <div className="space-y-4 rounded-lg border p-4">
+                                <h3 className="text-base font-semibold">Privacy Settings</h3>
+                                <FormField
+                                    control={form.control}
+                                    name="showEmail"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <FormLabel>
+                                                    Show Email Address
+                                                </FormLabel>
+                                                <FormDescription>
+                                                    Allow other users to see your email on your profile.
+                                                </FormDescription>
+                                            </div>
+                                            <FormControl>
+                                                <Switch
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
                         </div>
                         <SheetFooter>
