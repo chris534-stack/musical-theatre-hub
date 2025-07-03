@@ -348,17 +348,17 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 }
 
 export async function uploadProfilePhotoAction(formData: FormData) {
-    const file = formData.get('photo') as File;
-    const userId = formData.get('userId') as string;
-    const GALLERY_PHOTO_LIMIT = 50;
-
-    if (!file || !userId) {
-        return { success: false, message: 'Missing file or user ID.' };
-    }
-
-    const profileRef = adminDb.collection('userProfiles').doc(userId);
-
     try {
+        const file = formData.get('photo') as File;
+        const userId = formData.get('userId') as string;
+        const GALLERY_PHOTO_LIMIT = 50;
+
+        if (!file || !userId) {
+            return { success: false, message: 'Missing file or user ID.' };
+        }
+
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+
         let currentUrls: string[] = [];
         const doc = await profileRef.get();
         if (doc.exists) {
@@ -369,12 +369,12 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
-        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!bucketName) {
-            console.error('Server configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set.');
-            return { success: false, message: 'Server configuration error: Storage destination not found.' };
+        // This is the most reliable way to get the default storage bucket.
+        const bucket = admin.storage().bucket();
+        if (!bucket.name) {
+            console.error('Server configuration error: Default storage bucket not found in Firebase Admin SDK.');
+            return { success: false, message: 'Sorry, uploads aren\'t working at this time. Please try again later.' };
         }
-        const bucket = admin.storage().bucket(bucketName);
 
         const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `${userId}/${Date.now()}-${file.name}`;
@@ -393,7 +393,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     } catch (error) {
         console.error('Failed to upload photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
-        return { success: false, message: `Upload failed: ${errorMessage}` };
+        return { success: false, message: `Upload failed: An unexpected server error occurred. Please try again.` };
     }
 }
 
