@@ -41,7 +41,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
     const GALLERY_PHOTO_LIMIT = 50;
-    const PHOTOS_PER_PAGE = 4; // Changed for 2x2 grid
+    const PHOTOS_PER_PAGE = 4;
 
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -308,7 +308,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                         {isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}
                                     </div>
                                     {(isOwner || isAdmin) && (
-                                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                                        <div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">
                                             {isReordering ? (
                                                 <>
                                                     <Button variant="outline" size="sm" onClick={handleCancelReorder} disabled={isReorderPending}>Cancel</Button>
@@ -319,19 +319,19 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                 </>
                                             ) : isDeleting ? (
                                                 <Button variant="outline" size="sm" onClick={handleManagePhotosClick}>
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Done
+                                                    <Trash2 className="h-4 w-4" />
+                                                    <span className="hidden sm:inline">Done</span>
                                                 </Button>
                                             ) : (
                                                 <>
                                                     {isOwner && canUpload && (
                                                         <Button size="sm" onClick={() => headerFileInputRef.current?.click()} disabled={isUploadPending}>
-                                                            {isUploadPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                                            Upload
+                                                            {isUploadPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                                            <span className="hidden sm:inline">Upload</span>
                                                         </Button>
                                                     )}
-                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="mr-2 h-4 w-4" />Reorder</Button>}
-                                                    {currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="mr-2 h-4 w-4" />Manage</Button>}
+                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="h-4 w-4" /><span className="hidden sm:inline">Reorder</span></Button>}
+                                                    {currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="h-4 w-4" /><span className="hidden sm:inline">Manage</span></Button>}
                                                 </>
                                             )}
                                         </div>
@@ -364,7 +364,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                             </div>
                                         )
                                     ) : (
-                                        <Carousel opts={{ align: "start" }} className="w-full relative px-8">
+                                        <Carousel opts={{ align: "start" }} className="w-full relative px-8 sm:px-12">
                                             <CarouselContent>
                                                 {pages.map((pageItems, pageIndex) => (
                                                     <CarouselItem key={pageIndex}>
