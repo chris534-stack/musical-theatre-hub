@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import { getOrCreateUserProfile, getReviewsByUserId } from '@/lib/data';
 import ProfileClientPage from '@/components/profile/ProfileClientPage';
@@ -7,13 +8,17 @@ import ProfileLoading from './loading';
 export default async function ProfilePage({ params }: { params: { userId: string } }) {
   const { userId } = params;
   
-  const profile = await getOrCreateUserProfile(userId);
+  const profileData = await getOrCreateUserProfile(userId);
 
-  if (!profile) {
+  if (!profileData) {
     notFound();
   }
   
-  const reviews = await getReviewsByUserId(userId);
+  const reviewsData = await getReviewsByUserId(userId);
+  
+  // Force serialization to definitively fix or expose the root cause of the error.
+  const profile = JSON.parse(JSON.stringify(profileData));
+  const reviews = JSON.parse(JSON.stringify(reviewsData));
   
   return (
     <Suspense fallback={<ProfileLoading />}>
