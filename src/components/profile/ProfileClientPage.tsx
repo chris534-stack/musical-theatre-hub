@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, GripVertical, Loader2 } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -17,8 +17,6 @@ import { GalleryViewer } from './GalleryViewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
 import { uploadProfilePhotoAction, updateGalleryOrderAction } from '@/lib/actions';
-import { DragDropContext, Draggable, type OnDragEndResponder } from '@hello-pangea/dnd';
-import { StrictModeDroppable } from '@/components/dnd/StrictModeDroppable';
 import { cn } from '@/lib/utils';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
@@ -52,6 +50,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     
     const [isReordering, setIsReordering] = useState(false);
     const [orderedGalleryUrls, setOrderedGalleryUrls] = useState<string[]>([]);
+    const [selectedPhotoToMove, setSelectedPhotoToMove] = useState<string | null>(null);
     
     useEffect(() => {
         setOrderedGalleryUrls(profile.galleryImageUrls || []);
@@ -94,10 +93,11 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
     };
     
     const handlePhotoUploadComplete = (newUrl: string) => {
-        setProfile(prev => ({
-            ...prev,
-            galleryImageUrls: [...(prev.galleryImageUrls || []), newUrl],
-        }));
+        const updatedUrls = [...(profile.galleryImageUrls || []), newUrl];
+        setProfile(prev => ({ ...prev, galleryImageUrls: updatedUrls }));
+        if (isReordering) {
+            setOrderedGalleryUrls(updatedUrls);
+        }
     };
 
     const handleHeaderPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,31 +132,9 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         setIsGalleryViewerOpen(true);
     };
     
-    const currentPhotoCount = profile.galleryImageUrls?.length || 0;
+    const currentPhotoCount = orderedGalleryUrls.length;
     const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
 
-    const itemsToShowInGrid = [
-        ...(profile.galleryImageUrls || []),
-        ...(isOwner && canUpload && currentPhotoCount < PHOTOS_PER_PAGE ? ['uploader'] : [])
-    ];
-    const pages = [];
-    for (let i = 0; i < itemsToShowInGrid.length; i += PHOTOS_PER_PAGE) {
-        pages.push(itemsToShowInGrid.slice(i, i + PHOTOS_PER_PAGE));
-    }
-
-    const onDragEnd: OnDragEndResponder = (result) => {
-        const { source, destination } = result;
-        if (!destination) {
-            return;
-        }
-
-        const items = Array.from(orderedGalleryUrls);
-        const [reorderedItem] = items.splice(source.index, 1);
-        items.splice(destination.index, 0, reorderedItem);
-
-        setOrderedGalleryUrls(items);
-    };
-    
     const handleSaveReorder = () => {
         startReorderTransition(async () => {
             const result = await updateGalleryOrderAction(profile.userId, orderedGalleryUrls);
@@ -164,16 +142,52 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                 toast({ title: 'Success', description: 'Your gallery order has been saved.' });
                 setProfile(prev => ({ ...prev, galleryImageUrls: orderedGalleryUrls }));
                 setIsReordering(false);
+                setSelectedPhotoToMove(null);
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: result.message });
             }
         });
+    };
+
+    const handleCancelReorder = () => {
+        setIsReordering(false);
+        setOrderedGalleryUrls(profile.galleryImageUrls || []);
+        setSelectedPhotoToMove(null);
+    };
+    
+    const handleReorderClick = (targetUrl: string, targetIndex: number) => {
+        if (!isReordering) return;
+
+        if (!selectedPhotoToMove) {
+            setSelectedPhotoToMove(targetUrl);
+        } else {
+            const sourceIndex = orderedGalleryUrls.findIndex(url => url === selectedPhotoToMove);
+            if (sourceIndex === -1) {
+                setSelectedPhotoToMove(null);
+                return;
+            }
+
+            const newOrder = [...orderedGalleryUrls];
+            const [itemToMove] = newOrder.splice(sourceIndex, 1);
+            newOrder.splice(targetIndex, 0, itemToMove);
+            
+            setOrderedGalleryUrls(newOrder);
+            setSelectedPhotoToMove(null);
+        }
+    };
+
+    const itemsToShowInGrid = [
+        ...(isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || [])),
+        ...(isOwner && !isReordering && canUpload && currentPhotoCount < PHOTOS_PER_PAGE ? ['uploader'] : [])
+    ];
+    const pages = [];
+    for (let i = 0; i < itemsToShowInGrid.length; i += PHOTOS_PER_PAGE) {
+        pages.push(itemsToShowInGrid.slice(i, i + PHOTOS_PER_PAGE));
     }
 
     return (
         <>
             <div className="w-full pb-16">
-                {/* Cover Photo */}
                 <div className="h-48 md:h-64 bg-secondary relative">
                     <Image
                         src={profile.coverPhotoUrl || "https://placehold.co/1600x400.png"}
@@ -187,7 +201,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
 
                 <div className="container mx-auto -mt-20 px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col md:flex-row md:items-end md:gap-8">
-                        {/* Avatar */}
                         <div className="flex-shrink-0">
                             <Avatar className="h-36 w-36 border-4 border-background ring-2 ring-primary">
                                 <AvatarImage src={profile.photoURL} alt={profile.displayName} />
@@ -195,7 +208,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                             </Avatar>
                         </div>
                         
-                        {/* Name and Actions */}
                         <div className="mt-6 md:mt-0 flex-grow flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                             <div>
                                 <h1 className="text-3xl font-bold font-headline">{profile.displayName}</h1>
@@ -222,7 +234,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                     </div>
 
                     <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Left Column (About, Details) */}
                         <div className="lg:col-span-1 space-y-8">
                             <Card>
                                 <CardHeader><CardTitle>About Me</CardTitle></CardHeader>
@@ -241,16 +252,18 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                             </Card>
                         </div>
 
-                        {/* Right Column (Gallery, Reviews) */}
                         <div className="lg:col-span-2 space-y-8">
                             <Card>
                                 <CardHeader className="flex flex-row justify-between items-center">
-                                    <CardTitle>{isReordering ? "Reorder Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>
+                                    <div className="flex flex-col">
+                                        <CardTitle>{isReordering ? "Reorder Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>
+                                        {isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}
+                                    </div>
                                      {isOwner && (
                                         <div className="flex items-center gap-2">
                                             {isReordering ? (
                                                 <>
-                                                    <Button variant="outline" size="sm" onClick={() => setIsReordering(false)} disabled={isReorderPending}>Cancel</Button>
+                                                    <Button variant="outline" size="sm" onClick={handleCancelReorder} disabled={isReorderPending}>Cancel</Button>
                                                     <Button size="sm" onClick={handleSaveReorder} disabled={isReorderPending}>
                                                         {isReorderPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                         Save Order
@@ -258,8 +271,8 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                                 </>
                                             ) : (
                                                 <>
-                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}>Reorder</Button>}
-                                                    {canUpload && (
+                                                    {currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="mr-2 h-4 w-4"/>Reorder</Button>}
+                                                    {canUpload && (currentPhotoCount >= PHOTOS_PER_PAGE) && (
                                                         <>
                                                             <Button
                                                                 variant="outline"
@@ -286,38 +299,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                     )}
                                 </CardHeader>
                                 <CardContent>
-                                    {isReordering ? (
-                                        <DragDropContext onDragEnd={onDragEnd}>
-                                            <StrictModeDroppable droppableId="gallery-reorder">
-                                                {(provided) => (
-                                                    <div 
-                                                        {...provided.droppableProps} 
-                                                        ref={provided.innerRef} 
-                                                        className="grid grid-cols-2 md:grid-cols-3 gap-4"
-                                                    >
-                                                        {orderedGalleryUrls.map((url, index) => (
-                                                            <Draggable key={url} draggableId={url} index={index}>
-                                                                {(provided, snapshot) => (
-                                                                    <div
-                                                                        ref={provided.innerRef}
-                                                                        {...provided.draggableProps}
-                                                                        style={provided.draggableProps.style}
-                                                                        className={cn(snapshot.isDragging && "shadow-2xl z-50", "relative group aspect-square rounded-lg overflow-hidden")}
-                                                                    >
-                                                                        <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized />
-                                                                        <div {...provided.dragHandleProps} className="absolute top-2 right-2 p-1.5 bg-black/40 text-white/80 rounded-md cursor-grab active:cursor-grabbing hover:bg-black/60 transition-colors">
-                                                                            <GripVertical className="h-5 w-5" />
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </Draggable>
-                                                        ))}
-                                                        {provided.placeholder}
-                                                    </div>
-                                                )}
-                                            </StrictModeDroppable>
-                                        </DragDropContext>
-                                    ) : itemsToShowInGrid.length === 0 ? (
+                                    {itemsToShowInGrid.length === 0 ? (
                                         isOwner && canUpload ? (
                                             <PhotoUploader userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
                                         ) : !canUpload ? (
@@ -334,45 +316,71 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                                             </div>
                                         )
                                     ) : (
-                                        <Carousel opts={{ align: "start" }} className="w-full relative px-10">
-                                            <CarouselContent>
-                                                {pages.map((pageItems, pageIndex) => (
-                                                    <CarouselItem key={pageIndex}>
-                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                            {pageItems.map((item, itemIndex) => {
-                                                                if (item === 'uploader') {
-                                                                    return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
-                                                                }
-                                                                const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex;
-                                                                return (
-                                                                    <div 
-                                                                        key={item} 
-                                                                        className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
-                                                                        onClick={() => handleOpenGallery(originalImageIndex)}
-                                                                    >
-                                                                        <Image 
-                                                                            src={item} 
-                                                                            alt={`Gallery image ${originalImageIndex + 1}`} 
-                                                                            fill 
-                                                                            className="object-cover transition-colors duration-300 group-hover:brightness-90"
-                                                                            data-ai-hint="production photo" 
-                                                                            unoptimized
-                                                                        />
-                                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-                                                                    </div>
-                                                                );
-                                                            })}
+                                        isReordering ? (
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                {orderedGalleryUrls.map((url, index) => {
+                                                    const isSelectedForMove = selectedPhotoToMove === url;
+                                                    return (
+                                                        <div
+                                                            key={url}
+                                                            onClick={() => handleReorderClick(url, index)}
+                                                            className={cn(
+                                                                "aspect-square relative rounded-lg overflow-hidden group cursor-pointer transition-all duration-200",
+                                                                isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg",
+                                                                selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105"
+                                                            )}
+                                                        >
+                                                            <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized />
+                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                                                {selectedPhotoToMove && !isSelectedForMove && (
+                                                                    <p className="text-white font-bold text-sm bg-black/50 p-2 rounded-md opacity-0 group-hover:opacity-100">Place Here</p>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </CarouselItem>
-                                                ))}
-                                            </CarouselContent>
-                                            {pages.length > 1 && (
-                                                <>
-                                                    <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
-                                                    <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
-                                                </>
-                                            )}
-                                        </Carousel>
+                                                    )
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <Carousel opts={{ align: "start" }} className="w-full relative px-10">
+                                                <CarouselContent>
+                                                    {pages.map((pageItems, pageIndex) => (
+                                                        <CarouselItem key={pageIndex}>
+                                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                                {pageItems.map((item, itemIndex) => {
+                                                                    if (item === 'uploader') {
+                                                                        return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={handlePhotoUploadComplete} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />;
+                                                                    }
+                                                                    const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex;
+                                                                    return (
+                                                                        <div 
+                                                                            key={item} 
+                                                                            className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
+                                                                            onClick={() => handleOpenGallery(originalImageIndex)}
+                                                                        >
+                                                                            <Image 
+                                                                                src={item} 
+                                                                                alt={`Gallery image ${originalImageIndex + 1}`} 
+                                                                                fill 
+                                                                                className="object-cover transition-colors duration-300 group-hover:brightness-90"
+                                                                                data-ai-hint="production photo" 
+                                                                                unoptimized
+                                                                            />
+                                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </CarouselItem>
+                                                    ))}
+                                                </CarouselContent>
+                                                {pages.length > 1 && (
+                                                    <>
+                                                        <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
+                                                        <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
+                                                    </>
+                                                )}
+                                            </Carousel>
+                                        )
                                     )}
                                 </CardContent>
                             </Card>
@@ -411,5 +419,4 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
             )}
         </>
     );
-
-    
+}
