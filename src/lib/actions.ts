@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -8,6 +7,7 @@ import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
+import { getSupabaseClient } from './supabase';
 
 
 export async function revalidateAdminPaths() {
@@ -351,19 +351,19 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 }
 
 export async function uploadProfilePhotoAction(formData: FormData) {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return { success: false, message: 'Image storage is not configured on the server.' };
+    }
+
     try {
         const file = formData.get('photo') as File;
         const userId = formData.get('userId') as string;
         const GALLERY_PHOTO_LIMIT = 50;
+        const BUCKET_NAME = 'user-photos';
 
         if (!file || !userId) {
             return { success: false, message: 'Missing file or user ID.' };
-        }
-        
-        const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!storageBucketName) {
-            console.error('Configuration error: FIREBASE_STORAGE_BUCKET is not set in environment variables.');
-            return { success: false, message: "Sorry, the server is not configured for uploads. Please contact support." };
         }
         
         const profileRef = adminDb.collection('userProfiles').doc(userId);
@@ -376,17 +376,26 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             }
         }
         
-        const bucket = admin.storage().bucket(storageBucketName);
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const fileName = `${userId}/${Date.now()}-${file.name}`;
-        const fileUpload = bucket.file(fileName);
+        const filePath = `${userId}/${Date.now()}-${file.name}`;
 
-        await fileUpload.save(buffer, { metadata: { contentType: file.type } });
-        await fileUpload.makePublic();
-        const publicUrl = fileUpload.publicUrl();
+        const { error: uploadError } = await supabase.storage
+            .from(BUCKET_NAME)
+            .upload(filePath, file);
+
+        if (uploadError) {
+            throw new Error(`Supabase upload failed: ${uploadError.message}`);
+        }
+
+        const { data: urlData } = supabase.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(filePath);
+        
+        if (!urlData.publicUrl) {
+            throw new Error("Could not get public URL for the uploaded file.");
+        }
 
         await profileRef.update({ 
-            galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl) 
+            galleryImageUrls: admin.firestore.FieldValue.arrayUnion(urlData.publicUrl) 
         });
 
         revalidatePath(`/profile/${userId}`);
@@ -395,7 +404,8 @@ export async function uploadProfilePhotoAction(formData: FormData) {
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
-        return { success: false, message: "Sorry, uploads are not working at this time. Please try again later." };
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during upload.";
+        return { success: false, message: `Upload failed: ${errorMessage}` };
     }
 }
 
@@ -416,44 +426,53 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 }
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl:string) {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return { success: false, message: 'Image storage is not configured on the server.' };
+    }
+
     try {
-        const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!storageBucketName) {
-            console.error('Configuration error: FIREBASE_STORAGE_BUCKET is not set in environment variables.');
-            return { success: false, message: "Cannot delete photo: server storage is not configured." };
+        const BUCKET_NAME = 'user-photos';
+        
+        // Extract the file path from the Supabase public URL
+        const url = new URL(photoUrl);
+        // The path we want is everything after the bucket name, e.g., /<user-id>/<file-name>
+        const filePath = url.pathname.split(`/${BUCKET_NAME}/`)[1];
+        
+        if (!filePath) {
+            throw new Error("Could not determine file path from URL.");
         }
 
-        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        // Delete from Supabase Storage
+        const { error: deleteError } = await supabase.storage.from(BUCKET_NAME).remove([filePath]);
+        if (deleteError) {
+             // It's okay if the file doesn't exist, maybe it was already deleted.
+             // We'll log other errors but continue, so the DB record is still removed.
+            if(deleteError.message !== 'The resource was not found') {
+                console.warn(`Supabase deletion warning: ${deleteError.message}`);
+            }
+        }
         
+        // Remove from Firestore
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
         await adminDb.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(profileRef);
-            if (!freshDoc.exists) {
-                throw new Error("User profile not found.");
-            }
+            if (!freshDoc.exists) return; // Profile doesn't exist, nothing to do.
+            
             const freshData = freshDoc.data() as UserProfile;
-
-            transaction.update(profileRef, {
-                galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
-            });
+            const updates: Partial<UserProfile> = {
+                galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl) as any,
+            };
 
             if (freshData.coverPhotoUrl === photoUrl) {
-                transaction.update(profileRef, { coverPhotoUrl: '' });
+                updates.coverPhotoUrl = '';
             }
-            
             if (freshData.photoURL === photoUrl) {
                 const userRecord = await admin.auth().getUser(userId);
-                transaction.update(profileRef, { photoURL: userRecord.photoURL || '' });
+                updates.photoURL = userRecord.photoURL || '';
             }
+            transaction.update(profileRef, updates);
         });
-
-        const bucket = admin.storage().bucket(storageBucketName);
-        const urlPrefix = `https://storage.googleapis.com/${bucket.name}/`;
-        if (photoUrl.startsWith(urlPrefix)) {
-            const filePath = decodeURIComponent(photoUrl.substring(urlPrefix.length));
-            await bucket.file(filePath).delete();
-        } else {
-            console.warn(`Could not delete file from storage: URL format not recognized. URL: ${photoUrl}`);
-        }
 
         revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Photo deleted successfully.' };
@@ -492,7 +511,3 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
-
-    
-
-    
