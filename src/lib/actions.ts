@@ -360,10 +360,9 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             return { success: false, message: 'Missing file or user ID.' };
         }
         
-        // Directly access the storage bucket name from environment variables for reliability.
-        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!storageBucketName) {
-            console.error('Configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set in environment variables.');
+            console.error('Configuration error: FIREBASE_STORAGE_BUCKET is not set in environment variables.');
             return { success: false, message: "Sorry, the server is not configured for uploads. Please contact support." };
         }
         
@@ -418,16 +417,14 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl:string) {
     try {
-        // Directly access the storage bucket name from environment variables for reliability.
-        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!storageBucketName) {
-            console.error('Configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set in environment variables.');
+            console.error('Configuration error: FIREBASE_STORAGE_BUCKET is not set in environment variables.');
             return { success: false, message: "Cannot delete photo: server storage is not configured." };
         }
 
         const profileRef = adminDb.collection('userProfiles').doc(userId);
         
-        // Use a transaction to ensure atomicity
         await adminDb.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(profileRef);
             if (!freshDoc.exists) {
@@ -435,24 +432,20 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl:string) 
             }
             const freshData = freshDoc.data() as UserProfile;
 
-            // Remove from gallery
             transaction.update(profileRef, {
                 galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
             });
 
-            // Unset cover photo if it's the one being deleted
             if (freshData.coverPhotoUrl === photoUrl) {
                 transaction.update(profileRef, { coverPhotoUrl: '' });
             }
             
-            // Revert to original auth provider photo if it's the one being deleted
             if (freshData.photoURL === photoUrl) {
                 const userRecord = await admin.auth().getUser(userId);
                 transaction.update(profileRef, { photoURL: userRecord.photoURL || '' });
             }
         });
 
-        // Delete from storage after successful database updates
         const bucket = admin.storage().bucket(storageBucketName);
         const urlPrefix = `https://storage.googleapis.com/${bucket.name}/`;
         if (photoUrl.startsWith(urlPrefix)) {
@@ -499,5 +492,7 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
+    
 
     
