@@ -359,10 +359,12 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         if (!file || !userId) {
             return { success: false, message: 'Missing file or user ID.' };
         }
-
-        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        
+        // This is the most reliable way to get the bucket name.
+        // It uses the configuration from the initialized admin app instance.
+        const storageBucketName = admin.app().options.storageBucket;
         if (!storageBucketName) {
-            console.error('Server configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set.');
+            console.error('Firebase Admin SDK not initialized with a storage bucket.');
             return { success: false, message: "Sorry, uploads aren't working at this time. Please try again later." };
         }
         
@@ -440,9 +442,9 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl:string) 
             galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
         });
         
-        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        const storageBucketName = admin.app().options.storageBucket;
         if (!storageBucketName) {
-            console.warn('Could not delete file from storage: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET not configured.');
+            console.warn('Could not delete file from storage: Bucket not configured in admin SDK.');
             revalidatePath(`/profile/${userId}`);
             return { success: true, message: 'Photo reference deleted, but file may remain in storage.' };
         }
