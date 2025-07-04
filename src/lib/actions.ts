@@ -360,11 +360,9 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             return { success: false, message: 'Missing file or user ID.' };
         }
         
-        // This is the most reliable way to get the bucket name.
-        // It uses the configuration from the initialized admin app instance.
         const storageBucketName = admin.app().options.storageBucket;
         if (!storageBucketName) {
-            console.error('Firebase Admin SDK not initialized with a storage bucket.');
+            console.error('Firebase Admin SDK not initialized with a storage bucket. Check environment variables.');
             return { success: false, message: "Sorry, uploads aren't working at this time. Please try again later." };
         }
         
@@ -419,37 +417,43 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl:string) {
     try {
+        const storageBucketName = admin.app().options.storageBucket;
+        if (!storageBucketName) {
+            console.warn('Could not delete file from storage: Bucket not configured in admin SDK.');
+            return { success: false, message: 'Cannot delete photo: storage not configured.' };
+        }
+
         const profileRef = adminDb.collection('userProfiles').doc(userId);
-        
         const doc = await profileRef.get();
         if (!doc.exists) {
             throw new Error("User profile not found.");
         }
         const data = doc.data() as UserProfile;
         
-        // Ensure cover photo isn't deleted if it's the same as a gallery photo
-        if (data.coverPhotoUrl === photoUrl) {
-            await profileRef.update({ coverPhotoUrl: '' });
-        }
-        
-        // Ensure profile photo isn't deleted if it's the same as a gallery photo
-        if (data.photoURL === photoUrl) {
-            const userRecord = await admin.auth().getUser(userId);
-            await profileRef.update({ photoURL: userRecord.photoURL || '' });
-        }
-        
-        await profileRef.update({
-            galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
-        });
-        
-        const storageBucketName = admin.app().options.storageBucket;
-        if (!storageBucketName) {
-            console.warn('Could not delete file from storage: Bucket not configured in admin SDK.');
-            revalidatePath(`/profile/${userId}`);
-            return { success: true, message: 'Photo reference deleted, but file may remain in storage.' };
-        }
-        const bucket = admin.storage().bucket(storageBucketName);
+        // Use a transaction to ensure atomicity
+        await adminDb.runTransaction(async (transaction) => {
+            const freshDoc = await transaction.get(profileRef);
+            const freshData = freshDoc.data() as UserProfile;
 
+            // Remove from gallery
+            transaction.update(profileRef, {
+                galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
+            });
+
+            // Unset cover photo if it's the one being deleted
+            if (freshData.coverPhotoUrl === photoUrl) {
+                transaction.update(profileRef, { coverPhotoUrl: '' });
+            }
+            
+            // Revert to original auth provider photo if it's the one being deleted
+            if (freshData.photoURL === photoUrl) {
+                const userRecord = await admin.auth().getUser(userId);
+                transaction.update(profileRef, { photoURL: userRecord.photoURL || '' });
+            }
+        });
+
+        // Delete from storage after successful database updates
+        const bucket = admin.storage().bucket(storageBucketName);
         const urlPrefix = `https://storage.googleapis.com/${bucket.name}/`;
         if (photoUrl.startsWith(urlPrefix)) {
             const filePath = decodeURIComponent(photoUrl.substring(urlPrefix.length));
