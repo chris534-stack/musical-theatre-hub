@@ -431,11 +431,11 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             displayName: userRecord.displayName || 'New User',
             photoURL: userRecord.photoURL || '',
             email: userRecord.email || '',
-            bio: '',
+            bio: 'Welcome to the community! Feel free to edit your profile and tell us more about yourself.',
             roleInCommunity: 'Audience',
             communityStartDate: '',
             galleryImageUrls: [],
-            coverPhotoUrl: '',
+            coverPhotoUrl: 'https://placehold.co/1600x400.png',
             showEmail: false,
         };
         
