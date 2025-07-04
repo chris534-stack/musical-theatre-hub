@@ -8,31 +8,6 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ShieldAlert } from 'lucide-react';
 import type { Review, UserProfile } from '@/lib/types';
 
-// Helper function to safely create a serializable review object
-function sanitizeReview(review: Review): Review {
-    return {
-        id: review.id,
-        showId: review.showId,
-        showTitle: review.showTitle,
-        performanceDate: review.performanceDate,
-        reviewerId: review.reviewerId,
-        reviewerName: review.reviewerName,
-        createdAt: review.createdAt,
-        overallExperience: review.overallExperience,
-        specialMomentsText: review.specialMomentsText,
-        recommendations: review.recommendations || [],
-        showHeartText: review.showHeartText,
-        communityImpactText: review.communityImpactText,
-        ticketInfo: review.ticketInfo,
-        valueConsiderationText: review.valueConsiderationText,
-        timeWellSpentText: review.timeWellSpentText,
-        likes: review.likes || 0,
-        dislikes: review.dislikes || 0,
-        votedBy: review.votedBy || [],
-        disclosureText: review.disclosureText || '',
-    };
-}
-
 
 export default async function ProfilePage({ params }: { params: { userId: string } }) {
   const { userId } = params;
@@ -58,9 +33,8 @@ export default async function ProfilePage({ params }: { params: { userId: string
       showEmail: rawProfile.showEmail || false,
     };
 
-    const rawReviews = await getReviewsByUserId(userId);
-    // Manually construct a plain, serializable array of review objects
-    const reviews: Review[] = rawReviews.map(sanitizeReview);
+    // The data is already sanitized by the data-fetching function.
+    const reviews = await getReviewsByUserId(userId);
     
     return (
       <Suspense fallback={<ProfileLoading />}>
