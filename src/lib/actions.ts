@@ -360,10 +360,11 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             return { success: false, message: 'Missing file or user ID.' };
         }
         
-        const storageBucketName = admin.app().options.storageBucket;
+        // Directly access the storage bucket name from environment variables for reliability.
+        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!storageBucketName) {
-            console.error('Firebase Admin SDK not initialized with a storage bucket. Check environment variables.');
-            return { success: false, message: "Sorry, uploads aren't working at this time. Please try again later." };
+            console.error('Configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set in environment variables.');
+            return { success: false, message: "Sorry, the server is not configured for uploads. Please contact support." };
         }
         
         const profileRef = adminDb.collection('userProfiles').doc(userId);
@@ -395,7 +396,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
 
     } catch (error) {
         console.error('Failed to upload photo:', error);
-        return { success: false, message: "Sorry, uploads aren't working at this time. Please try again later." };
+        return { success: false, message: "Sorry, uploads are not working at this time. Please try again later." };
     }
 }
 
@@ -417,22 +418,21 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl:string) {
     try {
-        const storageBucketName = admin.app().options.storageBucket;
+        // Directly access the storage bucket name from environment variables for reliability.
+        const storageBucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!storageBucketName) {
-            console.warn('Could not delete file from storage: Bucket not configured in admin SDK.');
-            return { success: false, message: 'Cannot delete photo: storage not configured.' };
+            console.error('Configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set in environment variables.');
+            return { success: false, message: "Cannot delete photo: server storage is not configured." };
         }
 
         const profileRef = adminDb.collection('userProfiles').doc(userId);
-        const doc = await profileRef.get();
-        if (!doc.exists) {
-            throw new Error("User profile not found.");
-        }
-        const data = doc.data() as UserProfile;
         
         // Use a transaction to ensure atomicity
         await adminDb.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(profileRef);
+            if (!freshDoc.exists) {
+                throw new Error("User profile not found.");
+            }
             const freshData = freshDoc.data() as UserProfile;
 
             // Remove from gallery
@@ -499,3 +499,5 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
+    
