@@ -10,26 +10,35 @@ import { ShieldAlert } from 'lucide-react';
 export default async function ProfilePage({ params }: { params: { userId: string } }) {
   const { userId } = params;
   
-  // The try/catch is removed to let Next.js handle rendering errors and streaming more predictably.
-  // This helps avoid the generic "unexpected response" error.
-  const rawProfile = await getOrCreateUserProfile(userId);
+  try {
+    const rawProfile = await getOrCreateUserProfile(userId);
 
-  if (!rawProfile) {
-    // This function will stop rendering and show the not-found page.
-    notFound();
+    if (!rawProfile) {
+      notFound();
+    }
+    
+    const rawReviews = await getReviewsByUserId(userId);
+
+    const profile = JSON.parse(JSON.stringify(rawProfile));
+    const reviews = JSON.parse(JSON.stringify(rawReviews));
+    
+    return (
+      <Suspense fallback={<ProfileLoading />}>
+        <ProfileClientPage initialProfile={profile} initialReviews={reviews} />
+      </Suspense>
+    );
+  } catch (error) {
+    console.error("Failed to render profile page:", error);
+    return (
+      <div className="container mx-auto py-12 px-4">
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Error Loading Profile</AlertTitle>
+          <AlertDescription>
+            There was a problem loading this profile. It may be due to a temporary network issue. Please refresh the page to try again.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
-  
-  const rawReviews = await getReviewsByUserId(userId);
-
-  // This is the definitive fix for this type of error. It ensures any non-serializable
-  // data (like Date objects or Timestamps from Firebase) is converted to a plain string
-  // before being sent from the server component to the client component.
-  const profile = JSON.parse(JSON.stringify(rawProfile));
-  const reviews = JSON.parse(JSON.stringify(rawReviews));
-  
-  return (
-    <Suspense fallback={<ProfileLoading />}>
-      <ProfileClientPage initialProfile={profile} initialReviews={reviews} />
-    </Suspense>
-  );
 }
