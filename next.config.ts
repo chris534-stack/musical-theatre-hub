@@ -19,8 +19,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        // IMPORTANT: Replace this with your Supabase project reference
-        hostname: '*.supabase.co',
+        hostname: 'olvoujojwxlksdtslvc.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
