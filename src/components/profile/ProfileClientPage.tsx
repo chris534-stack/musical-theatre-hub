@@ -36,6 +36,32 @@ function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, la
     );
 }
 
+function AdminAuthStatusAlert({ profile, isAdmin }: { profile: UserProfile, isAdmin: boolean }) {
+    if (!isAdmin) return null;
+
+    if (profile.authStatus === 'notFound') {
+        return (
+            <Alert variant="destructive" className="mb-8">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Admin Alert: Ghost User</AlertTitle>
+                <AlertDescription>
+                    This user profile exists in the database, but their authentication record could not be found. This account may be orphaned and could be a candidate for deletion.
+                </AlertDescription>
+            </Alert>
+        );
+    }
+
+    return (
+        <Alert className="mb-8 bg-secondary">
+            <ShieldCheck className="h-4 w-4" />
+            <AlertTitle>Admin Info: Auth Status</AlertTitle>
+            <AlertDescription>
+                User authentication status is active.
+            </AlertDescription>
+        </Alert>
+    );
+};
+
 export default function ProfileClientPage({ initialProfile, initialReviews }: { initialProfile: UserProfile, initialReviews: Review[] }) {
     const { user, isAdmin } = useAuth();
     const [profile, setProfile] = useState(initialProfile);
@@ -226,32 +252,6 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         pages.push(itemsToShowInGrid.slice(i, i + PHOTOS_PER_PAGE));
     }
 
-    const AdminAuthStatusAlert = () => {
-        if (!isAdmin) return null;
-
-        if (profile.authStatus === 'notFound') {
-            return (
-                <Alert variant="destructive" className="mb-8">
-                    <ShieldAlert className="h-4 w-4" />
-                    <AlertTitle>Admin Alert: Ghost User</AlertTitle>
-                    <AlertDescription>
-                        This user profile exists in the database, but their authentication record could not be found. This account may be orphaned and could be a candidate for deletion.
-                    </AlertDescription>
-                </Alert>
-            );
-        }
-
-        return (
-            <Alert className="mb-8 bg-secondary">
-                <ShieldCheck className="h-4 w-4" />
-                <AlertTitle>Admin Info: Auth Status</AlertTitle>
-                <AlertDescription>
-                    User authentication status is active.
-                </AlertDescription>
-            </Alert>
-        );
-    };
-
     return (
         <>
             <input
@@ -311,7 +311,7 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                     </div>
 
                     <div className="mt-12">
-                        <AdminAuthStatusAlert />
+                        <AdminAuthStatusAlert profile={profile} isAdmin={isAdmin} />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
