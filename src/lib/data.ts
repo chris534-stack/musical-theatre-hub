@@ -398,7 +398,8 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
 
 /**
  * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
- * This function now safely handles "ghost users" (profiles without a matching auth record).
+ * This function now safely handles "ghost users" (profiles without a matching auth record)
+ * and returns the user's authentication status.
  */
 export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
     const docRef = adminDb.collection('userProfiles').doc(userId);
@@ -406,24 +407,19 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
 
     // CASE 1: Profile document exists in Firestore.
     if (docSnap.exists) {
-        // Now, we MUST verify the corresponding Auth user also exists.
-        // This is where the "ghost user" crash happens.
+        let authStatus: 'active' | 'notFound' = 'active';
         try {
             await admin.auth().getUser(userId);
         } catch (error: any) {
-            // This is the ghost user condition! Auth user not found.
             if (error.code === 'auth/user-not-found') {
-                console.log(`GHOST USER DETECTED: Firestore profile exists for ID ${userId}, but no Auth record was found. Returning null to prevent crash.`);
-                // We could also delete the orphaned profile doc here, but for now, let's just safely exit.
-                // await docRef.delete();
-                return null;
+                console.warn(`GHOST USER DETECTED: Firestore profile for ID ${userId} has no matching Auth record.`);
+                authStatus = 'notFound';
+            } else {
+                console.error(`Unexpected Firebase Auth error for user ID ${userId}:`, error);
+                throw error; // Re-throw other unexpected auth errors
             }
-            // Re-throw other unexpected errors from auth.
-            console.error(`Unexpected Firebase Auth error for user ID ${userId}:`, error);
-            throw error;
         }
         
-        // If we get here, the Auth user exists. We can safely return the profile.
         const data = docSnap.data() || {};
         const profile: UserProfile = {
             userId: data.userId || userId,
@@ -436,6 +432,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             galleryImageUrls: data.galleryImageUrls || [],
             coverPhotoUrl: data.coverPhotoUrl || '',
             showEmail: data.showEmail || false,
+            authStatus: authStatus, // Add the auth status
         };
         return profile;
     }
@@ -455,13 +452,12 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             galleryImageUrls: [],
             coverPhotoUrl: 'https://placehold.co/1600x400.png',
             showEmail: false,
+            authStatus: 'active',
         };
         
         await docRef.set(newProfile);
         return newProfile;
     } catch (error: any) {
-        // This handles the case where a user ID is provided that doesn't exist
-        // in either the database OR the auth system.
         if (error.code === 'auth/user-not-found') {
             console.log(`User profile and auth record both not found for ID: ${userId}.`);
             return null;

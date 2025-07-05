@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -226,6 +226,32 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
         pages.push(itemsToShowInGrid.slice(i, i + PHOTOS_PER_PAGE));
     }
 
+    const AdminAuthStatusAlert = () => {
+        if (!isAdmin) return null;
+
+        if (profile.authStatus === 'notFound') {
+            return (
+                <Alert variant="destructive" className="mb-8">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Admin Alert: Ghost User</AlertTitle>
+                    <AlertDescription>
+                        This user profile exists in the database, but their authentication record could not be found. This account may be orphaned and could be a candidate for deletion.
+                    </AlertDescription>
+                </Alert>
+            );
+        }
+
+        return (
+            <Alert className="mb-8 bg-secondary">
+                <ShieldCheck className="h-4 w-4" />
+                <AlertTitle>Admin Info: Auth Status</AlertTitle>
+                <AlertDescription>
+                    User authentication status is active.
+                </AlertDescription>
+            </Alert>
+        );
+    };
+
     return (
         <>
             <input
@@ -284,7 +310,11 @@ export default function ProfileClientPage({ initialProfile, initialReviews }: { 
                         </div>
                     </div>
 
-                    <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="mt-12">
+                        <AdminAuthStatusAlert />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-1 space-y-8">
                             <Card>
                                 <CardHeader><CardTitle>About Me</CardTitle></CardHeader>
