@@ -9,16 +9,27 @@ import type { Review, UserProfile } from '@/lib/types';
 
 export default async function ProfilePage({ params }: { params: { userId: string } }) {
   const { userId } = params;
-  
-  const profile = await getOrCreateUserProfile(userId);
 
-  // If the data function returns null (meaning both profile and auth user are missing),
-  // use the standard Next.js notFound() to render the 404 page.
-  if (!profile) {
+  let profile: UserProfile | null = null;
+  let reviews: Review[] = [];
+
+  try {
+    // Attempt to fetch all necessary data for the page
+    profile = await getOrCreateUserProfile(userId);
+    if (profile) {
+      reviews = await getReviewsByUserId(userId);
+    }
+  } catch (error) {
+    console.error(`Failed to fetch data for profile page (user: ${userId}):`, error);
+    // If any part of the data fetching fails, treat the profile as not found.
+    // This prevents the server component from crashing.
     notFound();
   }
   
-  const reviews = await getReviewsByUserId(userId);
+  // If the profile is null after the try block (e.g., user doesn't exist at all), show a 404.
+  if (!profile) {
+    notFound();
+  }
   
   // Manually construct a plain, serializable profile object to pass to the client.
   // This is a safeguard to ensure no complex objects like Dates are passed.
