@@ -398,32 +398,50 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
 
 /**
  * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
- * This function guarantees a serializable UserProfile object.
+ * This function now safely handles "ghost users" (profiles without a matching auth record).
  */
 export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
-    try {
-        const docRef = adminDb.collection('userProfiles').doc(userId);
-        const docSnap = await docRef.get();
+    const docRef = adminDb.collection('userProfiles').doc(userId);
+    const docSnap = await docRef.get();
 
-        if (docSnap.exists) {
-            const data = docSnap.data() || {};
-            // Manually build the profile object to ensure all fields are serializable
-            const profile: UserProfile = {
-                userId: data.userId || userId,
-                displayName: data.displayName || 'New User',
-                photoURL: data.photoURL || '',
-                email: data.email || '',
-                bio: data.bio || '',
-                roleInCommunity: data.roleInCommunity || 'Audience',
-                communityStartDate: String(data.communityStartDate || ''),
-                galleryImageUrls: data.galleryImageUrls || [],
-                coverPhotoUrl: data.coverPhotoUrl || '',
-                showEmail: data.showEmail || false,
-            };
-            return profile;
+    // CASE 1: Profile document exists in Firestore.
+    if (docSnap.exists) {
+        // Now, we MUST verify the corresponding Auth user also exists.
+        // This is where the "ghost user" crash happens.
+        try {
+            await admin.auth().getUser(userId);
+        } catch (error: any) {
+            // This is the ghost user condition! Auth user not found.
+            if (error.code === 'auth/user-not-found') {
+                console.log(`GHOST USER DETECTED: Firestore profile exists for ID ${userId}, but no Auth record was found. Returning null to prevent crash.`);
+                // We could also delete the orphaned profile doc here, but for now, let's just safely exit.
+                // await docRef.delete();
+                return null;
+            }
+            // Re-throw other unexpected errors from auth.
+            console.error(`Unexpected Firebase Auth error for user ID ${userId}:`, error);
+            throw error;
         }
+        
+        // If we get here, the Auth user exists. We can safely return the profile.
+        const data = docSnap.data() || {};
+        const profile: UserProfile = {
+            userId: data.userId || userId,
+            displayName: data.displayName || 'New User',
+            photoURL: data.photoURL || '',
+            email: data.email || '',
+            bio: data.bio || '',
+            roleInCommunity: data.roleInCommunity || 'Audience',
+            communityStartDate: String(data.communityStartDate || ''),
+            galleryImageUrls: data.galleryImageUrls || [],
+            coverPhotoUrl: data.coverPhotoUrl || '',
+            showEmail: data.showEmail || false,
+        };
+        return profile;
+    }
 
-        // User exists in Auth, but not in our profiles collection. Let's create one.
+    // CASE 2: Profile document does NOT exist. Create it from the Auth record.
+    try {
         const userRecord = await admin.auth().getUser(userId);
         
         const newProfile: UserProfile = {
@@ -441,11 +459,14 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
         
         await docRef.set(newProfile);
         return newProfile;
-
-    } catch (error) {
+    } catch (error: any) {
+        // This handles the case where a user ID is provided that doesn't exist
+        // in either the database OR the auth system.
+        if (error.code === 'auth/user-not-found') {
+            console.log(`User profile and auth record both not found for ID: ${userId}.`);
+            return null;
+        }
         console.error(`Failed to get or create user profile for ID: ${userId}`, error);
-        // This can happen if a user is deleted from Firebase Auth but their client session is still active,
-        // or if there's a database connection issue.
-        return null;
+        throw error;
     }
 }
