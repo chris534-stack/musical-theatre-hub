@@ -403,23 +403,27 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
  */
 export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
     const docRef = adminDb.collection('userProfiles').doc(userId);
+    let userRecord: UserRecord | null = null;
+    let authStatus: 'active' | 'notFound' = 'active';
+
+    try {
+        userRecord = await admin.auth().getUser(userId);
+    } catch (error: any) {
+        if (error.code === 'auth/user-not-found') {
+            console.warn(`GHOST USER DETECTED: Auth record for ID ${userId} not found.`);
+            authStatus = 'notFound';
+            // We don't set userRecord, it remains null.
+        } else {
+            // For any other unexpected auth error, log it and fail gracefully.
+            console.error(`Unexpected Firebase Auth error for user ID ${userId}:`, error);
+            return null; // Prevent crash by returning null
+        }
+    }
+
     const docSnap = await docRef.get();
 
     // CASE 1: Profile document exists in Firestore.
     if (docSnap.exists) {
-        let authStatus: 'active' | 'notFound' = 'active';
-        try {
-            await admin.auth().getUser(userId);
-        } catch (error: any) {
-            if (error.code === 'auth/user-not-found') {
-                console.warn(`GHOST USER DETECTED: Firestore profile for ID ${userId} has no matching Auth record.`);
-                authStatus = 'notFound';
-            } else {
-                console.error(`Unexpected Firebase Auth error for user ID ${userId}:`, error);
-                throw error; // Re-throw other unexpected auth errors
-            }
-        }
-        
         const data = docSnap.data() || {};
         const profile: UserProfile = {
             userId: data.userId || userId,
@@ -432,21 +436,19 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             galleryImageUrls: data.galleryImageUrls || [],
             coverPhotoUrl: data.coverPhotoUrl || '',
             showEmail: data.showEmail || false,
-            authStatus: authStatus, // Add the auth status
+            authStatus: authStatus,
         };
         return profile;
     }
 
-    // CASE 2: Profile document does NOT exist. Create it from the Auth record.
-    try {
-        const userRecord = await admin.auth().getUser(userId);
-        
+    // CASE 2: Profile document does NOT exist, but we have a valid Auth record. Create it.
+    if (userRecord) {
         const newProfile: UserProfile = {
             userId: userRecord.uid,
             displayName: userRecord.displayName || 'New User',
-            photoURL: userRecord.photoURL || '',
+            photoURL: userRecord.photoURL || 'https://placehold.co/200x200.png',
             email: userRecord.email || '',
-            bio: 'Welcome to the community! Feel free to edit your profile and tell us more about yourself.',
+            bio: 'Welcome to the Our Stage community! Feel free to edit your profile and share a bit about yourself.',
             roleInCommunity: 'Audience',
             communityStartDate: '',
             galleryImageUrls: [],
@@ -454,15 +456,11 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             showEmail: false,
             authStatus: 'active',
         };
-        
         await docRef.set(newProfile);
         return newProfile;
-    } catch (error: any) {
-        if (error.code === 'auth/user-not-found') {
-            console.log(`User profile and auth record both not found for ID: ${userId}.`);
-            return null;
-        }
-        console.error(`Failed to get or create user profile for ID: ${userId}`, error);
-        throw error;
     }
+
+    // CASE 3: Profile and Auth record both do not exist.
+    console.log(`User profile and auth record both not found for ID: ${userId}.`);
+    return null;
 }
