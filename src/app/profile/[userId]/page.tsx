@@ -1,5 +1,4 @@
 
-
 import { notFound } from 'next/navigation';
 import { getOrCreateUserProfile, getReviewsByUserId } from '@/lib/data';
 import ProfileClientPage from '@/components/profile/ProfileClientPage';
@@ -13,10 +12,8 @@ export default async function ProfilePage({ params }: { params: { userId: string
 
   const profile = await getOrCreateUserProfile(userId);
   
-  // This is the correct, robust way to handle a user that can't be found
-  // for any reason (ghost user, doesn't exist, etc.).
   if (!profile) {
-    return notFound();
+    notFound();
   }
   
   const reviews = await getReviewsByUserId(userId);
@@ -39,7 +36,7 @@ export default async function ProfilePage({ params }: { params: { userId: string
 
   return (
     <Suspense fallback={<ProfileLoading />}>
-      <ProfileClientPage initialProfile={serializableProfile} initialReviews={initialReviews} />
+      <ProfileClientPage initialProfile={serializableProfile} initialReviews={reviews} />
     </Suspense>
   );
 }
