@@ -16,8 +16,9 @@ export default async function ProfilePage({ params }: { params: { userId: string
   const profile = await getOrCreateUserProfile(userId);
   
   // If the profile is null for any reason (ghost user, doesn't exist, etc.), show a 404.
+  // The 'return' is critical to stop execution here.
   if (!profile) {
-    notFound();
+    return notFound();
   }
   
   const reviews = await getReviewsByUserId(userId);
