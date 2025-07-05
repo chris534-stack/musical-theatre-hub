@@ -268,7 +268,7 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
             return 1; // b comes first
         }
         // Neither has an order, so sort by creation date (newest first)
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return new Date(b.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
     return articles;

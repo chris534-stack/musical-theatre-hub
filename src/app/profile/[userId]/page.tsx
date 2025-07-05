@@ -11,12 +11,10 @@ import type { Review, UserProfile } from '@/lib/types';
 export default async function ProfilePage({ params }: { params: { userId: string } }) {
   const { userId } = params;
 
-  // getOrCreateUserProfile is now guaranteed not to throw a fatal error.
-  // It will return null if the user doesn't exist or an unrecoverable error occurs.
   const profile = await getOrCreateUserProfile(userId);
   
-  // If the profile is null for any reason (ghost user, doesn't exist, etc.), show a 404.
-  // The 'return' is critical to stop execution here.
+  // This is the correct, robust way to handle a user that can't be found
+  // for any reason (ghost user, doesn't exist, etc.).
   if (!profile) {
     return notFound();
   }
@@ -41,7 +39,7 @@ export default async function ProfilePage({ params }: { params: { userId: string
 
   return (
     <Suspense fallback={<ProfileLoading />}>
-      <ProfileClientPage initialProfile={serializableProfile} initialReviews={reviews} />
+      <ProfileClientPage initialProfile={serializableProfile} initialReviews={initialReviews} />
     </Suspense>
   );
 }
