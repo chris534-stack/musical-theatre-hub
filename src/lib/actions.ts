@@ -7,7 +7,6 @@ import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
-import { getSupabaseClient } from './supabase';
 
 
 export async function revalidateAdminPaths() {
@@ -351,60 +350,60 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 }
 
 export async function uploadProfilePhotoAction(formData: FormData) {
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      return { success: false, message: 'Image storage is not configured on the server.' };
+    const file = formData.get('photo') as File;
+    const userId = formData.get('userId') as string;
+    const GALLERY_PHOTO_LIMIT = 50;
+
+    if (!file || !userId) {
+        return { success: false, message: 'Missing file or user ID.' };
+    }
+    
+    // This is the critical change: check for the server-side variable first.
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    if (!storageBucket) {
+        console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
+        // This is a user-friendly error that prevents a server crash.
+        return { success: false, message: 'Server configuration error: Storage destination not found.' };
     }
 
-    try {
-        const file = formData.get('photo') as File;
-        const userId = formData.get('userId') as string;
-        const GALLERY_PHOTO_LIMIT = 50;
-        const BUCKET_NAME = 'user-photos';
+    const profileRef = adminDb.collection('userProfiles').doc(userId);
 
-        if (!file || !userId) {
-            return { success: false, message: 'Missing file or user ID.' };
-        }
-        
-        const profileRef = adminDb.collection('userProfiles').doc(userId);
-        const doc = await profileRef.get();
-        if (doc.exists) {
-            const profileData = doc.data() as UserProfile | undefined;
-            const currentUrls = profileData?.galleryImageUrls || [];
-            if (currentUrls.length >= GALLERY_PHOTO_LIMIT) {
+    try {
+        const docSnap = await profileRef.get();
+        if (docSnap.exists) {
+            const profileData = docSnap.data() as UserProfile;
+            const currentPhotoCount = profileData.galleryImageUrls?.length || 0;
+            if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
                 return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
             }
         }
-        
-        const filePath = `${userId}/${Date.now()}-${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
-            .from(BUCKET_NAME)
-            .upload(filePath, file);
+        const bucket = admin.storage().bucket(storageBucket);
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const fileName = `${userId}/${Date.now()}-${file.name}`;
+        const fileUpload = bucket.file(fileName);
 
-        if (uploadError) {
-            throw new Error(`Supabase upload failed: ${uploadError.message}`);
-        }
+        await fileUpload.save(buffer, {
+            metadata: {
+                contentType: file.type,
+            },
+        });
 
-        const { data: urlData } = supabase.storage
-            .from(BUCKET_NAME)
-            .getPublicUrl(filePath);
-        
-        if (!urlData.publicUrl) {
-            throw new Error("Could not get public URL for the uploaded file.");
-        }
+        // Make the file public to get a URL
+        await fileUpload.makePublic();
+        const publicUrl = fileUpload.publicUrl();
 
-        await profileRef.update({ 
-            galleryImageUrls: admin.firestore.FieldValue.arrayUnion(urlData.publicUrl) 
+        // Update user profile in Firestore
+        await profileRef.update({
+            galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
         });
 
         revalidatePath(`/profile/${userId}`);
 
         return { success: true };
-
     } catch (error) {
         console.error('Failed to upload photo:', error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during upload.";
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `Upload failed: ${errorMessage}` };
     }
 }
@@ -425,51 +424,60 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
     }
 }
 
-export async function deleteProfilePhotoAction(userId: string, photoUrl:string) {
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      return { success: false, message: 'Image storage is not configured on the server.' };
+export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    if (!storageBucket) {
+        console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
+        return { success: false, message: 'Server configuration error: Storage destination not found.' };
     }
 
     try {
-        const BUCKET_NAME = 'user-photos';
+        const bucket = admin.storage().bucket(storageBucket);
         
-        // Extract the file path from the Supabase public URL
+        // Extract the file path from the Google Cloud Storage public URL
         const url = new URL(photoUrl);
-        // The path we want is everything after the bucket name, e.g., /<user-id>/<file-name>
-        const filePath = url.pathname.split(`/${BUCKET_NAME}/`)[1];
+        const pathParts = url.pathname.split('/');
+        const filePath = pathParts.slice(2).join('/'); // Skips the initial empty string and the bucket name
         
-        if (!filePath) {
-            throw new Error("Could not determine file path from URL.");
+        if (!filePath || !filePath.startsWith(`${userId}/`)) {
+            // Security check to ensure we're not deleting files outside the user's folder
+            throw new Error("Invalid file path for deletion.");
         }
 
-        // Delete from Supabase Storage
-        const { error: deleteError } = await supabase.storage.from(BUCKET_NAME).remove([filePath]);
-        if (deleteError) {
-             // It's okay if the file doesn't exist, maybe it was already deleted.
-             // We'll log other errors but continue, so the DB record is still removed.
-            if(deleteError.message !== 'The resource was not found') {
-                console.warn(`Supabase deletion warning: ${deleteError.message}`);
+        const file = bucket.file(filePath);
+
+        // Delete from Firebase Storage
+        await file.delete().catch(error => {
+            // It's okay if the file doesn't exist, maybe it was already deleted.
+            // We'll log other errors but continue, so the DB record is still removed.
+            if (error.code !== 404) {
+                console.warn(`Firebase Storage deletion warning: ${error.message}`);
             }
-        }
-        
+        });
+
         // Remove from Firestore
         const profileRef = adminDb.collection('userProfiles').doc(userId);
         await adminDb.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(profileRef);
             if (!freshDoc.exists) return; // Profile doesn't exist, nothing to do.
-            
+
             const freshData = freshDoc.data() as UserProfile;
-            const updates: Partial<UserProfile> = {
-                galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl) as any,
+            const updates: { [key: string]: any } = {
+                galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
             };
 
             if (freshData.coverPhotoUrl === photoUrl) {
                 updates.coverPhotoUrl = '';
             }
             if (freshData.photoURL === photoUrl) {
-                const userRecord = await admin.auth().getUser(userId);
-                updates.photoURL = userRecord.photoURL || '';
+                // If the user's main profile pic was deleted, revert to their Google photo or blank
+                try {
+                    const userRecord = await admin.auth().getUser(userId);
+                    updates.photoURL = userRecord.photoURL || '';
+                } catch (authError) {
+                    console.warn(`Could not find auth user ${userId} when deleting photo. Setting photoURL to empty.`)
+                    updates.photoURL = '';
+                }
             }
             transaction.update(profileRef, updates);
         });
@@ -483,6 +491,7 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl:string) 
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
 
 export async function setProfilePhotoAction(userId: string, photoUrl: string) {
     try {

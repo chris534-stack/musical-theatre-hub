@@ -19,9 +19,9 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'olvoujojwxlksdtslvc.supabase.co',
+        hostname: 'storage.googleapis.com',
         port: '',
-        pathname: '/storage/v1/object/public/**',
+        pathname: '/**',
       },
     ],
   },
