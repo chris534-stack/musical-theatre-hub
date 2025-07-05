@@ -34,6 +34,7 @@ interface EventFormData {
   url?: string;
   venueId: string;
   type: string;
+  tags?: string[];
   occurrences: EventOccurrence[];
 }
 
@@ -48,6 +49,7 @@ export async function addEventFromFormAction(data: EventFormData) {
     const newEvent: Omit<Event, 'id'> = {
       ...data,
       description: data.description || '',
+      tags: data.tags || [],
       status: 'approved',
     };
 
@@ -76,6 +78,7 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
     // Ensure description and URL are at least an empty string if they're not provided
     cleanData.description = cleanData.description || '';
     cleanData.url = cleanData.url || '';
+    cleanData.tags = cleanData.tags || [];
 
 
     const eventRef = adminDb.collection('events').doc(eventId);
@@ -165,15 +168,18 @@ interface ArticleFormData {
 
 export async function saveNewsArticleAction(data: ArticleFormData) {
     try {
-        const newsCollection = adminDb.collection('news');
-        const snapshot = await newsCollection.count().get();
-        const articleCount = snapshot.data().count;
-
         const newArticleData = {
             ...data,
             createdAt: new Date().toISOString(),
-            order: articleCount,
+            order: 0, // Default order, will be updated if needed
         };
+
+        const newsCollection = adminDb.collection('news');
+        const snapshot = await newsCollection.orderBy('order', 'desc').limit(1).get();
+        if (!snapshot.empty) {
+            const lastArticle = snapshot.docs[0].data();
+            newArticleData.order = (lastArticle.order || 0) + 1;
+        }
 
         await addNewsArticle(newArticleData as Omit<NewsArticle, 'id'>);
         revalidatePath('/news');
@@ -352,6 +358,14 @@ export async function uploadProfilePhotoAction(formData: FormData) {
     if (!file || !userId) {
         return { success: false, message: 'Missing file or user ID.' };
     }
+    
+    // This is the critical change: check for the server-side variable first.
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    if (!storageBucket) {
+        console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
+        // This is a user-friendly error that prevents a server crash.
+        return { success: false, message: 'Server configuration error: Storage destination not found.' };
+    }
 
     const profileRef = adminDb.collection('userProfiles').doc(userId);
 
@@ -363,12 +377,6 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
                 return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
             }
-        }
-        
-        const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!storageBucket) {
-             console.error('Server configuration error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set.');
-            return { success: false, message: 'Server configuration error: Storage destination not found.' };
         }
 
         const bucket = admin.storage().bucket(storageBucket);
@@ -393,53 +401,9 @@ export async function uploadProfilePhotoAction(formData: FormData) {
 
         revalidatePath(`/profile/${userId}`);
 
-        return { success: true, url: publicUrl };
+        return { success: true };
     } catch (error) {
         console.error('Failed to upload photo:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        return { success: false, message: `Upload failed: ${errorMessage}` };
-    }
-}
-
-export async function uploadCoverPhotoAction(formData: FormData) {
-    const file = formData.get('photo') as File;
-    const userId = formData.get('userId') as string;
-
-    if (!file || !userId) {
-        return { success: false, message: 'Missing file or user ID.' };
-    }
-
-    try {
-        const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!storageBucket) {
-            throw new Error("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable not set.");
-        }
-
-        const bucket = admin.storage().bucket(storageBucket);
-        const buffer = Buffer.from(await file.arrayBuffer());
-        
-        const fileName = `covers/${userId}/cover-${Date.now()}.${file.name.split('.').pop()}`;
-        const fileUpload = bucket.file(fileName);
-
-        await fileUpload.save(buffer, {
-            metadata: {
-                contentType: file.type,
-            },
-        });
-
-        await fileUpload.makePublic();
-        const publicUrl = fileUpload.publicUrl();
-
-        const profileRef = adminDb.collection('userProfiles').doc(userId);
-        await profileRef.update({
-            coverPhotoUrl: publicUrl,
-        });
-
-        revalidatePath(`/profile/${userId}`);
-
-        return { success: true, url: publicUrl };
-    } catch (error) {
-        console.error('Failed to upload cover photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `Upload failed: ${errorMessage}` };
     }
@@ -456,6 +420,103 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
         return { success: true, message: 'Gallery order updated successfully.' };
     } catch (error) {
         console.error('Failed to update gallery order:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    if (!storageBucket) {
+        console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
+        return { success: false, message: 'Server configuration error: Storage destination not found.' };
+    }
+
+    try {
+        const bucket = admin.storage().bucket(storageBucket);
+        
+        // Extract the file path from the Google Cloud Storage public URL
+        const url = new URL(photoUrl);
+        const pathParts = url.pathname.split('/');
+        const filePath = pathParts.slice(2).join('/'); // Skips the initial empty string and the bucket name
+        
+        if (!filePath || !filePath.startsWith(`${userId}/`)) {
+            // Security check to ensure we're not deleting files outside the user's folder
+            throw new Error("Invalid file path for deletion.");
+        }
+
+        const file = bucket.file(filePath);
+
+        // Delete from Firebase Storage
+        await file.delete().catch(error => {
+            // It's okay if the file doesn't exist, maybe it was already deleted.
+            // We'll log other errors but continue, so the DB record is still removed.
+            if (error.code !== 404) {
+                console.warn(`Firebase Storage deletion warning: ${error.message}`);
+            }
+        });
+
+        // Remove from Firestore
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await adminDb.runTransaction(async (transaction) => {
+            const freshDoc = await transaction.get(profileRef);
+            if (!freshDoc.exists) return; // Profile doesn't exist, nothing to do.
+
+            const freshData = freshDoc.data() as UserProfile;
+            const updates: { [key: string]: any } = {
+                galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
+            };
+
+            if (freshData.coverPhotoUrl === photoUrl) {
+                updates.coverPhotoUrl = '';
+            }
+            if (freshData.photoURL === photoUrl) {
+                // If the user's main profile pic was deleted, revert to their Google photo or blank
+                try {
+                    const userRecord = await admin.auth().getUser(userId);
+                    updates.photoURL = userRecord.photoURL || '';
+                } catch (authError) {
+                    console.warn(`Could not find auth user ${userId} when deleting photo. Setting photoURL to empty.`)
+                    updates.photoURL = '';
+                }
+            }
+            transaction.update(profileRef, updates);
+        });
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Photo deleted successfully.' };
+
+    } catch (error) {
+        console.error('Failed to delete photo:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+
+export async function setProfilePhotoAction(userId: string, photoUrl: string) {
+    try {
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.set({ photoURL: photoUrl }, { merge: true });
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Profile photo updated successfully.' };
+    } catch (error) {
+        console.error('Failed to set profile photo:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function setCoverPhotoAction(userId: string, photoUrl: string) {
+    try {
+        const profileRef = adminDb.collection('userProfiles').doc(userId);
+        await profileRef.set({ coverPhotoUrl: photoUrl }, { merge: true });
+
+        revalidatePath(`/profile/${userId}`);
+        return { success: true, message: 'Cover photo updated successfully.' };
+    } catch (error) {
+        console.error('Failed to set cover photo:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
