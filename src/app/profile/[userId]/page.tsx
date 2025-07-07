@@ -12,9 +12,10 @@ export default async function ProfilePage({ params }: { params: { userId: string
 
   const profile = await getOrCreateUserProfile(userId);
   
+  // This is the critical fix. First, we confirm the profile exists.
+  // If not, notFound() is called, which throws an error that Next.js catches
+  // to render the 404 page. Nothing after this line will execute in that case.
   if (!profile) {
-    // This is the critical fix. When notFound() is called, it throws an error
-    // that Next.js catches to render the 404 page. Nothing after this line will execute.
     notFound();
   }
 
