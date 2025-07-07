@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 interface GalleryViewerProps {
     isOpen: boolean;
     onClose: () => void;
+    onUpdate: () => Promise<void>;
     images: string[];
     startIndex?: number;
     userName?: string;
@@ -21,7 +22,7 @@ interface GalleryViewerProps {
     isOwner: boolean;
 }
 
-export function GalleryViewer({ isOpen, onClose, images, startIndex = 0, userName, userId, isOwner }: GalleryViewerProps) {
+export function GalleryViewer({ isOpen, onClose, onUpdate, images, startIndex = 0, userName, userId, isOwner }: GalleryViewerProps) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const [api, setApi] = useState<CarouselApi>();
@@ -61,6 +62,7 @@ export function GalleryViewer({ isOpen, onClose, images, startIndex = 0, userNam
 
             if (result.success) {
                 toast({ title: 'Success!', description: result.message });
+                await onUpdate();
                 onClose();
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: result.message });

@@ -1,53 +1,46 @@
 
-import { notFound } from 'next/navigation';
-import { getOrCreateUserProfile, getReviewsByUserId } from '@/lib/data';
+import { getOrCreateUserProfile } from '@/lib/data';
 import ProfileClientPage from '@/components/profile/ProfileClientPage';
-import { Suspense } from 'react';
 import ProfileLoading from './loading';
-import type { Review, UserProfile } from '@/lib/types';
+import { Suspense } from 'react';
+import type { UserProfile } from '@/lib/types';
 
-// This new async component handles all data fetching and validation.
-// If the profile is not found, it calls `notFound()` and this component's
-// render process is completely halted by Next.js.
-async function ProfileData({ userId }: { userId: string }) {
-  // Step 1: Fetch the profile first.
-  const profile = await getOrCreateUserProfile(userId);
+// This server component is now much simpler and safer.
+// Its only job is to fetch the initial profile data.
+// If it fails for any reason, it passes `null` to the client, preventing a server crash.
+async function getInitialProfile(userId: string): Promise<UserProfile | null> {
+    try {
+        const profile = await getOrCreateUserProfile(userId);
+        if (!profile) return null;
 
-  // Step 2: Immediately validate. If null, `notFound` will be thrown
-  // and caught by Next.js, preventing any further code in this function
-  // from executing.
-  if (!profile) {
-    notFound();
-  }
+        // Ensure the profile data is clean and serializable
+        const serializableProfile: UserProfile = {
+            userId: profile.userId,
+            displayName: profile.displayName || 'New User',
+            photoURL: profile.photoURL || '',
+            email: profile.email || '',
+            bio: profile.bio || '',
+            roleInCommunity: profile.roleInCommunity || 'Audience',
+            communityStartDate: profile.communityStartDate || '',
+            galleryImageUrls: profile.galleryImageUrls || [],
+            coverPhotoUrl: profile.coverPhotoUrl || '',
+            showEmail: profile.showEmail || false,
+            authStatus: profile.authStatus || 'active',
+        };
+        return serializableProfile;
 
-  // Step 3: Only after a valid profile is confirmed, fetch reviews.
-  const reviews = await getReviewsByUserId(userId);
-
-  // This code is now guaranteed to be safe because `profile` is not null.
-  const serializableProfile: UserProfile = {
-      userId: profile.userId,
-      displayName: profile.displayName || 'New User',
-      photoURL: profile.photoURL || '',
-      email: profile.email || '',
-      bio: profile.bio || '',
-      roleInCommunity: profile.roleInCommunity || 'Audience',
-      communityStartDate: profile.communityStartDate || '',
-      galleryImageUrls: profile.galleryImageUrls || [],
-      coverPhotoUrl: profile.coverPhotoUrl || '',
-      showEmail: profile.showEmail || false,
-      authStatus: profile.authStatus || 'active',
-  };
-
-  // Only if all data is valid do we render the client component.
-  return <ProfileClientPage initialProfile={serializableProfile} initialReviews={reviews} />;
+    } catch (error) {
+        console.error(`Failed to fetch initial profile for ${userId}:`, error);
+        return null; // Return null on any error to prevent crashing the page
+    }
 }
 
-
-// The main page component now just sets up the Suspense boundary.
 export default async function ProfilePage({ params }: { params: { userId: string } }) {
+  const initialProfile = await getInitialProfile(params.userId);
+
   return (
     <Suspense fallback={<ProfileLoading />}>
-      <ProfileData userId={params.userId} />
+      <ProfileClientPage initialProfile={initialProfile} userId={params.userId} />
     </Suspense>
   );
 }

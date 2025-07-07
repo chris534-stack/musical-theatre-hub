@@ -3,7 +3,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists, addNewsArticle } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
@@ -67,15 +67,12 @@ export async function addEventFromFormAction(data: EventFormData) {
 
 export async function updateEventAction(eventId: string, data: EventFormData) {
   try {
-    // Sanitize data: Firestore throws an error if any field value is `undefined`.
-    // We create a new object and only add fields that have a defined value.
     const cleanData: { [key: string]: any } = {};
     for (const key in data) {
       if (data[key as keyof EventFormData] !== undefined) {
         cleanData[key] = data[key as keyof EventFormData];
       }
     }
-    // Ensure description and URL are at least an empty string if they're not provided
     cleanData.description = cleanData.description || '';
     cleanData.url = cleanData.url || '';
     cleanData.tags = cleanData.tags || [];
@@ -171,7 +168,7 @@ export async function saveNewsArticleAction(data: ArticleFormData) {
         const newArticleData = {
             ...data,
             createdAt: new Date().toISOString(),
-            order: 0, // Default order, will be updated if needed
+            order: 0, 
         };
 
         const newsCollection = adminDb.collection('news');
@@ -276,8 +273,6 @@ export async function voteOnReviewAction(reviewId: string, voteType: 'like' | 'd
             const reviewData = reviewDoc.data() as Review;
             
             if (reviewData.votedBy?.includes(userId)) {
-                // User has already voted, we don't return an error message to the UI
-                // to avoid letting them know they can't vote again. Just do nothing.
                 return;
             }
 
@@ -326,21 +321,41 @@ export async function requestToBeReviewerAction(data: {
     }
 }
 
+
 // --- User Profile Actions ---
+
+export async function getFullProfileAction(userId: string): Promise<{ success: boolean; data?: UserProfile, message?: string;}> {
+    try {
+        const profile = await getOrCreateUserProfile(userId);
+        if (!profile) {
+            return { success: false, message: 'Profile not found.' };
+        }
+        return { success: true, data: profile };
+    } catch (error) {
+        console.error(`Failed to fetch profile for user ${userId}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}
+
+export async function getReviewsForUserAction(userId: string): Promise<{ success: boolean; data?: Review[], message?: string;}> {
+    try {
+        const reviews = await getReviewsByUserId(userId);
+        return { success: true, data: reviews };
+    } catch (error) {
+        console.error(`Failed to fetch reviews for user ${userId}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}
 
 export async function updateUserProfileAction(userId: string, data: Partial<UserProfile>) {
     try {
-        // Sanitize data to prevent `undefined` values being sent to Firestore
         const cleanData = Object.fromEntries(
             Object.entries(data).filter(([, v]) => v !== undefined)
         );
         
         await adminDb.collection('userProfiles').doc(userId).update(cleanData);
-
-        // Revalidate paths where this profile might be displayed
-        revalidatePath(`/profile/${userId}`);
-        revalidatePath('/reviews');
-        revalidatePath('/calendar');
         
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
@@ -359,11 +374,9 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         return { success: false, message: 'Missing file or user ID.' };
     }
     
-    // This is the critical change: check for the server-side variable first.
     const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
     if (!storageBucket) {
         console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
-        // This is a user-friendly error that prevents a server crash.
         return { success: false, message: 'Server configuration error: Storage destination not found.' };
     }
 
@@ -390,16 +403,12 @@ export async function uploadProfilePhotoAction(formData: FormData) {
             },
         });
 
-        // Make the file public to get a URL
         await fileUpload.makePublic();
         const publicUrl = fileUpload.publicUrl();
 
-        // Update user profile in Firestore
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
         });
-
-        revalidatePath(`/profile/${userId}`);
 
         return { success: true };
     } catch (error) {
@@ -435,32 +444,26 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
     try {
         const bucket = admin.storage().bucket(storageBucket);
         
-        // Extract the file path from the Google Cloud Storage public URL
         const url = new URL(photoUrl);
         const pathParts = url.pathname.split('/');
-        const filePath = pathParts.slice(2).join('/'); // Skips the initial empty string and the bucket name
+        const filePath = pathParts.slice(2).join('/'); 
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {
-            // Security check to ensure we're not deleting files outside the user's folder
             throw new Error("Invalid file path for deletion.");
         }
 
         const file = bucket.file(filePath);
 
-        // Delete from Firebase Storage
         await file.delete().catch(error => {
-            // It's okay if the file doesn't exist, maybe it was already deleted.
-            // We'll log other errors but continue, so the DB record is still removed.
             if (error.code !== 404) {
                 console.warn(`Firebase Storage deletion warning: ${error.message}`);
             }
         });
 
-        // Remove from Firestore
         const profileRef = adminDb.collection('userProfiles').doc(userId);
         await adminDb.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(profileRef);
-            if (!freshDoc.exists) return; // Profile doesn't exist, nothing to do.
+            if (!freshDoc.exists) return; 
 
             const freshData = freshDoc.data() as UserProfile;
             const updates: { [key: string]: any } = {
@@ -471,7 +474,6 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
                 updates.coverPhotoUrl = '';
             }
             if (freshData.photoURL === photoUrl) {
-                // If the user's main profile pic was deleted, revert to their Google photo or blank
                 try {
                     const userRecord = await admin.auth().getUser(userId);
                     updates.photoURL = userRecord.photoURL || '';
@@ -483,7 +485,6 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
             transaction.update(profileRef, updates);
         });
 
-        revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Photo deleted successfully.' };
 
     } catch (error) {
@@ -499,7 +500,6 @@ export async function setProfilePhotoAction(userId: string, photoUrl: string) {
         const profileRef = adminDb.collection('userProfiles').doc(userId);
         await profileRef.set({ photoURL: photoUrl }, { merge: true });
 
-        revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Profile photo updated successfully.' };
     } catch (error) {
         console.error('Failed to set profile photo:', error);
@@ -513,7 +513,6 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         const profileRef = adminDb.collection('userProfiles').doc(userId);
         await profileRef.set({ coverPhotoUrl: photoUrl }, { merge: true });
 
-        revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Cover photo updated successfully.' };
     } catch (error) {
         console.error('Failed to set cover photo:', error);

@@ -54,7 +54,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
                     description: 'Your photo has been added to the gallery.',
                 });
                 onUploadComplete();
-                form.reset(); // Reset form after successful upload
+                form.reset(); 
             } else {
                 toast({
                     variant: 'destructive',
