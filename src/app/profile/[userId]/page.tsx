@@ -47,7 +47,7 @@ export default async function ProfilePage({ params }: { params: { userId: string
 
     // Manually construct a plain, serializable profile object to pass to the client.
     // This is a safeguard to ensure no complex objects like Dates are passed.
-    const serializableProfile: UserProfile = {
+    let serializableProfile: UserProfile = {
         userId: profile.userId,
         displayName: profile.displayName || 'New User',
         photoURL: profile.photoURL || '',
@@ -61,9 +61,73 @@ export default async function ProfilePage({ params }: { params: { userId: string
         authStatus: profile.authStatus || 'active',
     };
 
+    // --- START MOCK DATA DIAGNOSTIC ---
+    const MOCK_USER_ID = "mock-user-id-123";
+    const mockSerializableProfile: UserProfile = {
+      userId: MOCK_USER_ID,
+      displayName: 'Mock User',
+      photoURL: 'https://placehold.co/200x200.png?text=MockPF',
+      email: 'mock@example.com',
+      bio: 'This is a mock bio for testing purposes.',
+      roleInCommunity: 'Audience',
+      communityStartDate: '2023',
+      galleryImageUrls: [
+        'https://placehold.co/400x400.png?text=Gallery1',
+        'https://placehold.co/400x400.png?text=Gallery2',
+      ],
+      coverPhotoUrl: 'https://placehold.co/1600x400.png?text=MockCover',
+      showEmail: true,
+      authStatus: 'active',
+    };
+
+    const mockSerializableReviews: Review[] = [
+      {
+        id: 'mock-review-1',
+        showId: 'mock-show-1',
+        showTitle: 'Mock Show Title 1',
+        performanceDate: new Date().toISOString(),
+        reviewerId: MOCK_USER_ID,
+        reviewerName: 'Mock User',
+        createdAt: new Date().toISOString(),
+        overallExperience: 'Exceptional & Memorable',
+        specialMomentsText: 'Mock special moments.',
+        recommendations: ['Mock Rec 1'],
+        showHeartText: 'Mock show heart.',
+        communityImpactText: 'Mock community impact.',
+        ticketInfo: 'Mock ticket info.',
+        valueConsiderationText: 'Mock value consideration.',
+        timeWellSpentText: 'Mock time well spent.',
+        likes: 10,
+        dislikes: 0,
+        votedBy: [],
+        disclosureText: '',
+      },
+    ];
+
+    // UNCOMMENT THE LINES BELOW TO USE MOCK DATA
+    // serializableProfile = mockSerializableProfile;
+    // let reviewsToUse = mockSerializableReviews;
+    // console.log("USING MOCK DATA FOR PROFILE PAGE DIAGNOSTIC");
+
+
+    // To use actual reviews but mock profile, uncomment below:
+    // serializableProfile = mockSerializableProfile;
+    // let reviewsToUse = serializableReviews;
+    // console.log("USING MOCK PROFILE DATA, REAL REVIEWS FOR PROFILE PAGE DIAGNOSTIC");
+
+    // To use actual profile but mock reviews, uncomment below:
+    // let reviewsToUse = mockSerializableReviews;
+    // console.log("USING REAL PROFILE DATA, MOCK REVIEWS FOR PROFILE PAGE DIAGNOSTIC");
+
+    // To use actual data for both (normal operation):
+    let reviewsToUse = serializableReviews;
+    // --- END MOCK DATA DIAGNOSTIC ---
+
+
     return (
       <Suspense fallback={<ProfileLoading />}>
-        <ProfileClientPage initialProfile={serializableProfile} initialReviews={serializableReviews} />
+        {/* Ensure you use reviewsToUse if you are testing with mock reviews */}
+        <ProfileClientPage initialProfile={serializableProfile} initialReviews={reviewsToUse} />
       </Suspense>
     );
   } catch (error) {
