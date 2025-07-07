@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -62,12 +61,12 @@ function AdminAuthStatusAlert({ profile, isAdmin }: { profile: UserProfile, isAd
     );
 };
 
-export default function ProfileClientPage({ initialProfile, userId }: { initialProfile: UserProfile | null, userId: string }) {
+export default function ProfileClientPage({ userId }: { userId: string }) {
     const { user, isAdmin } = useAuth();
     const { toast } = useToast();
 
     // --- State Management ---
-    const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -95,7 +94,6 @@ export default function ProfileClientPage({ initialProfile, userId }: { initialP
     const isOwner = user?.uid === userId;
 
     const fetchData = useCallback(async () => {
-        setIsLoading(true);
         setError(null);
         try {
             const profileResult = await getFullProfileAction(userId);
@@ -115,19 +113,15 @@ export default function ProfileClientPage({ initialProfile, userId }: { initialP
             }
         } catch (e) {
             setError('An unexpected error occurred while fetching data.');
+            setProfile(null);
         } finally {
             setIsLoading(false);
         }
     }, [userId, toast]);
 
     useEffect(() => {
-        if (!initialProfile) {
-             setError('Could not find user profile.');
-             setIsLoading(false);
-        } else {
-            fetchData();
-        }
-    }, [initialProfile, fetchData]);
+        fetchData();
+    }, [fetchData]);
 
     useEffect(() => {
         function calculateYearsInCommunity(startDate?: string): string | null {
@@ -236,7 +230,7 @@ export default function ProfileClientPage({ initialProfile, userId }: { initialP
     };
 
     if (isLoading) {
-        return <Skeleton className="h-screen w-full" />;
+        return <ProfileLoading />;
     }
 
     if (error || !profile) {
@@ -327,7 +321,7 @@ export default function ProfileClientPage({ initialProfile, userId }: { initialP
                 </div>
             </div>
             
-            <GalleryViewer isOpen={isGalleryViewerOpen} onClose={() => setIsGalleryViewerOpen(false)} images={profile.galleryImageUrls || []} startIndex={selectedImageIndex} userName={profile.displayName} userId={profile.userId} isOwner={isOwner}/>
+            <GalleryViewer isOpen={isGalleryViewerOpen} onClose={() => setIsGalleryViewerOpen(false)} images={profile.galleryImageUrls || []} startIndex={selectedImageIndex} userName={profile.displayName} userId={profile.userId} isOwner={isOwner} onUpdate={fetchData} />
             
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the photo from the gallery and from storage.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm} disabled={isDeletePending}>{isDeletePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Delete'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
