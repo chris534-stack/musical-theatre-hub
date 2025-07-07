@@ -5,37 +5,34 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 // This is a safeguard to prevent re-initialization, which can happen in development
 // environments with hot-reloading.
 if (!getApps().length) {
-    // This is the critical fix: It now checks for the server-side environment variable
-    // first, and falls back to the public one. This makes the configuration robust.
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
     const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
-    // We prepare the config object but only add properties if they exist.
-    const config: admin.AppOptions = {};
-    if (storageBucket) {
-        config.storageBucket = storageBucket;
-    }
-
     if (privateKey) {
-        // If a private key is provided, assume manual credential setup (e.g., local development)
+        // Manual setup for environments with explicit service account keys (like local dev)
         const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
         const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
-        if (!projectId || !clientEmail) {
-            throw new Error("Missing credentials for manual setup. When FIREBASE_ADMIN_PRIVATE_KEY is set, you must also provide FIREBASE_ADMIN_PROJECT_ID and FIREBASE_ADMIN_CLIENT_EMAIL.");
+        if (!projectId || !clientEmail || !storageBucket) {
+            throw new Error(
+                "When FIREBASE_ADMIN_PRIVATE_KEY is set, you must also provide " +
+                "FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and a storage bucket."
+            );
         }
 
-        config.credential = cert({
-            projectId: projectId,
-            clientEmail: clientEmail,
-            privateKey: privateKey.replace(/\\n/g, '\n'),
+        initializeApp({
+            credential: cert({
+                projectId,
+                clientEmail,
+                privateKey: privateKey.replace(/\\n/g, '\n'),
+            }),
+            storageBucket: storageBucket,
         });
+    } else {
+        // Automatic setup for managed environments (like App Hosting).
+        // It uses Application Default Credentials and infers project details.
+        initializeApp();
     }
-    
-    // Initialize with the constructed config.
-    // If no privateKey is provided, it will use Application Default Credentials.
-    // If no storageBucket is provided, storage features will require explicit bucket definition.
-    initializeApp(config);
 }
 
 // Export the initialized admin instance of Firestore.
