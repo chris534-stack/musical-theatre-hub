@@ -5,33 +5,29 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 // This is a safeguard to prevent re-initialization, which can happen in development
 // environments with hot-reloading.
 if (!getApps().length) {
-    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
-    if (privateKey) {
-        // Manual setup for environments with explicit service account keys (like local dev)
-        const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-        const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
-        if (!projectId || !clientEmail || !storageBucket) {
-            throw new Error(
-                "When FIREBASE_ADMIN_PRIVATE_KEY is set, you must also provide " +
-                "FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and a storage bucket."
-            );
-        }
-
+    if (privateKey && clientEmail && projectId) {
+        // Manual setup for local development when all credentials are provided in .env
         initializeApp({
             credential: cert({
                 projectId,
                 clientEmail,
-                privateKey: privateKey.replace(/\\n/g, '\n'),
+                privateKey,
             }),
-            storageBucket: storageBucket,
+            storageBucket,
         });
     } else {
         // Automatic setup for managed environments (like App Hosting).
-        // It uses Application Default Credentials and infers project details.
-        initializeApp();
+        // It uses Application Default Credentials but we explicitly provide project
+        // details to avoid inference issues, which is a more robust approach.
+        initializeApp({
+            projectId,
+            storageBucket,
+        });
     }
 }
 
