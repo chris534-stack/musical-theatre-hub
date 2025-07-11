@@ -58,7 +58,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
           throw new Error(signedUrlResult.message || 'Could not get an upload URL.');
         }
 
-        const { uploadUrl, publicUrl, filePath } = signedUrlResult.data;
+        const { uploadUrl, filePath } = signedUrlResult.data;
 
         // 2. Upload file directly to Firebase Storage
         const uploadResponse = await fetch(uploadUrl, {
@@ -72,7 +72,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
         }
 
         // 3. Save the public URL to the user's profile
-        const saveResult = await savePhotoUrlAction(userId, publicUrl, filePath);
+        const saveResult = await savePhotoUrlAction(userId, filePath);
         if (!saveResult.success) {
           throw new Error(saveResult.message || 'Failed to save photo to profile.');
         }
@@ -135,4 +135,3 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
     </div>
   );
 }
-

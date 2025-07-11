@@ -380,8 +380,8 @@ export async function generateUploadUrlAction(userId: string, fileName: string, 
         };
         
         const [uploadUrl] = await file.getSignedUrl(options);
-        const publicUrl = file.publicUrl();
-        return { success: true, data: { uploadUrl, publicUrl, filePath } };
+        
+        return { success: true, data: { uploadUrl, filePath } };
     } catch (error) {
         console.error('Failed to generate signed URL:', error);
         if (error instanceof Error && error.message.includes('Could not determine Storage bucket name.')) {
@@ -391,7 +391,7 @@ export async function generateUploadUrlAction(userId: string, fileName: string, 
     }
 }
 
-export async function savePhotoUrlAction(userId: string, publicUrl: string, filePath: string) {
+export async function savePhotoUrlAction(userId: string, filePath: string) {
     const GALLERY_PHOTO_LIMIT = 50;
     const profileRef = adminDb.collection('userProfiles').doc(userId);
 
@@ -404,11 +404,16 @@ export async function savePhotoUrlAction(userId: string, publicUrl: string, file
             }
         }
 
-        // Make the file public before saving the URL
         const bucket = admin.storage().bucket();
         const file = bucket.file(filePath);
+        
+        // Step 1: Make the file public
         await file.makePublic();
+        
+        // Step 2: Get the public URL. This is now the correct, permanent URL.
+        const publicUrl = file.publicUrl();
 
+        // Step 3: Save the correct public URL to the user's profile
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
         });
@@ -525,5 +530,3 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
-
-    
