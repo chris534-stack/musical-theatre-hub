@@ -28,7 +28,7 @@ const formSchema = z.object({
 });
 
 export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, limit, currentCount }: PhotoUploaderProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photosRemaining = limit - currentCount;
@@ -50,50 +50,50 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
       return;
     }
 
-    startTransition(async () => {
-      try {
-        // 1. Get signed URL from server
-        const signedUrlResult = await generateUploadUrlAction(userId, file.name, file.type);
-        if (!signedUrlResult.success || !signedUrlResult.data) {
-          throw new Error(signedUrlResult.message || 'Could not get an upload URL.');
-        }
-
-        const { uploadUrl, filePath } = signedUrlResult.data;
-
-        // 2. Upload file directly to Firebase Storage
-        const uploadResponse = await fetch(uploadUrl, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error('Upload failed.');
-        }
-
-        // 3. Save the public URL to the user's profile
-        const saveResult = await savePhotoUrlAction(userId, filePath);
-        if (!saveResult.success) {
-          throw new Error(saveResult.message || 'Failed to save photo to profile.');
-        }
-
-        toast({
-          title: 'Upload successful!',
-          description: 'Your photo has been added to the gallery.',
-        });
-        onUploadComplete();
-        
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        toast({
-          variant: 'destructive',
-          title: 'Upload failed',
-          description: errorMessage,
-        });
-      } finally {
-        if (fileInputRef.current) fileInputRef.current.value = "";
+    setIsLoading(true);
+    try {
+      // 1. Get signed URL from server
+      const signedUrlResult = await generateUploadUrlAction(userId, file.name, file.type);
+      if (!signedUrlResult.success || !signedUrlResult.data) {
+        throw new Error(signedUrlResult.message || 'Could not get an upload URL.');
       }
-    });
+
+      const { uploadUrl, filePath } = signedUrlResult.data;
+
+      // 2. Upload file directly to Firebase Storage
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed.');
+      }
+
+      // 3. Save the public URL to the user's profile
+      const saveResult = await savePhotoUrlAction(userId, filePath);
+      if (!saveResult.success) {
+        throw new Error(saveResult.message || 'Failed to save photo to profile.');
+      }
+
+      toast({
+        title: 'Upload successful!',
+        description: 'Your photo has been added to the gallery.',
+      });
+      onUploadComplete();
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: errorMessage,
+      });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -103,7 +103,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
         isGridItem && "aspect-square p-2 sm:p-4 h-full"
       )}
     >
-        {isPending ? (
+        {isLoading ? (
             <div className="flex flex-col items-center">
                 <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mb-2" />
                 <p className="font-medium text-xs sm:text-sm">Uploading...</p>
@@ -116,7 +116,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
                     className="sr-only"
                     ref={fileInputRef}
                     onChange={handleFileChange}
-                    disabled={isPending}
+                    disabled={isLoading}
                 />
                  <UploadCloud className="h-6 w-6 sm:h-8 sm:w-8 mb-1" />
                  <p className="font-medium text-foreground text-xs sm:text-sm">Add to Gallery</p>
@@ -126,7 +126,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
                     size="sm"
                     className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isPending}
+                    disabled={isLoading}
                  >
                     Upload Photo
                  </Button>
