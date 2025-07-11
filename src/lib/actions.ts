@@ -372,14 +372,11 @@ export async function generateUploadUrlAction(userId: string, fileName: string, 
         const filePath = `${userId}/${Date.now()}-${fileName}`;
         const file = bucket.file(filePath);
         
-        const origin = headers().get('origin');
-
         const options = {
             version: 'v4' as const,
             action: 'write' as const,
             expires: Date.now() + 15 * 60 * 1000, // 15 minutes
             contentType: fileType,
-            extensionHeaders: origin ? { 'x-goog-resumable': 'start' } : {},
         };
         
         const [uploadUrl] = await file.getSignedUrl(options);
@@ -523,3 +520,5 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
+    
