@@ -444,12 +444,14 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
     try {
         const bucket = admin.storage().bucket(storageBucket);
         
-        const url = new URL(photoUrl);
-        const pathParts = url.pathname.split('/');
-        const filePath = pathParts.slice(pathParts.indexOf(storageBucket.replace('.appspot.com', '')) + 1).join('/'); 
+        // This is the fix: Correctly decode the URL and extract the object path.
+        const decodedUrl = decodeURIComponent(photoUrl);
+        const url = new URL(decodedUrl);
+        // The path starts after '/o/', and we need to remove the bucket name prefix if it exists.
+        const filePath = url.pathname.split('/o/')[1].replace(`${storageBucket}/`, '');
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {
-            throw new Error("Invalid file path for deletion.");
+            throw new Error(`Invalid file path for deletion: ${filePath}`);
         }
 
         const file = bucket.file(filePath);
