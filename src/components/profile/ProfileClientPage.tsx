@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect, useTransition, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -22,6 +22,9 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import ProfileLoading from '@/app/profile/[userId]/loading';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -65,6 +68,7 @@ function AdminAuthStatusAlert({ profile, isAdmin }: { profile: UserProfile, isAd
 export default function ProfileClientPage({ userId }: { userId: string }) {
     const { user, isAdmin } = useAuth();
     const { toast } = useToast();
+    const router = useRouter();
 
     // --- State Management ---
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -251,6 +255,20 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
         });
     };
 
+    const handleLogout = async () => {
+        try {
+          await signOut(auth);
+          router.push('/');
+        } catch (error) {
+          console.error("Error signing out: ", error);
+          toast({
+            variant: "destructive",
+            title: "Logout Failed",
+            description: "There was an error signing you out. Please try again.",
+          });
+        }
+    };
+
     if (isLoading) {
         return <ProfileLoading />;
     }
@@ -302,7 +320,8 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             </div>
                             <div className="flex gap-2">
                                 {isOwner && (<Button onClick={() => setIsSheetOpen(true)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>)}
-                                {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin Dashboard</Link></Button>)}
+                                {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link></Button>)}
+                                {isOwner && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
                             </div>
                         </div>
                     </div>
