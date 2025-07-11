@@ -11,7 +11,7 @@ import Image from 'next/image';
 
 const GoogleIcon = (props: { className?: string }) => (
     <Image 
-      src="/google-logo.png" 
+      src="/assets/google-logo.png" 
       alt="Google logo" 
       width={24} 
       height={24}

@@ -89,7 +89,6 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
 
     // --- Transitions for Pending UI ---
     const [isReorderPending, startReorderTransition] = useTransition();
-    const [isUploadPending, startUploadTransition] = useTransition();
     const [isDeletePending, startDeleteTransition] = useTransition();
 
     const isOwner = user?.uid === userId;
@@ -157,17 +156,19 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const handleHeaderUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        
+        const uploaderInput = event.target;
 
-        startUploadTransition(async () => {
+        startDeleteTransition(async () => {
              try {
                 const signedUrlResult = await generateUploadUrlAction(userId, file.name, file.type);
                 if (!signedUrlResult.success || !signedUrlResult.data) throw new Error(signedUrlResult.message);
 
-                const { uploadUrl, publicUrl } = signedUrlResult.data;
+                const { uploadUrl } = signedUrlResult.data;
                 const uploadResponse = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type }});
                 if (!uploadResponse.ok) throw new Error('Upload failed.');
 
-                const saveResult = await savePhotoUrlAction(userId, publicUrl);
+                const saveResult = await savePhotoUrlAction(userId, signedUrlResult.data.filePath);
                 if (!saveResult.success) throw new Error(saveResult.message);
                 
                 toast({ title: 'Upload successful!', description: 'Your photo has been added to the gallery.'});
@@ -177,7 +178,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                 const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
                 toast({ variant: 'destructive', title: 'Upload failed', description: errorMessage });
             } finally {
-                 if(headerFileInputRef.current) headerFileInputRef.current.value = "";
+                 if(uploaderInput) uploaderInput.value = "";
             }
         });
     };
@@ -279,7 +280,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
 
     return (
         <>
-            <input type="file" accept="image/*" className="sr-only" ref={headerFileInputRef} onChange={handleHeaderUpload} disabled={isUploadPending}/>
+            <input type="file" accept="image/*" className="sr-only" ref={headerFileInputRef} onChange={handleHeaderUpload} disabled={isDeletePending}/>
             <div className="w-full pb-16">
                 <div className="h-48 md:h-64 bg-secondary relative">
                     <Image src={profile.coverPhotoUrl || "https://placehold.co/1600x400.png"} alt="Cover photo" fill className="object-cover" data-ai-hint="theatre background" unoptimized/>
@@ -318,7 +319,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             <Card>
                                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div className="flex flex-col"><CardTitle>{isReordering ? "Reorder Photos" : isDeleting ? "Delete Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>{isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}</div>
-                                    {(isOwner || isAdmin) && (<div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">{isReordering ? (<><Button variant="outline" size="sm" onClick={handleCancelReorder} disabled={isReorderPending}>Cancel</Button><Button size="sm" onClick={handleSaveReorder} disabled={isReorderPending}>{isReorderPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Order</Button></>) : isDeleting ? (<Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Done</span></Button>) : (<>{isOwner && canUpload && (<Button size="sm" onClick={() => headerFileInputRef.current?.click()} disabled={isUploadPending}>{isUploadPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="sm:mr-2 h-4 w-4" />}<span className="hidden sm:inline">Upload</span></Button>)}{currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Reorder</span></Button>}{currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Manage</span></Button>}</>)}</div>)}
+                                    {(isOwner || isAdmin) && (<div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">{isReordering ? (<><Button variant="outline" size="sm" onClick={handleCancelReorder} disabled={isReorderPending}>Cancel</Button><Button size="sm" onClick={handleSaveReorder} disabled={isReorderPending}>{isReorderPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Order</Button></>) : isDeleting ? (<Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Done</span></Button>) : (<>{isOwner && canUpload && (<Button size="sm" onClick={() => headerFileInputRef.current?.click()} disabled={isDeletePending}>{isDeletePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="sm:mr-2 h-4 w-4" />}<span className="hidden sm:inline">Upload</span></Button>)}{currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Reorder</span></Button>}{currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Manage</span></Button>}</>)}</div>)}
                                 </CardHeader>
                                 <CardContent>
                                     {isDeleting && (<Alert variant="destructive" className="mb-4"><ShieldAlert className="h-4 w-4" /><AlertTitle>Deletion Mode</AlertTitle><AlertDescription>Click the trash icon on any photo to permanently delete it. This action cannot be undone.</AlertDescription></Alert>)}
