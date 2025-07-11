@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -11,7 +12,7 @@ import Image from 'next/image';
 
 const GoogleIcon = (props: { className?: string }) => (
     <Image 
-      src="/assets/google-logo.png" 
+      src="/google-logo.png" 
       alt="Google logo" 
       width={24} 
       height={24}
