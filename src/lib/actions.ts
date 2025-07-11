@@ -8,6 +8,7 @@ import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
+import { headers } from 'next/headers';
 
 
 export async function revalidateAdminPaths() {
@@ -370,12 +371,15 @@ export async function generateUploadUrlAction(userId: string, fileName: string, 
         const bucket = admin.storage().bucket();
         const filePath = `${userId}/${Date.now()}-${fileName}`;
         const file = bucket.file(filePath);
+        
+        const origin = headers().get('origin');
 
         const options = {
             version: 'v4' as const,
             action: 'write' as const,
             expires: Date.now() + 15 * 60 * 1000, // 15 minutes
             contentType: fileType,
+            extensionHeaders: origin ? { 'x-goog-resumable': 'start' } : {},
         };
         
         const [uploadUrl] = await file.getSignedUrl(options);
@@ -437,8 +441,14 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
         const bucket = admin.storage().bucket();
         
         const decodedUrl = decodeURIComponent(photoUrl);
-        const url = new URL(decodedUrl);
-        const filePath = url.pathname.split(`/o/${bucket.name}/`)[1];
+        // Correctly parse the GCS public URL format
+        const pathRegex = new RegExp(`/${bucket.name}/(.+)`);
+        const match = new URL(decodedUrl).pathname.match(pathRegex);
+
+        if (!match || !match[1]) {
+            throw new Error(`Could not parse file path from URL: ${decodedUrl}`);
+        }
+        const filePath = match[1];
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {
             throw new Error(`Invalid file path for deletion: ${filePath}`);
@@ -477,6 +487,7 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
             transaction.update(profileRef, updates);
         });
 
+        revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Photo deleted successfully.' };
 
     } catch (error) {
