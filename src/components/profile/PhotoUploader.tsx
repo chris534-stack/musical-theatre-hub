@@ -33,10 +33,6 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photosRemaining = limit - currentCount;
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-  });
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -62,7 +58,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
           throw new Error(signedUrlResult.message || 'Could not get an upload URL.');
         }
 
-        const { uploadUrl, publicUrl } = signedUrlResult.data;
+        const { uploadUrl, publicUrl, filePath } = signedUrlResult.data;
 
         // 2. Upload file directly to Firebase Storage
         const uploadResponse = await fetch(uploadUrl, {
@@ -76,7 +72,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
         }
 
         // 3. Save the public URL to the user's profile
-        const saveResult = await savePhotoUrlAction(userId, publicUrl);
+        const saveResult = await savePhotoUrlAction(userId, publicUrl, filePath);
         if (!saveResult.success) {
           throw new Error(saveResult.message || 'Failed to save photo to profile.');
         }
@@ -139,3 +135,4 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
     </div>
   );
 }
+

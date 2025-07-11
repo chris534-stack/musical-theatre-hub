@@ -381,7 +381,7 @@ export async function generateUploadUrlAction(userId: string, fileName: string, 
         
         const [uploadUrl] = await file.getSignedUrl(options);
         const publicUrl = file.publicUrl();
-        return { success: true, data: { uploadUrl, publicUrl } };
+        return { success: true, data: { uploadUrl, publicUrl, filePath } };
     } catch (error) {
         console.error('Failed to generate signed URL:', error);
         if (error instanceof Error && error.message.includes('Could not determine Storage bucket name.')) {
@@ -391,7 +391,7 @@ export async function generateUploadUrlAction(userId: string, fileName: string, 
     }
 }
 
-export async function savePhotoUrlAction(userId: string, publicUrl: string) {
+export async function savePhotoUrlAction(userId: string, publicUrl: string, filePath: string) {
     const GALLERY_PHOTO_LIMIT = 50;
     const profileRef = adminDb.collection('userProfiles').doc(userId);
 
@@ -403,6 +403,11 @@ export async function savePhotoUrlAction(userId: string, publicUrl: string) {
                 return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
             }
         }
+
+        // Make the file public before saving the URL
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(filePath);
+        await file.makePublic();
 
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
