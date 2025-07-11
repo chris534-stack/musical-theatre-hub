@@ -374,7 +374,7 @@ export async function uploadProfilePhotoAction(formData: FormData) {
         return { success: false, message: 'Missing file or user ID.' };
     }
     
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
     if (!storageBucket) {
         console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
         return { success: false, message: 'Server configuration error: Storage destination not found.' };
@@ -435,7 +435,7 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 }
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
     if (!storageBucket) {
         console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
         return { success: false, message: 'Server configuration error: Storage destination not found.' };
@@ -446,7 +446,7 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
         
         const url = new URL(photoUrl);
         const pathParts = url.pathname.split('/');
-        const filePath = pathParts.slice(2).join('/'); 
+        const filePath = pathParts.slice(pathParts.indexOf(storageBucket.replace('.appspot.com', '')) + 1).join('/'); 
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {
             throw new Error("Invalid file path for deletion.");

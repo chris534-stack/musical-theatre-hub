@@ -1,4 +1,5 @@
 
+
 import ProfileClientPage from '@/components/profile/ProfileClientPage';
 import ProfileLoading from './loading';
 import { Suspense } from 'react';

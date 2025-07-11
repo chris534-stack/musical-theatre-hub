@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -93,35 +94,45 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
 
     const isOwner = user?.uid === userId;
 
-    const fetchData = useCallback(async () => {
+    const fetchProfileData = useCallback(async () => {
+        setIsLoading(true);
         setError(null);
         try {
             const profileResult = await getFullProfileAction(userId);
             if (profileResult.success && profileResult.data) {
                 setProfile(profileResult.data);
                 setOrderedGalleryUrls(profileResult.data.galleryImageUrls || []);
-
-                const reviewsResult = await getReviewsForUserAction(userId);
-                if (reviewsResult.success && reviewsResult.data) {
-                    setReviews(reviewsResult.data);
-                } else {
-                    toast({ variant: 'destructive', title: 'Could not load reviews', description: reviewsResult.message });
-                }
+                // Fetch reviews separately after profile is loaded
+                fetchReviewData();
             } else {
                 setError(profileResult.message || 'Could not find user profile.');
                 setProfile(null);
             }
         } catch (e) {
-            setError('An unexpected error occurred while fetching data.');
+            setError('An unexpected error occurred while fetching the profile.');
             setProfile(null);
         } finally {
             setIsLoading(false);
         }
+    }, [userId]);
+
+    const fetchReviewData = useCallback(async () => {
+        try {
+            const reviewsResult = await getReviewsForUserAction(userId);
+            if (reviewsResult.success && reviewsResult.data) {
+                setReviews(reviewsResult.data);
+            } else {
+                toast({ variant: 'destructive', title: 'Could not load reviews', description: reviewsResult.message });
+            }
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Could not load reviews', description: 'An unexpected error occurred.' });
+        }
     }, [userId, toast]);
 
+
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        fetchProfileData();
+    }, [fetchProfileData]);
 
     useEffect(() => {
         function calculateYearsInCommunity(startDate?: string): string | null {
@@ -153,7 +164,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
             const result = await uploadProfilePhotoAction(formData);
             if (result.success) {
                 toast({ title: 'Upload successful!', description: 'Your photo has been added to the gallery.'});
-                await fetchData();
+                await fetchProfileData();
             } else {
                 toast({ variant: 'destructive', title: 'Upload failed', description: result.message });
             }
@@ -174,7 +185,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                 toast({ title: 'Success', description: 'Your gallery order has been saved.' });
                 setIsReordering(false);
                 setSelectedPhotoToMove(null);
-                await fetchData();
+                await fetchProfileData();
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: result.message });
             }
@@ -220,7 +231,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
             const result = await deleteProfilePhotoAction(userId, photoToDelete);
             if (result.success) {
                 toast({ title: "Photo Deleted", description: "The photo has been removed from the gallery." });
-                await fetchData();
+                await fetchProfileData();
             } else {
                 toast({ variant: 'destructive', title: "Deletion Failed", description: result.message });
             }
@@ -301,7 +312,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                 </CardHeader>
                                 <CardContent>
                                     {isDeleting && (<Alert variant="destructive" className="mb-4"><ShieldAlert className="h-4 w-4" /><AlertTitle>Deletion Mode</AlertTitle><AlertDescription>Click the trash icon on any photo to permanently delete it. This action cannot be undone.</AlertDescription></Alert>)}
-                                    {itemsToShowInGrid.length === 0 ? (isOwner && canUpload ? (<PhotoUploader userId={profile.userId} onUploadComplete={fetchData} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />) : !canUpload ? (<div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg"><GalleryVerticalEnd className="h-10 w-10 mb-2" /><p className="font-medium text-foreground">Gallery Full</p><p className="text-sm mt-1">You've reached the photo limit.</p></div>) : (<div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg"><Camera className="h-10 w-10 mb-2" /><p className="font-medium">No Photos Yet</p><p className="text-sm">This user hasn't added any photos to their gallery.</p></div>)) : (<Carousel opts={{ align: "start" }} className="w-full relative px-8 sm:px-12"><CarouselContent>{pages.map((pageItems, pageIndex) => (<CarouselItem key={pageIndex}><div className="grid grid-cols-2 gap-4">{pageItems.map((item, itemIndex) => { if (item === 'uploader') { return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={fetchData} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />; } const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex; const url = isReordering ? orderedGalleryUrls[originalImageIndex] : item; const isSelectedForMove = selectedPhotoToMove === url; return (<div key={url} onClick={() => isReordering ? handleReorderClick(url, originalImageIndex) : handleOpenGallery(originalImageIndex)} className={cn("aspect-square relative rounded-lg overflow-hidden group transition-all duration-200", (isReordering || !isDeleting) && "cursor-pointer", isReordering && isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg", isReordering && selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105")}><Image src={url} alt={`Gallery image ${originalImageIndex + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized /><div className={cn("absolute inset-0 bg-black/0 transition-colors flex items-center justify-center", !isDeleting && !isReordering && "group-hover:bg-black/20", isReordering && "group-hover:bg-black/40", isDeleting && "group-hover:bg-black/50")} >{isReordering && selectedPhotoToMove && !isSelectedForMove && (<p className="text-white font-bold text-sm bg-black/50 p-2 rounded-md opacity-0 group-hover:opacity-100">Place Here</p>)}</div>{isDeleting && (<Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); handleDeleteClick(url); }} disabled={isDeletePending}><Trash2 className="h-4 w-4" /></Button>)}</div>); })}</div></CarouselItem>))}</CarouselContent><CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-10" /><CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-10" /></Carousel>)}
+                                    {itemsToShowInGrid.length === 0 ? (isOwner && canUpload ? (<PhotoUploader userId={profile.userId} onUploadComplete={fetchProfileData} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />) : !canUpload ? (<div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg"><GalleryVerticalEnd className="h-10 w-10 mb-2" /><p className="font-medium text-foreground">Gallery Full</p><p className="text-sm mt-1">You've reached the photo limit.</p></div>) : (<div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg"><Camera className="h-10 w-10 mb-2" /><p className="font-medium">No Photos Yet</p><p className="text-sm">This user hasn't added any photos to their gallery.</p></div>)) : (<Carousel opts={{ align: "start" }} className="w-full relative px-8 sm:px-12"><CarouselContent>{pages.map((pageItems, pageIndex) => (<CarouselItem key={pageIndex}><div className="grid grid-cols-2 gap-4">{pageItems.map((item, itemIndex) => { if (item === 'uploader') { return <PhotoUploader key="uploader" userId={profile.userId} onUploadComplete={fetchProfileData} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />; } const originalImageIndex = pageIndex * PHOTOS_PER_PAGE + itemIndex; const url = isReordering ? orderedGalleryUrls[originalImageIndex] : item; const isSelectedForMove = selectedPhotoToMove === url; return (<div key={url} onClick={() => isReordering ? handleReorderClick(url, originalImageIndex) : handleOpenGallery(originalImageIndex)} className={cn("aspect-square relative rounded-lg overflow-hidden group transition-all duration-200", (isReordering || !isDeleting) && "cursor-pointer", isReordering && isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg", isReordering && selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105")}><Image src={url} alt={`Gallery image ${originalImageIndex + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized /><div className={cn("absolute inset-0 bg-black/0 transition-colors flex items-center justify-center", !isDeleting && !isReordering && "group-hover:bg-black/20", isReordering && "group-hover:bg-black/40", isDeleting && "group-hover:bg-black/50")} >{isReordering && selectedPhotoToMove && !isSelectedForMove && (<p className="text-white font-bold text-sm bg-black/50 p-2 rounded-md opacity-0 group-hover:opacity-100">Place Here</p>)}</div>{isDeleting && (<Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); handleDeleteClick(url); }} disabled={isDeletePending}><Trash2 className="h-4 w-4" /></Button>)}</div>); })}</div></CarouselItem>))}</CarouselContent><CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-10" /><CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-10" /></Carousel>)}
                                 </CardContent>
                             </Card>
                              <section>
@@ -321,11 +332,11 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                 </div>
             </div>
             
-            <GalleryViewer isOpen={isGalleryViewerOpen} onClose={() => setIsGalleryViewerOpen(false)} images={profile.galleryImageUrls || []} startIndex={selectedImageIndex} userName={profile.displayName} userId={profile.userId} isOwner={isOwner} onUpdate={fetchData} />
+            <GalleryViewer isOpen={isGalleryViewerOpen} onClose={() => setIsGalleryViewerOpen(false)} images={profile.galleryImageUrls || []} startIndex={selectedImageIndex} userName={profile.displayName} userId={profile.userId} isOwner={isOwner} onUpdate={fetchProfileData} />
             
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the photo from the gallery and from storage.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm} disabled={isDeletePending}>{isDeletePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Delete'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
-            {isOwner && (<EditProfileSheet isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)} profile={profile} onProfileUpdate={fetchData} />)}
+            {isOwner && (<EditProfileSheet isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)} profile={profile} onProfileUpdate={fetchProfileData} />)}
         </>
     );
 }
