@@ -365,58 +365,58 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
     }
 }
 
-export async function uploadProfilePhotoAction(formData: FormData) {
-    const file = formData.get('photo') as File;
-    const userId = formData.get('userId') as string;
-    const GALLERY_PHOTO_LIMIT = 50;
-
-    if (!file || !userId) {
-        return { success: false, message: 'Missing file or user ID.' };
-    }
-    
+export async function generateUploadUrlAction(userId: string, fileName: string, fileType: string) {
     const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
     if (!storageBucket) {
         console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
         return { success: false, message: 'Server configuration error: Storage destination not found.' };
     }
+    const bucket = admin.storage().bucket(storageBucket);
+    const filePath = `${userId}/${Date.now()}-${fileName}`;
+    const file = bucket.file(filePath);
 
+    const options = {
+        version: 'v4' as const,
+        action: 'write' as const,
+        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        contentType: fileType,
+    };
+    
+    try {
+        const [uploadUrl] = await file.getSignedUrl(options);
+        const publicUrl = file.publicUrl();
+        return { success: true, data: { uploadUrl, publicUrl } };
+    } catch (error) {
+        console.error('Failed to generate signed URL:', error);
+        return { success: false, message: 'Could not create upload URL.' };
+    }
+}
+
+export async function savePhotoUrlAction(userId: string, publicUrl: string) {
+    const GALLERY_PHOTO_LIMIT = 50;
     const profileRef = adminDb.collection('userProfiles').doc(userId);
 
     try {
         const docSnap = await profileRef.get();
         if (docSnap.exists) {
             const profileData = docSnap.data() as UserProfile;
-            const currentPhotoCount = profileData.galleryImageUrls?.length || 0;
-            if (currentPhotoCount >= GALLERY_PHOTO_LIMIT) {
+            if ((profileData.galleryImageUrls?.length || 0) >= GALLERY_PHOTO_LIMIT) {
                 return { success: false, message: `You have reached the photo limit of ${GALLERY_PHOTO_LIMIT}.` };
             }
         }
-
-        const bucket = admin.storage().bucket(storageBucket);
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const fileName = `${userId}/${Date.now()}-${file.name}`;
-        const fileUpload = bucket.file(fileName);
-
-        await fileUpload.save(buffer, {
-            metadata: {
-                contentType: file.type,
-            },
-        });
-
-        await fileUpload.makePublic();
-        const publicUrl = fileUpload.publicUrl();
 
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
         });
 
+        revalidatePath(`/profile/${userId}`);
         return { success: true };
     } catch (error) {
-        console.error('Failed to upload photo:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        return { success: false, message: `Upload failed: ${errorMessage}` };
+        console.error('Failed to save photo URL:', error);
+        return { success: false, message: 'Could not save photo to profile.' };
     }
 }
+
 
 export async function updateGalleryOrderAction(userId: string, orderedUrls: string[]) {
     try {
@@ -444,10 +444,8 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
     try {
         const bucket = admin.storage().bucket(storageBucket);
         
-        // This is the fix: Correctly decode the URL and extract the object path.
         const decodedUrl = decodeURIComponent(photoUrl);
         const url = new URL(decodedUrl);
-        // The path starts after '/o/', and we need to remove the bucket name prefix if it exists.
         const filePath = url.pathname.split('/o/')[1].replace(`${storageBucket}/`, '');
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {

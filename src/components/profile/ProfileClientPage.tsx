@@ -17,7 +17,7 @@ import { PhotoUploader } from '@/components/profile/PhotoUploader';
 import { GalleryViewer } from './GalleryViewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
-import { updateGalleryOrderAction, deleteProfilePhotoAction, uploadProfilePhotoAction, getFullProfileAction, getReviewsForUserAction } from '@/lib/actions';
+import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -95,15 +95,18 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const isOwner = user?.uid === userId;
 
     const fetchProfileData = useCallback(async () => {
-        setIsLoading(true);
+        // Don't set loading to true here, so it doesn't flash the skeleton on every re-fetch.
+        // It's only true for the initial load.
         setError(null);
         try {
             const profileResult = await getFullProfileAction(userId);
             if (profileResult.success && profileResult.data) {
                 setProfile(profileResult.data);
                 setOrderedGalleryUrls(profileResult.data.galleryImageUrls || []);
-                // Fetch reviews separately after profile is loaded
-                fetchReviewData();
+                // Fetch reviews only on initial load or when profile is successfully fetched
+                if (isLoading) {
+                    fetchReviewData();
+                }
             } else {
                 setError(profileResult.message || 'Could not find user profile.');
                 setProfile(null);
@@ -112,9 +115,9 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
             setError('An unexpected error occurred while fetching the profile.');
             setProfile(null);
         } finally {
-            setIsLoading(false);
+            if(isLoading) setIsLoading(false);
         }
-    }, [userId]);
+    }, [userId, isLoading]); // Add isLoading to dependency array
 
     const fetchReviewData = useCallback(async () => {
         try {
@@ -152,23 +155,30 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
 
 
     const handleHeaderUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const files = event.target.files;
-        if (!files || files.length === 0) return;
-
-        const file = files[0];
-        const formData = new FormData();
-        formData.append('photo', file);
-        formData.append('userId', userId);
+        const file = event.target.files?.[0];
+        if (!file) return;
 
         startUploadTransition(async () => {
-            const result = await uploadProfilePhotoAction(formData);
-            if (result.success) {
+             try {
+                const signedUrlResult = await generateUploadUrlAction(userId, file.name, file.type);
+                if (!signedUrlResult.success || !signedUrlResult.data) throw new Error(signedUrlResult.message);
+
+                const { uploadUrl, publicUrl } = signedUrlResult.data;
+                const uploadResponse = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type }});
+                if (!uploadResponse.ok) throw new Error('Upload failed.');
+
+                const saveResult = await savePhotoUrlAction(userId, publicUrl);
+                if (!saveResult.success) throw new Error(saveResult.message);
+                
                 toast({ title: 'Upload successful!', description: 'Your photo has been added to the gallery.'});
                 await fetchProfileData();
-            } else {
-                toast({ variant: 'destructive', title: 'Upload failed', description: result.message });
+
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+                toast({ variant: 'destructive', title: 'Upload failed', description: errorMessage });
+            } finally {
+                 if(headerFileInputRef.current) headerFileInputRef.current.value = "";
             }
-             if(headerFileInputRef.current) headerFileInputRef.current.value = "";
         });
     };
 

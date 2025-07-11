@@ -6,18 +6,16 @@ import { useState, useTransition, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { uploadProfilePhotoAction } from '@/lib/actions';
+import { generateUploadUrlAction, savePhotoUrlAction } from '@/lib/actions';
 import { Loader2, UploadCloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PhotoUploaderProps {
   userId: string;
   onUploadComplete: () => void;
-  isGridItem?: boolean; // To style it as a grid item or as the main content
+  isGridItem?: boolean;
   limit: number;
   currentCount: number;
 }
@@ -25,7 +23,8 @@ interface PhotoUploaderProps {
 const formSchema = z.object({
   photo: z.any()
     .refine((files) => files?.length === 1, "An image is required.")
-    .refine((files) => files?.[0]?.type.startsWith("image/"), "Only image files are accepted."),
+    .refine((files) => files?.[0]?.type.startsWith("image/"), "Only image files are accepted.")
+    .refine((files) => files?.[0]?.size <= 10 * 1024 * 1024, "File size must be 10MB or less."),
 });
 
 export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, limit, currentCount }: PhotoUploaderProps) {
@@ -38,34 +37,69 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
     resolver: zodResolver(formSchema),
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files && files.length > 0) {
-        const file = files[0];
-        const formData = new FormData();
-        formData.append('photo', file);
-        formData.append('userId', userId);
+    if (!files || files.length === 0) return;
 
-        startTransition(async () => {
-            const result = await uploadProfilePhotoAction(formData);
-            if (result.success) {
-                toast({
-                    title: 'Upload successful!',
-                    description: 'Your photo has been added to the gallery.',
-                });
-                onUploadComplete();
-                form.reset(); 
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Upload failed',
-                    description: result.message,
-                });
-            }
-        });
+    const file = files[0];
+    const validationResult = formSchema.safeParse({ photo: [file] });
+
+    if (!validationResult.success) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid File',
+        description: validationResult.error.errors[0].message,
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
-  };
 
+    startTransition(async () => {
+      try {
+        // 1. Get signed URL from server
+        const signedUrlResult = await generateUploadUrlAction(userId, file.name, file.type);
+        if (!signedUrlResult.success || !signedUrlResult.data) {
+          throw new Error(signedUrlResult.message || 'Could not get an upload URL.');
+        }
+
+        const { uploadUrl, publicUrl } = signedUrlResult.data;
+
+        // 2. Upload file directly to Firebase Storage
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Upload failed.');
+        }
+
+        // 3. Save the public URL to the user's profile
+        const saveResult = await savePhotoUrlAction(userId, publicUrl);
+        if (!saveResult.success) {
+          throw new Error(saveResult.message || 'Failed to save photo to profile.');
+        }
+
+        toast({
+          title: 'Upload successful!',
+          description: 'Your photo has been added to the gallery.',
+        });
+        onUploadComplete();
+        
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        toast({
+          variant: 'destructive',
+          title: 'Upload failed',
+          description: errorMessage,
+        });
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    });
+  };
+  
   return (
     <div
       className={cn(
@@ -80,40 +114,26 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
             </div>
         ) : (
             <>
-                <Form {...form}>
-                    <form className="flex flex-col items-center justify-center h-full">
-                        <FormField
-                            control={form.control}
-                            name="photo"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <Input
-                                            type="file"
-                                            accept="image/*"
-                                            className="sr-only"
-                                            ref={fileInputRef}
-                                            onChange={handleFileChange}
-                                            disabled={isPending}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                         <UploadCloud className="h-6 w-6 sm:h-8 sm:w-8 mb-1" />
-                         <p className="font-medium text-foreground text-xs sm:text-sm">Add to Gallery</p>
-                         <p className="text-[10px] sm:text-xs leading-tight mt-1 mb-2">You can add {photosRemaining} more photo{photosRemaining !== 1 ? 's' : ''}.</p>
-                         <Button
-                            type="button"
-                            size="sm"
-                            className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isPending}
-                         >
-                            Upload Photo
-                         </Button>
-                    </form>
-                </Form>
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    disabled={isPending}
+                />
+                 <UploadCloud className="h-6 w-6 sm:h-8 sm:w-8 mb-1" />
+                 <p className="font-medium text-foreground text-xs sm:text-sm">Add to Gallery</p>
+                 <p className="text-[10px] sm:text-xs leading-tight mt-1 mb-2">You can add {photosRemaining} more photo{photosRemaining !== 1 ? 's' : ''}.</p>
+                 <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isPending}
+                 >
+                    Upload Photo
+                 </Button>
             </>
         )}
     </div>
