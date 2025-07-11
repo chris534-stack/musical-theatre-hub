@@ -12,7 +12,7 @@ if (!getApps().length) {
     const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
     if (privateKey && clientEmail && projectId) {
-        // Manual setup for local development when all credentials are provided in .env
+        // Manual setup for local development or environments where all service account credentials are provided.
         initializeApp({
             credential: cert({
                 projectId,
@@ -22,9 +22,8 @@ if (!getApps().length) {
             storageBucket,
         });
     } else {
-        // Automatic setup for managed environments (like App Hosting).
-        // It uses Application Default Credentials but we explicitly provide project
-        // details to avoid inference issues, which is a more robust approach.
+        // Automatic setup for managed environments (like App Hosting) that rely on Application Default Credentials.
+        // It's more robust to explicitly provide project details if available to avoid inference issues.
         initializeApp({
             projectId,
             storageBucket,
