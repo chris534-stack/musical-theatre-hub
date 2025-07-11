@@ -414,181 +414,181 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
-      <div className="lg:col-span-2">
-        {isMobile ? <MobileCalendar /> : <DesktopCalendar />}
-      </div>
-      <div className="lg:col-span-1 max-h-[80vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4 flex-shrink-0">
-          <h2 className="text-xl md:text-2xl font-headline">
-            {selectedDate ? format(selectedDate, 'MMMM d') : 'Events'}
-          </h2>
-          <div className="flex items-center gap-2">
-            {selectedEventId && (
-              <Button variant="outline" size="sm" onClick={() => setSelectedEventId(null)}>
-                <X className="mr-2 h-4 w-4" /> Clear
-              </Button>
-            )}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="bg-accent text-accent-foreground hover:bg-accent/90"><FilterIcon className="mr-2 h-4 w-4" /> Filter</Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-4">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Venues</h4>
-                    <div className="space-y-2">
-                      {venues.map(venue => (
-                        <div key={venue.id} className="flex items-center space-x-2">
-                          <Checkbox id={`venue-${venue.id}`} checked={selectedVenues.includes(venue.id)} onCheckedChange={() => handleVenueToggle(venue.id)} />
-                          <Label htmlFor={`venue-${venue.id}`} className="flex items-center gap-2 cursor-pointer">
-                            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: venue.color }}></span>
-                            {venue.name}
-                          </Label>
+    <div className="flex flex-col gap-8 w-full">
+        <div>
+            {isMobile ? <MobileCalendar /> : <DesktopCalendar />}
+        </div>
+        <div>
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                <h2 className="text-xl md:text-2xl font-headline">
+                    {selectedDate ? `Events for ${format(selectedDate, 'MMMM d')}` : 'Events'}
+                </h2>
+                <div className="flex items-center gap-2">
+                    {selectedEventId && (
+                    <Button variant="outline" size="sm" onClick={() => setSelectedEventId(null)}>
+                        <X className="mr-2 h-4 w-4" /> Clear Selection
+                    </Button>
+                    )}
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" className="bg-accent text-accent-foreground hover:bg-accent/90"><FilterIcon className="mr-2 h-4 w-4" /> Filter</Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-4">
+                        <div className="space-y-4">
+                        <div>
+                            <h4 className="font-semibold mb-2">Venues</h4>
+                            <div className="space-y-2">
+                            {venues.map(venue => (
+                                <div key={venue.id} className="flex items-center space-x-2">
+                                <Checkbox id={`venue-${venue.id}`} checked={selectedVenues.includes(venue.id)} onCheckedChange={() => handleVenueToggle(venue.id)} />
+                                <Label htmlFor={`venue-${venue.id}`} className="flex items-center gap-2 cursor-pointer">
+                                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: venue.color }}></span>
+                                    {venue.name}
+                                </Label>
+                                </div>
+                            ))}
+                            </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  <Separator />
-                  <div>
-                    <h4 className="font-semibold mb-2">Event Types</h4>
-                    <div className="space-y-2">
-                      {eventTypes.map(type => (
-                        <div key={type} className="flex items-center space-x-2">
-                          <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
-                          <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{toTitleCase(type.replace('-', ' '))}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {allTags.length > 0 && (
-                    <>
                         <Separator />
                         <div>
-                        <h4 className="font-semibold mb-2">Tags</h4>
-                        <div className="space-y-2">
-                          {allTags.map(tag => (
-                            <div key={tag} className="flex items-center space-x-2">
-                              <Checkbox id={`tag-${tag}`} checked={selectedTags.includes(tag)} onCheckedChange={() => handleTagToggle(tag)} />
-                              <Label htmlFor={`tag-${tag}`} className="cursor-pointer capitalize">{toTitleCase(tag.replace('-', ' '))}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow">
-          {selectedDayEvents.length > 0 ? (
-            selectedDayEvents.map(event => {
-              const isSelected = selectedEventId === event.id;
-              return (
-                <Card 
-                  key={event.uniqueOccurrenceId}
-                  className={cn(
-                    "flex flex-col transition-shadow duration-300 ease-in-out",
-                    isSelected ? "z-10 shadow-lg" : ""
-                  )}
-                  style={{ borderLeft: `4px solid ${event.venue?.color || 'hsl(var(--primary))'}` }}
-                >
-                  <div onClick={() => handleCardClick(event.id)} className="cursor-pointer flex-grow">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <CardTitle className="font-headline text-lg">{toTitleCase(event.title)}</CardTitle>
-                          <CardDescription className="pt-2 space-y-2">
-                            <div className="flex items-center gap-2 text-sm">
-                              <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Ticket className="h-4 w-4 flex-shrink-0" /> 
-                              <span className="capitalize">
-                                {toTitleCase(event.type.replace('-', ' '))}
-                                {event.time && ` at ${format(new Date(`1970-01-01T${event.time}`), 'h:mm a')}`}
-                              </span>
-                            </div>
-                          </CardDescription>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit Event</span>
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="relative pt-0 pb-4">
-                      {event.tags && event.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                            {event.tags.map(tag => (
-                                <Badge key={tag} variant="outline">{toTitleCase(tag)}</Badge>
+                            <h4 className="font-semibold mb-2">Event Types</h4>
+                            <div className="space-y-2">
+                            {eventTypes.map(type => (
+                                <div key={type} className="flex items-center space-x-2">
+                                <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
+                                <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{toTitleCase(type.replace('-', ' '))}</Label>
+                                </div>
                             ))}
+                            </div>
                         </div>
-                      )}
-                      <p className={cn("text-sm text-muted-foreground", !isSelected && "line-clamp-3")}>
-                        {event.description}
-                      </p>
-                      {!isSelected && event.description && (
-                        <div className="absolute bottom-4 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-                      )}
-                       <div className={cn("w-full transition-all duration-300 ease-in-out overflow-hidden", isSelected ? "max-h-96 opacity-100 mt-4" : "max-h-0 opacity-0")}>
-                          <Separator className="mb-3" />
-                          <ReviewList reviews={event.reviews} />
-                      </div>
-                    </CardContent>
-                  </div>
-                  <CardFooter>
-                    <div className="flex w-full flex-wrap items-center justify-start gap-x-4 gap-y-2">
-                      {event.url && (
-                        <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                          <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                            Visit Website
-                            <ExternalLink className="h-4 w-4 ml-1" />
-                          </a>
-                        </Button>
-                      )}
-                       {event.reviews?.length > 0 && (
-                        <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
-                            <Link href="/reviews" onClick={(e) => e.stopPropagation()}>
-                                View Reviews ({event.reviews.length})
-                                <MessageSquareText className="h-4 w-4 ml-1" />
-                            </Link>
-                        </Button>
-                      )}
-                      {isReviewer && isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
-                        <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
-                          Leave a Review
-                          <MessageSquareQuote className="h-4 w-4 ml-1" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardFooter>
-                </Card>
-              )
-            })
-          ) : (
-            <div className="text-center pt-10 text-muted-foreground h-full flex flex-col items-center justify-center rounded-lg">
-              <CalendarDays className="h-10 w-10 mb-3 text-muted-foreground/50" />
-              <p className="font-semibold text-sm">{selectedEventId ? 'No performances on this day.' : 'No events scheduled.'}</p>
-              <p className="text-xs">Select another day or change filters.</p>
+                        {allTags.length > 0 && (
+                            <>
+                                <Separator />
+                                <div>
+                                <h4 className="font-semibold mb-2">Tags</h4>
+                                <div className="space-y-2">
+                                {allTags.map(tag => (
+                                    <div key={tag} className="flex items-center space-x-2">
+                                    <Checkbox id={`tag-${tag}`} checked={selectedTags.includes(tag)} onCheckedChange={() => handleTagToggle(tag)} />
+                                    <Label htmlFor={`tag-${tag}`} className="cursor-pointer capitalize">{toTitleCase(tag.replace('-', ' '))}</Label>
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                            </>
+                        )}
+                        </div>
+                    </PopoverContent>
+                    </Popover>
+                </div>
             </div>
-          )}
+            <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {selectedDayEvents.length > 0 ? (
+                selectedDayEvents.map(event => {
+                const isSelected = selectedEventId === event.id;
+                return (
+                    <Card 
+                    key={event.uniqueOccurrenceId}
+                    className={cn(
+                        "flex flex-col transition-shadow duration-300 ease-in-out",
+                        isSelected ? "z-10 shadow-lg" : ""
+                    )}
+                    style={{ borderLeft: `4px solid ${event.venue?.color || 'hsl(var(--primary))'}` }}
+                    >
+                    <div onClick={() => handleCardClick(event.id)} className="cursor-pointer flex-grow">
+                        <CardHeader>
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                            <CardTitle className="font-headline text-lg">{toTitleCase(event.title)}</CardTitle>
+                            <CardDescription className="pt-2 space-y-2">
+                                <div className="flex items-center gap-2 text-sm">
+                                <MapPin className="h-4 w-4 flex-shrink-0" /> <span>{event.venue?.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                <Ticket className="h-4 w-4 flex-shrink-0" /> 
+                                <span className="capitalize">
+                                    {toTitleCase(event.type.replace('-', ' '))}
+                                    {event.time && ` at ${format(new Date(`1970-01-01T${event.time}`), 'h:mm a')}`}
+                                </span>
+                                </div>
+                            </CardDescription>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => { e.stopPropagation(); handleEditClick(event); }}>
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Edit Event</span>
+                            </Button>
+                        </div>
+                        </CardHeader>
+                        <CardContent className="relative pt-0 pb-4">
+                        {event.tags && event.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {event.tags.map(tag => (
+                                    <Badge key={tag} variant="outline">{toTitleCase(tag)}</Badge>
+                                ))}
+                            </div>
+                        )}
+                        <p className={cn("text-sm text-muted-foreground", !isSelected && "line-clamp-3")}>
+                            {event.description}
+                        </p>
+                        {!isSelected && event.description && (
+                            <div className="absolute bottom-4 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                        )}
+                        <div className={cn("w-full transition-all duration-300 ease-in-out overflow-hidden", isSelected ? "max-h-96 opacity-100 mt-4" : "max-h-0 opacity-0")}>
+                            <Separator className="mb-3" />
+                            <ReviewList reviews={event.reviews} />
+                        </div>
+                        </CardContent>
+                    </div>
+                    <CardFooter>
+                        <div className="flex w-full flex-wrap items-center justify-start gap-x-4 gap-y-2">
+                        {event.url && (
+                            <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                            <a href={event.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                                Visit Website
+                                <ExternalLink className="h-4 w-4 ml-1" />
+                            </a>
+                            </Button>
+                        )}
+                        {event.reviews?.length > 0 && (
+                            <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
+                                <Link href="/reviews" onClick={(e) => e.stopPropagation()}>
+                                    View Reviews ({event.reviews.length})
+                                    <MessageSquareText className="h-4 w-4 ml-1" />
+                                </Link>
+                            </Button>
+                        )}
+                        {isReviewer && isOccurrenceInPast(event) && isReviewableEventType(event.type) && (
+                            <Button variant="secondary" size="sm" className="h-auto py-1" onClick={(e) => { e.stopPropagation(); handleLeaveReviewClick(event); }}>
+                            Leave a Review
+                            <MessageSquareQuote className="h-4 w-4 ml-1" />
+                            </Button>
+                        )}
+                        </div>
+                    </CardFooter>
+                    </Card>
+                )
+                })
+            ) : (
+                <div className="text-center pt-10 text-muted-foreground h-full flex flex-col items-center justify-center rounded-lg col-span-full">
+                <CalendarDays className="h-10 w-10 mb-3 text-muted-foreground/50" />
+                <p className="font-semibold text-sm">{selectedEventId ? 'No performances on this day.' : 'No events scheduled.'}</p>
+                <p className="text-xs">Select another day or change filters.</p>
+                </div>
+            )}
+            </div>
         </div>
-      </div>
-      <EventEditorModal
-          isOpen={!!editingEvent}
-          onClose={() => setEditingEvent(null)}
-          eventToEdit={editingEvent}
-          venues={venues}
-      />
-      <ReviewSubmissionModal
-        isOpen={isReviewModalOpen}
-        onClose={() => setReviewModalOpen(false)}
-        event={selectedEventForReview}
-      />
-      {isAdmin && <AddEventButton venues={venues} />}
+        <EventEditorModal
+            isOpen={!!editingEvent}
+            onClose={() => setEditingEvent(null)}
+            eventToEdit={editingEvent}
+            venues={venues}
+        />
+        <ReviewSubmissionModal
+            isOpen={isReviewModalOpen}
+            onClose={() => setReviewModalOpen(false)}
+            event={selectedEventForReview}
+        />
+        {isAdmin && <AddEventButton venues={venues} />}
     </div>
   );
 }
