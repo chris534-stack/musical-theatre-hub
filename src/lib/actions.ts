@@ -366,28 +366,26 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 }
 
 export async function generateUploadUrlAction(userId: string, fileName: string, fileType: string) {
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
-    if (!storageBucket) {
-        console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
-        return { success: false, message: 'Server configuration error: Storage destination not found.' };
-    }
-    const bucket = admin.storage().bucket(storageBucket);
-    const filePath = `${userId}/${Date.now()}-${fileName}`;
-    const file = bucket.file(filePath);
-
-    const options = {
-        version: 'v4' as const,
-        action: 'write' as const,
-        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        contentType: fileType,
-    };
-    
     try {
+        const bucket = admin.storage().bucket();
+        const filePath = `${userId}/${Date.now()}-${fileName}`;
+        const file = bucket.file(filePath);
+
+        const options = {
+            version: 'v4' as const,
+            action: 'write' as const,
+            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            contentType: fileType,
+        };
+        
         const [uploadUrl] = await file.getSignedUrl(options);
         const publicUrl = file.publicUrl();
         return { success: true, data: { uploadUrl, publicUrl } };
     } catch (error) {
         console.error('Failed to generate signed URL:', error);
+        if (error instanceof Error && error.message.includes('Could not determine Storage bucket name.')) {
+            return { success: false, message: 'Storage destination not found. The server configuration for the storage bucket is missing or incorrect.' };
+        }
         return { success: false, message: 'Could not create upload URL.' };
     }
 }
@@ -435,18 +433,12 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 }
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
-    if (!storageBucket) {
-        console.error('Server configuration error: FIREBASE_STORAGE_BUCKET is not set.');
-        return { success: false, message: 'Server configuration error: Storage destination not found.' };
-    }
-
     try {
-        const bucket = admin.storage().bucket(storageBucket);
+        const bucket = admin.storage().bucket();
         
         const decodedUrl = decodeURIComponent(photoUrl);
         const url = new URL(decodedUrl);
-        const filePath = url.pathname.split('/o/')[1].replace(`${storageBucket}/`, '');
+        const filePath = url.pathname.split(`/o/${bucket.name}/`)[1];
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {
             throw new Error(`Invalid file path for deletion: ${filePath}`);
