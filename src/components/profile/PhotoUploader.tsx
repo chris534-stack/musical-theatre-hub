@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,7 +52,6 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
 
     setIsLoading(true);
     try {
-      // 1. Get signed URL from server
       const signedUrlResult = await generateUploadUrlAction(userId, file.name, file.type);
       if (!signedUrlResult.success || !signedUrlResult.data) {
         throw new Error(signedUrlResult.message || 'Could not get an upload URL.');
@@ -60,7 +59,6 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
 
       const { uploadUrl, filePath } = signedUrlResult.data;
 
-      // 2. Upload file directly to Firebase Storage
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
         body: file,
@@ -71,7 +69,6 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
         throw new Error('Upload failed.');
       }
 
-      // 3. Save the public URL to the user's profile
       const saveResult = await savePhotoUrlAction(userId, filePath);
       if (!saveResult.success) {
         throw new Error(saveResult.message || 'Failed to save photo to profile.');

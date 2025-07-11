@@ -358,6 +358,7 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
         
         await adminDb.collection('userProfiles').doc(userId).update(cleanData);
         
+        revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error('Failed to update user profile:', error);
@@ -407,13 +408,10 @@ export async function savePhotoUrlAction(userId: string, filePath: string) {
         const bucket = admin.storage().bucket();
         const file = bucket.file(filePath);
         
-        // Step 1: Make the file public
         await file.makePublic();
         
-        // Step 2: Get the public URL. This is now the correct, permanent URL.
-        const publicUrl = file.publicUrl();
+        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
 
-        // Step 3: Save the correct public URL to the user's profile
         await profileRef.update({
             galleryImageUrls: admin.firestore.FieldValue.arrayUnion(publicUrl),
         });
@@ -448,8 +446,7 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
         const bucket = admin.storage().bucket();
         
         const decodedUrl = decodeURIComponent(photoUrl);
-        // Correctly parse the GCS public URL format
-        const pathRegex = new RegExp(`/${bucket.name}/(.+)`);
+        const pathRegex = new RegExp(`/b/${bucket.name}/o/(.+)`);
         const match = new URL(decodedUrl).pathname.match(pathRegex);
 
         if (!match || !match[1]) {
@@ -510,6 +507,7 @@ export async function setProfilePhotoAction(userId: string, photoUrl: string) {
         const profileRef = adminDb.collection('userProfiles').doc(userId);
         await profileRef.set({ photoURL: photoUrl }, { merge: true });
 
+        revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Profile photo updated successfully.' };
     } catch (error) {
         console.error('Failed to set profile photo:', error);
@@ -523,6 +521,7 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         const profileRef = adminDb.collection('userProfiles').doc(userId);
         await profileRef.set({ coverPhotoUrl: photoUrl }, { merge: true });
 
+        revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Cover photo updated successfully.' };
     } catch (error) {
         console.error('Failed to set cover photo:', error);
