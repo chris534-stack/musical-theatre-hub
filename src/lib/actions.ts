@@ -405,7 +405,11 @@ export async function savePhotoUrlAction(userId: string, filePath: string) {
             }
         }
 
-        const bucket = admin.storage().bucket();
+        const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+        if (!bucketName) {
+            throw new Error("Firebase Storage bucket name is not configured on the server.");
+        }
+        const bucket = admin.storage().bucket(bucketName);
         const file = bucket.file(filePath);
         
         await file.makePublic();
@@ -443,7 +447,11 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
     try {
-        const bucket = admin.storage().bucket();
+        const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+        if (!bucketName) {
+            throw new Error("Firebase Storage bucket name is not configured on the server.");
+        }
+        const bucket = admin.storage().bucket(bucketName);
         
         const decodedUrl = decodeURIComponent(photoUrl);
         const pathRegex = new RegExp(`/b/${bucket.name}/o/(.+)`);
@@ -452,7 +460,7 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
         if (!match || !match[1]) {
             throw new Error(`Could not parse file path from URL: ${decodedUrl}`);
         }
-        const filePath = match[1];
+        const filePath = match[1].split('?')[0]; // Remove query params like ?alt=media
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {
             throw new Error(`Invalid file path for deletion: ${filePath}`);

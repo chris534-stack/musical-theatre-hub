@@ -414,15 +414,12 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
                 console.warn(`GHOST USER DETECTED: Auth record for ID ${userId} not found.`);
                 authStatus = 'notFound';
             } else {
-                // For other auth errors, we should not proceed.
-                // Let the master catch block handle logging and returning null.
                 throw error;
             }
         }
 
         const docSnap = await docRef.get();
 
-        // CASE 1: Profile document exists in Firestore.
         if (docSnap.exists) {
             const data = docSnap.data() || {};
             const profile: UserProfile = {
@@ -441,30 +438,28 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             return profile;
         }
 
-        // CASE 2: Profile document does NOT exist, but we have a valid Auth record. Create it.
         if (userRecord) {
-            const newProfile: UserProfile = {
+            const newProfileData: UserProfile = {
                 userId: userRecord.uid,
                 displayName: userRecord.displayName || 'New User',
-                photoURL: userRecord.photoURL || 'https://placehold.co/200x200.png',
+                photoURL: userRecord.photoURL || '',
                 email: userRecord.email || '',
                 bio: 'Welcome to the Our Stage community! Feel free to edit your profile and share a bit about yourself.',
                 roleInCommunity: 'Audience',
                 communityStartDate: '',
                 galleryImageUrls: [],
-                coverPhotoUrl: 'https://placehold.co/1600x400.png',
+                coverPhotoUrl: '',
                 showEmail: false,
                 authStatus: 'active',
             };
-            await docRef.set(newProfile);
-            return newProfile;
+            await docRef.set(newProfileData);
+            return newProfileData;
         }
 
-        // CASE 3: Profile and Auth record both do not exist (or ghost user without a profile doc).
         console.log(`User profile could not be found or created for ID: ${userId}.`);
         return null;
     } catch (err) {
         console.error(`A fatal error occurred in getOrCreateUserProfile for userId "${userId}":`, err);
-        return null; // This guarantees the function never crashes the server.
+        return null;
     }
 }

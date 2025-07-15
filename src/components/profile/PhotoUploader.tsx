@@ -123,7 +123,7 @@ export function PhotoUploader({ userId, onUploadComplete, isGridItem = false, li
                     size="sm"
                     className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
+                    disabled={isLoading || photosRemaining <= 0}
                  >
                     Upload Photo
                  </Button>
