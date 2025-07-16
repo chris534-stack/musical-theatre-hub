@@ -72,7 +72,7 @@ export function GalleryViewer({ isOpen, onClose, onUpdate, images, startIndex = 
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-screen-xl w-full h-full max-h-screen p-0 m-0 bg-black/80 border-none flex items-center justify-center">
+            <DialogContent className="fixed inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black/80 border-none flex items-center justify-center rounded-none">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Image Gallery for {userName || 'User'}</DialogTitle>
                     <DialogDescription>
@@ -118,7 +118,7 @@ export function GalleryViewer({ isOpen, onClose, onUpdate, images, startIndex = 
                     <CarouselContent>
                         {images.map((url, index) => (
                             <CarouselItem key={index}>
-                                <div className="relative w-full h-[80vh]">
+                                <div className="relative w-full h-screen">
                                     <Image
                                         src={url}
                                         alt={`Gallery image ${index + 1}`}
