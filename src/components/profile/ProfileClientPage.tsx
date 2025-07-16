@@ -370,7 +370,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const currentPhotoCount = gallerySourceUrls.length;
     const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
 
-    const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE);
+    const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE) || 1;
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
     const showOrphanedSelfAlert = isOwner && profile.authStatus === 'notFound';
@@ -407,7 +407,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                     </div>
 
                     <div className="mt-12">
-                         {showOrphanedSelfAlert && <AccountSyncAlert profileId={profile.userId} />}
+                         {showOrphanedSelfAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
                          {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
                     </div>
 
@@ -445,7 +445,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                         )}
                                     </div>
                                 </CardContent>
-                                {(totalPages > 1 || isReordering) && (
+                                {(totalPages > 1) && (
                                     <CardFooter className="flex justify-between items-center">
                                         <Button variant="outline" onClick={() => setGalleryPage(p => p - 1)} disabled={galleryPage === 1 || isReorderPending}>
                                             Previous
