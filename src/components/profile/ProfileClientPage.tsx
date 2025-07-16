@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import ProfileLoading from '@/app/profile/[userId]/loading';
-import { signOut } from 'firebase/auth';
+import { signOut, getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
@@ -45,18 +45,37 @@ function ClaimProfileAlert({ orphanedProfile, newUserId }: { orphanedProfile: Us
 
     const handleMigrate = () => {
         startMigrateTransition(async () => {
-            const result = await migrateOrphanedProfileAction(orphanedProfile.userId);
-            if (result.success && result.migratedToId) {
-                toast({
-                    title: 'Profile Claimed!',
-                    description: 'Your data has been successfully migrated to your new account.',
-                });
-                router.push(`/profile/${result.migratedToId}`);
-            } else {
+            if (!auth.currentUser) {
                 toast({
                     variant: 'destructive',
+                    title: 'Authentication Error',
+                    description: 'Could not find logged in user. Please log in again.',
+                });
+                return;
+            }
+
+            try {
+                const idToken = await getIdToken(auth.currentUser);
+                const result = await migrateOrphanedProfileAction(orphanedProfile.userId, idToken);
+
+                if (result.success && result.migratedToId) {
+                    toast({
+                        title: 'Profile Claimed!',
+                        description: 'Your data has been successfully migrated to your new account.',
+                    });
+                    router.push(`/profile/${result.migratedToId}`);
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Migration Failed',
+                        description: result.message || 'An unexpected error occurred.',
+                    });
+                }
+            } catch (error) {
+                 toast({
+                    variant: 'destructive',
                     title: 'Migration Failed',
-                    description: result.message || 'An unexpected error occurred.',
+                    description: 'Could not get authentication token. Please try signing out and back in.',
                 });
             }
         });
@@ -319,8 +338,10 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE) || 1;
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
-    // Show the migration alert if the user is viewing a profile that is orphaned AND they are logged in
-    const showClaimProfileAlert = user && profile.authStatus === 'notFound' && user.email === profile.email;
+    // Determines if the "Claim this profile" alert should be shown.
+    // This happens when a logged-in user is viewing an orphaned profile that matches their email.
+    // This now correctly works even if they are viewing their OWN orphaned profile.
+    const showClaimProfileAlert = user && user.email === profile.email && profile.authStatus === 'notFound';
 
     return (
         <>
@@ -347,13 +368,13 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             <div className="flex gap-2">
                                 {isOwner && (<Button onClick={() => setIsSheetOpen(true)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>)}
                                 {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link></Button>)}
-                                {isOwner && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
+                                {isOwner && !showClaimProfileAlert && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
                             </div>
                         </div>
                     </div>
 
                     <div className="mt-12">
-                         {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
+                        {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

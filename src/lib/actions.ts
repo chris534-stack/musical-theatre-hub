@@ -451,7 +451,6 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
     try {
-        // Prevent crash if photoUrl is empty or invalid
         if (!photoUrl || typeof photoUrl !== 'string' || !photoUrl.startsWith('http')) {
             console.warn(`Skipping deletion for invalid photoUrl: ${photoUrl}`);
             return { success: true, message: 'Skipped deletion for invalid URL.' };
@@ -463,7 +462,6 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
         }
         const bucket = admin.storage().bucket(bucketName);
         
-        // Robustly extract file path from URL
         let filePath = '';
         try {
             const url = new URL(photoUrl);
@@ -481,7 +479,6 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
         const file = bucket.file(filePath);
 
         await file.delete().catch(error => {
-            // It's okay if the file is already gone (e.g., manual deletion)
             if (error.code !== 404) {
                 console.warn(`Firebase Storage deletion warning: ${error.message}`);
             }
@@ -497,13 +494,11 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
                 galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
             };
 
-            // If the deleted photo was the cover or profile photo, clear them
             if (freshData.coverPhotoUrl === photoUrl) {
                 updates.coverPhotoUrl = '';
             }
             if (freshData.photoURL === photoUrl) {
                 try {
-                    // Try to revert to the original auth photoURL
                     const userRecord = await admin.auth().getUser(userId);
                     updates.photoURL = userRecord.photoURL || '';
                 } catch (authError) {
@@ -582,13 +577,7 @@ export async function deleteMyProfileAction() {
     }
 }
 
-export async function migrateOrphanedProfileAction(orphanedProfileId: string) {
-    const authorization = headers().get('Authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-        return { success: false, message: 'User not authenticated.' };
-    }
-    const idToken = authorization.split('Bearer ')[1];
-
+export async function migrateOrphanedProfileAction(orphanedProfileId: string, idToken: string) {
     try {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         const newUserId = decodedToken.uid;
@@ -613,7 +602,6 @@ export async function migrateOrphanedProfileAction(orphanedProfileId: string) {
             return { success: false, message: 'Email addresses do not match. You can only claim a profile with the same email address.' };
         }
         
-        // Data to migrate (we avoid overwriting newer data on the new profile)
         const dataToMigrate = {
             bio: oldProfileData.bio,
             roleInCommunity: oldProfileData.roleInCommunity,
@@ -623,10 +611,8 @@ export async function migrateOrphanedProfileAction(orphanedProfileId: string) {
             showEmail: oldProfileData.showEmail,
         };
 
-        // Create or merge data into the new profile
         await newProfileRef.set(dataToMigrate, { merge: true });
 
-        // Delete the old profile
         await oldProfileRef.delete();
 
         revalidatePath(`/profile/${newUserId}`);
