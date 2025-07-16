@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -5,7 +6,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect, useTransition, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck, LogOut } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck, LogOut, GitMerge } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -13,7 +14,7 @@ import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
 import { GalleryViewer } from './GalleryViewer';
 import { useToast } from '@/hooks/use-toast';
-import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction, deleteMyProfileAction } from '@/lib/actions';
+import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction, deleteMyProfileAction, migrateOrphanedProfileAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -21,6 +22,8 @@ import ProfileLoading from '@/app/profile/[userId]/loading';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { PhotoUploader } from './PhotoUploader';
+import { useRouter } from 'next/navigation';
+
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -35,7 +38,7 @@ function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, la
     );
 }
 
-function AccountSyncAlert() {
+function AccountSyncAlert({ profileId }: { profileId: string }) {
     const { toast } = useToast();
     const router = useRouter();
     const [isDeletePending, startDeleteTransition] = useTransition();
@@ -46,7 +49,7 @@ function AccountSyncAlert() {
             if (result.success) {
                 toast({
                     title: 'Profile Deleted',
-                    description: 'Your orphaned profile data has been cleared. Please sign in again to create a new, synced profile.',
+                    description: 'Your orphaned profile data has been cleared. You may now sign in again to create a new, synced profile.',
                 });
                 await signOut(auth);
                 router.push('/login');
@@ -66,13 +69,10 @@ function AccountSyncAlert() {
             <AlertTitle>Account Sync Issue Detected</AlertTitle>
             <AlertDescription className="mt-2 space-y-4">
                 <p>
-                    Your account is 'orphaned'. This means your profile data exists in our database, but your authentication record does not. This can happen if an account is partially deleted.
-                </p>
-                <p>
-                    To fix this, you must permanently delete your current orphaned profile data. After that, you can sign in again to create a new, healthy profile.
+                    Your account is 'orphaned'. This means your profile data exists, but we can't find a matching secure login. This can happen if an account is partially deleted.
                 </p>
                 <p className="font-semibold">
-                    Warning: This action is permanent and will delete your profile bio, photos, and links. Your reviews will remain but will be attributed to "Anonymous".
+                    To fix this, you must permanently delete this orphaned profile data. After that, your next login will create a new, healthy profile.
                 </p>
                 <div className="text-right">
                     <Button
@@ -89,6 +89,57 @@ function AccountSyncAlert() {
         </Alert>
     )
 }
+
+function ClaimProfileAlert({ orphanedProfile, newUserId }: { orphanedProfile: UserProfile; newUserId: string; }) {
+    const { toast } = useToast();
+    const router = useRouter();
+    const [isMigratePending, startMigrateTransition] = useTransition();
+
+    const handleMigrate = () => {
+        startMigrateTransition(async () => {
+            const result = await migrateOrphanedProfileAction(orphanedProfile.userId);
+            if (result.success && result.migratedToId) {
+                toast({
+                    title: 'Profile Claimed!',
+                    description: 'Your data has been successfully migrated to your new account.',
+                });
+                router.push(`/profile/${result.migratedToId}`);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Migration Failed',
+                    description: result.message || 'An unexpected error occurred.',
+                });
+            }
+        });
+    };
+
+    return (
+        <Alert className="mb-8 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+            <GitMerge className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800 dark:text-blue-300">Claim Your Profile Data?</AlertTitle>
+            <AlertDescription className="mt-2 space-y-4 text-blue-700 dark:text-blue-400">
+                <p>
+                    We found this orphaned profile that matches your email address. You can migrate its data (bio, photos, etc.) to your currently logged-in account.
+                </p>
+                <p className="text-xs">
+                    This will copy the data to your new profile (<span className="font-mono text-xs">{newUserId}</span>) and then permanently delete this old profile (<span className="font-mono text-xs">{orphanedProfile.userId}</span>). This action cannot be undone.
+                </p>
+                <div className="text-right">
+                    <Button
+                        onClick={handleMigrate}
+                        disabled={isMigratePending}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        {isMigratePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GitMerge className="mr-2 h-4 w-4" />}
+                        Claim Profile & Migrate Data
+                    </Button>
+                </div>
+            </AlertDescription>
+        </Alert>
+    );
+}
+
 
 export default function ProfileClientPage({ userId }: { userId: string }) {
     const { user, isAdmin } = useAuth();
@@ -322,7 +373,8 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE);
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
-    const showAccountSyncAlert = isOwner && profile.authStatus === 'notFound';
+    const showOrphanedSelfAlert = isOwner && profile.authStatus === 'notFound';
+    const showClaimProfileAlert = user && user.email === profile.email && !isOwner && profile.authStatus === 'notFound';
     
     return (
         <>
@@ -349,13 +401,14 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             <div className="flex gap-2">
                                 {isOwner && (<Button onClick={() => setIsSheetOpen(true)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>)}
                                 {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link></Button>)}
-                                {isOwner && !showAccountSyncAlert && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
+                                {isOwner && !showOrphanedSelfAlert && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
                             </div>
                         </div>
                     </div>
 
                     <div className="mt-12">
-                         {showAccountSyncAlert && <AccountSyncAlert />}
+                         {showOrphanedSelfAlert && <AccountSyncAlert profileId={profile.userId} />}
+                         {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -395,7 +448,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                         )}
                                     </div>
                                 </CardContent>
-                                {!isDeleting && totalPages > 1 && (
+                                {(totalPages > 1 || isReordering) && (
                                     <CardFooter className="flex justify-between items-center">
                                         <Button variant="outline" onClick={() => setGalleryPage(p => p - 1)} disabled={galleryPage === 1 || isReorderPending}>
                                             Previous

@@ -551,9 +551,8 @@ export async function deleteMyProfileAction() {
         
         await adminDb.collection('userProfiles').doc(userId).delete();
         
-        // Asynchronously delete the auth user record. We don't need to wait for this.
         admin.auth().deleteUser(userId).catch(err => {
-            console.warn(`Could not delete orphaned auth user ${userId}. This is expected if the auth record was already gone.`, err.code);
+            console.warn(`Could not delete auth user ${userId} during profile deletion. This can be normal if the auth record was already gone.`, err.code);
         });
 
         revalidatePath(`/profile/${userId}`);
@@ -564,5 +563,64 @@ export async function deleteMyProfileAction() {
         console.error('Failed to delete user profile:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function migrateOrphanedProfileAction(orphanedProfileId: string) {
+    const authorization = headers().get('Authorization');
+    if (!authorization?.startsWith('Bearer ')) {
+        return { success: false, message: 'User not authenticated.' };
+    }
+    const idToken = authorization.split('Bearer ')[1];
+
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const newUserId = decodedToken.uid;
+        const newUserEmail = decodedToken.email;
+
+        if (!newUserEmail) {
+            return { success: false, message: 'Your new account does not have an email address associated with it.' };
+        }
+        
+        const oldProfileRef = adminDb.collection('userProfiles').doc(orphanedProfileId);
+        const newProfileRef = adminDb.collection('userProfiles').doc(newUserId);
+
+        const oldProfileSnap = await oldProfileRef.get();
+
+        if (!oldProfileSnap.exists) {
+            return { success: false, message: 'Orphaned profile not found. It may have already been deleted.' };
+        }
+        
+        const oldProfileData = oldProfileSnap.data() as UserProfile;
+        
+        if (oldProfileData.email !== newUserEmail) {
+            return { success: false, message: 'Email addresses do not match. You can only claim a profile with the same email address.' };
+        }
+        
+        // Data to migrate (we avoid overwriting newer data on the new profile)
+        const dataToMigrate = {
+            bio: oldProfileData.bio,
+            roleInCommunity: oldProfileData.roleInCommunity,
+            communityStartDate: oldProfileData.communityStartDate,
+            galleryImageUrls: oldProfileData.galleryImageUrls,
+            coverPhotoUrl: oldProfileData.coverPhotoUrl,
+            showEmail: oldProfileData.showEmail,
+        };
+
+        // Create or merge data into the new profile
+        await newProfileRef.set(dataToMigrate, { merge: true });
+
+        // Delete the old profile
+        await oldProfileRef.delete();
+
+        revalidatePath(`/profile/${newUserId}`);
+        revalidatePath(`/profile/${orphanedProfileId}`);
+        
+        return { success: true, migratedToId: newUserId };
+
+    } catch (error) {
+        console.error('Failed to migrate orphaned profile:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
     }
 }
