@@ -15,7 +15,6 @@ import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
 import { PhotoUploader } from '@/components/profile/PhotoUploader';
 import { GalleryViewer } from './GalleryViewer';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
 import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
@@ -40,30 +39,34 @@ function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, la
 }
 
 function AdminAuthStatusAlert({ profile, isAdmin }: { profile: UserProfile, isAdmin: boolean }) {
-    if (!isAdmin) return null;
-
-    if (profile.authStatus === 'notFound') {
-        return (
-            <Alert variant="destructive" className="mb-8">
-                <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Admin Alert: Ghost User</AlertTitle>
-                <AlertDescription>
-                    This user profile exists in the database, but their authentication record could not be found. This account may be orphaned and could be a candidate for deletion.
-                </AlertDescription>
-            </Alert>
-        );
-    }
+    if (!isAdmin || profile.authStatus !== 'notFound') return null;
 
     return (
-        <Alert className="mb-8 bg-secondary">
-            <ShieldCheck className="h-4 w-4" />
-            <AlertTitle>Admin Info: Auth Status</AlertTitle>
+        <Alert variant="destructive" className="mb-8">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Admin Alert: Ghost User</AlertTitle>
             <AlertDescription>
-                User authentication status is active.
+                This user profile exists in the database, but their authentication record could not be found. This account may be orphaned and could be a candidate for deletion.
             </AlertDescription>
         </Alert>
     );
 };
+
+function ReAuthPrompt({ handleLogout }: { handleLogout: () => void }) {
+    return (
+        <Alert variant="destructive" className="mb-8">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Account Sync Required</AlertTitle>
+            <AlertDescription className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <p>There is an issue with your account session. Please sign out and sign back in to resolve it.</p>
+                <Button variant="destructive" onClick={handleLogout} className="shrink-0 bg-white text-destructive-foreground hover:bg-white/90">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                </Button>
+            </AlertDescription>
+        </Alert>
+    )
+}
 
 export default function ProfileClientPage({ userId }: { userId: string }) {
     const { user, isAdmin } = useAuth();
@@ -94,6 +97,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const isOwner = user?.uid === userId;
 
     const fetchProfileData = useCallback(async () => {
+        setIsLoading(true);
         setError(null);
         try {
             const result = await getFullProfileAction(userId);
@@ -101,23 +105,20 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
             if (result.success && result.data) {
                 setProfile(result.data);
                 setOrderedGalleryUrls(result.data.galleryImageUrls || []);
-                if (isLoading) {
-                    fetchReviewData();
-                }
+                fetchReviewData();
             } else {
+                console.error(`[CLIENT] Profile fetch failed: ${result.message}`);
                 setError(result.message || 'Could not find user profile.');
                 setProfile(null);
             }
         } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+            const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred.';
             setError(`An unexpected error occurred while fetching the profile: ${errorMessage}`);
             setProfile(null);
         } finally {
-            if(isLoading) {
-                setIsLoading(false);
-            }
+            setIsLoading(false);
         }
-    }, [userId, isLoading]);
+    }, [userId]);
 
     const fetchReviewData = useCallback(async () => {
         try {
@@ -287,6 +288,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const currentPhotoCount = orderedGalleryUrls.length;
     const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
     const photosInGrid = isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || []);
+    const showReAuthPrompt = isOwner && profile.authStatus === 'notFound';
     
     return (
         <>
@@ -313,12 +315,14 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             <div className="flex gap-2">
                                 {isOwner && (<Button onClick={() => setIsSheetOpen(true)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>)}
                                 {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link></Button>)}
-                                {isOwner && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
+                                {isOwner && !showReAuthPrompt && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-12"><AdminAuthStatusAlert profile={profile} isAdmin={isAdmin} /></div>
+                    <div className="mt-12">
+                        {showReAuthPrompt ? <ReAuthPrompt handleLogout={handleLogout} /> : <AdminAuthStatusAlert profile={profile} isAdmin={isAdmin} />}
+                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-1 space-y-8">
@@ -384,3 +388,5 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
         </>
     );
 }
+
+      
