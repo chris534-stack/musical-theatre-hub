@@ -52,16 +52,15 @@ function AdminAuthStatusAlert({ profile, isAdmin }: { profile: UserProfile, isAd
     );
 };
 
-function ReAuthPrompt({ handleLogout }: { handleLogout: () => void }) {
+function ReAuthPrompt() {
     return (
         <Alert variant="destructive" className="mb-8">
             <ShieldAlert className="h-4 w-4" />
             <AlertTitle>Account Sync Required</AlertTitle>
             <AlertDescription className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <p>There is an issue with your account session. Please sign out and sign back in to resolve it.</p>
-                <Button variant="destructive" onClick={handleLogout} className="shrink-0 bg-white text-destructive-foreground hover:bg-white/90">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
+                <p>There is an issue with your account session. For a fix, please go to the Admin page and see the Troubleshooting section.</p>
+                <Button asChild>
+                    <Link href="/admin">Go to Admin Page</Link>
                 </Button>
             </AlertDescription>
         </Alert>
@@ -335,7 +334,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                     </div>
 
                     <div className="mt-12">
-                        {showReAuthPrompt ? <ReAuthPrompt handleLogout={handleLogout} /> : <AdminAuthStatusAlert profile={profile} isAdmin={isAdmin} />}
+                        {showReAuthPrompt ? <ReAuthPrompt /> : <AdminAuthStatusAlert profile={profile} isAdmin={isAdmin} />}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -365,7 +364,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                                 </div>
                                             );
                                         })}
-                                        {paginatedUrls.length === 0 && !isDeleting && (
+                                        {paginatedUrls.length === 0 && !isDeleting && canUpload && (
                                             <div className="col-span-full">
                                                 <PhotoUploader userId={userId} onUploadComplete={fetchProfileData} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
                                             </div>

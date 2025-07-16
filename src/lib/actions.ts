@@ -536,3 +536,33 @@ export async function setCoverPhotoAction(userId: string, photoUrl: string) {
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
 }
+
+
+export async function deleteMyProfileAction() {
+    const authorization = headers().get('Authorization');
+    if (!authorization?.startsWith('Bearer ')) {
+        return { success: false, message: 'User not authenticated.' };
+    }
+    const idToken = authorization.split('Bearer ')[1];
+
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const userId = decodedToken.uid;
+        
+        await adminDb.collection('userProfiles').doc(userId).delete();
+        
+        // Asynchronously delete the auth user record. We don't need to wait for this.
+        admin.auth().deleteUser(userId).catch(err => {
+            console.warn(`Could not delete orphaned auth user ${userId}. This is expected if the auth record was already gone.`, err.code);
+        });
+
+        revalidatePath(`/profile/${userId}`);
+        revalidatePath('/admin');
+        
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to delete user profile:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
