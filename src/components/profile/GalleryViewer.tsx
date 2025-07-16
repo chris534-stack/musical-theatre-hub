@@ -72,7 +72,7 @@ export function GalleryViewer({ isOpen, onClose, onUpdate, images, startIndex = 
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="fixed inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black/80 border-none flex items-center justify-center rounded-none">
+            <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black/80 border-none flex items-center justify-center rounded-none">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Image Gallery for {userName || 'User'}</DialogTitle>
                     <DialogDescription>
