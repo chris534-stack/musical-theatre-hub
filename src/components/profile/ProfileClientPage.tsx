@@ -81,7 +81,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
 
     const GALLERY_PHOTO_LIMIT = 50;
-    const PHOTOS_PER_PAGE = 8;
+    const PHOTOS_PER_PAGE = 4;
     const [galleryPage, setGalleryPage] = useState(1);
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -345,7 +345,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                 </CardHeader>
                                 <CardContent>
                                     {isDeleting && (<Alert variant="destructive" className="mb-4"><ShieldAlert className="h-4 w-4" /><AlertTitle>Deletion Mode</AlertTitle><AlertDescription>Click the trash icon on any photo to permanently delete it. This action cannot be undone.</AlertDescription></Alert>)}
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {(isReordering ? photosToDisplay : paginatedPhotos).map((url, index) => {
                                             const isSelectedForMove = selectedPhotoToMove === url;
                                             return (
@@ -358,13 +358,11 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                                 </div>
                                             );
                                         })}
-                                        {isOwner && !isReordering && !isDeleting && canUpload && (
-                                            <PhotoUploader userId={profile.userId} onUploadComplete={fetchProfileData} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
-                                        )}
-                                        {paginatedPhotos.length === 0 && !isOwner && (
+                                        {paginatedPhotos.length === 0 && (
                                             <div className="col-span-full flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
                                                 <Camera className="h-10 w-10 mb-2" />
                                                 <p className="font-medium">No Photos Yet</p>
+                                                {isOwner && <p className="text-sm">Click the "Upload" button to add photos to your gallery.</p>}
                                             </div>
                                         )}
                                     </div>
