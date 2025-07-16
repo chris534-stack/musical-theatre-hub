@@ -113,7 +113,7 @@ export function GalleryViewer({ isOpen, onClose, onUpdate, images, startIndex = 
                         loop: true,
                         duration: 20,
                     }}
-                    className="max-w-5xl"
+                    className="w-full max-w-5xl"
                 >
                     <CarouselContent>
                         {images.map((url, index) => (
