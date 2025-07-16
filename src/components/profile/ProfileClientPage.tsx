@@ -23,6 +23,7 @@ import ProfileLoading from '@/app/profile/[userId]/loading';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { PhotoUploader } from './PhotoUploader';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
     if (!value) return null;
@@ -213,8 +214,13 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
         setSelectedPhotoToMove(null);
     };
 
-    const handleReorderClick = (targetUrl: string, targetIndex: number) => {
+    const handleReorderClick = (targetUrl: string, targetIndexOnPage: number) => {
         if (!isReordering) return;
+
+        // Calculate the actual index in the full orderedGalleryUrls array
+        const pageStartIndex = (galleryPage - 1) * PHOTOS_PER_PAGE;
+        const targetIndex = pageStartIndex + targetIndexOnPage;
+
         if (!selectedPhotoToMove) {
             setSelectedPhotoToMove(targetUrl);
         } else {
@@ -287,12 +293,14 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     
     const roleIcons = { Performer: Drama, Technician: Wrench, Designer: Wrench, Director: Drama, Audience: Users, Other: Users };
     const RoleIcon = profile.roleInCommunity ? roleIcons[profile.roleInCommunity] : Users;
-    const currentPhotoCount = orderedGalleryUrls.length;
-    const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
-    const photosToDisplay = isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || []);
     
-    const totalPages = Math.ceil(photosToDisplay.length / PHOTOS_PER_PAGE);
-    const paginatedPhotos = photosToDisplay.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
+    // Determine the source of URLs based on the current mode (reordering or viewing)
+    const gallerySourceUrls = isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || []);
+    const currentPhotoCount = gallerySourceUrls.length;
+    const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
+
+    const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE);
+    const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
     const showReAuthPrompt = isOwner && profile.authStatus === 'notFound';
     
@@ -345,7 +353,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                 <CardContent>
                                     {isDeleting && (<Alert variant="destructive" className="mb-4"><ShieldAlert className="h-4 w-4" /><AlertTitle>Deletion Mode</AlertTitle><AlertDescription>Click the trash icon on any photo to permanently delete it. This action cannot be undone.</AlertDescription></Alert>)}
                                     <div className="grid grid-cols-2 gap-4">
-                                        {(isReordering ? photosToDisplay : paginatedPhotos).map((url, index) => {
+                                        {paginatedUrls.map((url, index) => {
                                             const isSelectedForMove = selectedPhotoToMove === url;
                                             return (
                                                 <div key={url} onClick={() => isReordering ? handleReorderClick(url, index) : handleOpenGallery(index)} className={cn("aspect-square relative rounded-lg overflow-hidden group transition-all duration-200", (isReordering || !isDeleting) && "cursor-pointer", isReordering && isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg", isReordering && selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105")}>
@@ -357,24 +365,22 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                                 </div>
                                             );
                                         })}
-                                        {paginatedPhotos.length === 0 && (
-                                            <div className="col-span-full flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                                                <Camera className="h-10 w-10 mb-2" />
-                                                <p className="font-medium">No Photos Yet</p>
-                                                {isOwner && <p className="text-sm">Click the "Upload" button to add photos to your gallery.</p>}
+                                        {paginatedUrls.length === 0 && !isDeleting && (
+                                            <div className="col-span-full">
+                                                <PhotoUploader userId={userId} onUploadComplete={fetchProfileData} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
                                             </div>
                                         )}
                                     </div>
                                 </CardContent>
-                                {!isReordering && !isDeleting && totalPages > 1 && (
+                                {!isDeleting && totalPages > 1 && (
                                     <CardFooter className="flex justify-between items-center">
-                                        <Button variant="outline" onClick={() => setGalleryPage(p => p - 1)} disabled={galleryPage === 1}>
+                                        <Button variant="outline" onClick={() => setGalleryPage(p => p - 1)} disabled={galleryPage === 1 || isReorderPending}>
                                             Previous
                                         </Button>
                                         <span className="text-sm text-muted-foreground">
                                             Page {galleryPage} of {totalPages}
                                         </span>
-                                        <Button variant="outline" onClick={() => setGalleryPage(p => p + 1)} disabled={galleryPage === totalPages}>
+                                        <Button variant="outline" onClick={() => setGalleryPage(p => p + 1)} disabled={galleryPage === totalPages || isReorderPending}>
                                             Next
                                         </Button>
                                     </CardFooter>
