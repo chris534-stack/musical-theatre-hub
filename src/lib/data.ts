@@ -402,25 +402,31 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
  * and returns the user's authentication status.
  */
 export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
+    console.log(`[DATA] getOrCreateUserProfile started for userId: "${userId}"`);
     try {
         const docRef = adminDb.collection('userProfiles').doc(userId);
         let userRecord: UserRecord | null = null;
         let authStatus: 'active' | 'notFound' = 'active';
 
         try {
+            console.log(`[DATA] Attempting to fetch user from Firebase Auth for userId: ${userId}`);
             userRecord = await admin.auth().getUser(userId);
+            console.log(`[DATA] Successfully fetched user from Auth: ${userRecord.email}`);
         } catch (error: any) {
             if (error.code === 'auth/user-not-found') {
-                console.warn(`GHOST USER DETECTED: Auth record for ID ${userId} not found.`);
+                console.warn(`[DATA] GHOST USER DETECTED: Auth record for ID ${userId} not found.`);
                 authStatus = 'notFound';
             } else {
+                 console.error(`[DATA] Unexpected error fetching from Firebase Auth for userId: ${userId}`, error);
                 throw error;
             }
         }
 
+        console.log(`[DATA] Attempting to fetch Firestore profile document for userId: ${userId}`);
         const docSnap = await docRef.get();
 
         if (docSnap.exists) {
+            console.log(`[DATA] Firestore document found for userId: ${userId}.`);
             const data = docSnap.data() || {};
             const profile: UserProfile = {
                 userId: data.userId || userId,
@@ -435,10 +441,13 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
                 showEmail: data.showEmail || false,
                 authStatus: authStatus,
             };
+            console.log(`[DATA] Returning existing profile for userId: ${userId}`);
             return profile;
         }
 
+        console.log(`[DATA] Firestore document NOT found for userId: ${userId}.`);
         if (userRecord) {
+            console.log(`[DATA] Auth record exists, creating new Firestore profile for userId: ${userId}`);
             const newProfileData: UserProfile = {
                 userId: userRecord.uid,
                 displayName: userRecord.displayName || 'New User',
@@ -453,13 +462,14 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
                 authStatus: 'active',
             };
             await docRef.set(newProfileData);
+            console.log(`[DATA] Successfully created and returning new profile for userId: ${userId}`);
             return newProfileData;
         }
 
-        console.log(`User profile could not be found or created for ID: ${userId}.`);
+        console.error(`[DATA] User profile could not be found or created for ID: ${userId} because no Firestore doc and no Auth record exist.`);
         return null;
     } catch (err) {
-        console.error(`A fatal error occurred in getOrCreateUserProfile for userId "${userId}":`, err);
+        console.error(`[DATA] A fatal error occurred in getOrCreateUserProfile for userId "${userId}":`, err);
         return null;
     }
 }

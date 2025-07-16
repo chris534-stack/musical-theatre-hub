@@ -326,14 +326,17 @@ export async function requestToBeReviewerAction(data: {
 // --- User Profile Actions ---
 
 export async function getFullProfileAction(userId: string): Promise<{ success: boolean; data?: UserProfile, message?: string;}> {
+    console.log(`[ACTION] getFullProfileAction called for userId: ${userId}`);
     try {
         const profile = await getOrCreateUserProfile(userId);
         if (!profile) {
+            console.error(`[ACTION] getOrCreateUserProfile returned null for userId: ${userId}`);
             return { success: false, message: 'Profile not found.' };
         }
+        console.log(`[ACTION] Successfully retrieved profile for userId: ${userId}`);
         return { success: true, data: profile };
     } catch (error) {
-        console.error(`Failed to fetch profile for user ${userId}:`, error);
+        console.error(`[ACTION] Failed to fetch profile for user ${userId}:`, error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
     }

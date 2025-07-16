@@ -94,24 +94,34 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const isOwner = user?.uid === userId;
 
     const fetchProfileData = useCallback(async () => {
+        console.log(`[CLIENT] Starting fetchProfileData for userId: ${userId}`);
         setError(null);
         try {
-            const profileResult = await getFullProfileAction(userId);
-            if (profileResult.success && profileResult.data) {
-                setProfile(profileResult.data);
-                setOrderedGalleryUrls(profileResult.data.galleryImageUrls || []);
+            const result = await getFullProfileAction(userId);
+            console.log('[CLIENT] Received result from getFullProfileAction:', JSON.stringify(result, null, 2));
+
+            if (result.success && result.data) {
+                console.log('[CLIENT] Profile fetch successful. Setting profile data.');
+                setProfile(result.data);
+                setOrderedGalleryUrls(result.data.galleryImageUrls || []);
                 if (isLoading) {
                     fetchReviewData();
                 }
             } else {
-                setError(profileResult.message || 'Could not find user profile.');
+                console.error(`[CLIENT] Profile fetch failed: ${result.message}`);
+                setError(result.message || 'Could not find user profile.');
                 setProfile(null);
             }
         } catch (e) {
-            setError('An unexpected error occurred while fetching the profile.');
+            console.error('[CLIENT] An unexpected error occurred while fetching the profile:', e);
+            const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+            setError(`An unexpected error occurred while fetching the profile: ${errorMessage}`);
             setProfile(null);
         } finally {
-            if(isLoading) setIsLoading(false);
+            if(isLoading) {
+                console.log('[CLIENT] Finished initial data load sequence.');
+                setIsLoading(false);
+            }
         }
     }, [userId, isLoading]);
 
