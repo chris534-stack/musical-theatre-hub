@@ -407,19 +407,25 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
     let authStatus: 'active' | 'notFound' = 'active';
 
     try {
+        console.log(`[DATA] Attempting to fetch user from Auth: ${userId}`);
         userRecord = await admin.auth().getUser(userId);
+        console.log(`[DATA] Successfully fetched user from Auth: ${userRecord.uid}`);
     } catch (error: any) {
         if (error.code === 'auth/user-not-found') {
+            console.log(`[DATA] User not found in Auth: ${userId}. This may be a 'ghost' user.`);
             authStatus = 'notFound';
         } else {
-            console.error(`Unexpected error fetching from Firebase Auth for userId: ${userId}`, error);
-            throw error;
+            // This is the critical block for the permission error.
+            console.error(`[DATA] A non-'not-found' error occurred fetching from Firebase Auth for userId: ${userId}`, error);
+            // We will now attempt to continue without the auth record.
+            authStatus = 'notFound'; 
         }
     }
 
     const docSnap = await docRef.get();
 
     if (docSnap.exists) {
+        console.log(`[DATA] Firestore document found for user: ${userId}`);
         const data = docSnap.data() || {};
         return {
             userId: data.userId || userId,
@@ -437,6 +443,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
     }
 
     if (userRecord) {
+        console.log(`[DATA] Firestore document NOT found for user: ${userId}. Creating new profile.`);
         const newProfileData: UserProfile = {
             userId: userRecord.uid,
             displayName: userRecord.displayName || 'New User',
@@ -454,6 +461,6 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
         return newProfileData;
     }
 
-    // This case is now for when the user is not in Auth AND not in Firestore
+    console.log(`[DATA] User not found in Auth and no Firestore document exists for: ${userId}. Returning null.`);
     return null;
 }
