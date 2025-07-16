@@ -6,7 +6,10 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 if (!getApps().length) {
     const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
     const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+    
+    // Hardcoding the correct project ID to resolve the persistent permission error.
+    // This is the most direct way to ensure the SDK initializes with the correct project context.
+    const projectId = 'our-stage-eugene-w930'; 
     const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
     const config: admin.AppOptions = { projectId, storageBucket };
