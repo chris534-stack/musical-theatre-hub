@@ -38,57 +38,6 @@ function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, la
     );
 }
 
-function AccountSyncAlert({ profileId }: { profileId: string }) {
-    const { toast } = useToast();
-    const router = useRouter();
-    const [isDeletePending, startDeleteTransition] = useTransition();
-
-    const handleDelete = () => {
-        startDeleteTransition(async () => {
-            const result = await deleteMyProfileAction();
-            if (result.success) {
-                toast({
-                    title: 'Profile Deleted',
-                    description: 'Your orphaned profile data has been cleared. You may now sign in again to create a new, synced profile.',
-                });
-                await signOut(auth);
-                router.push('/login');
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Deletion Failed',
-                    description: result.message || 'An unexpected error occurred.',
-                });
-            }
-        });
-    };
-
-    return (
-        <Alert variant="destructive" className="mb-8">
-            <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>Account Sync Issue Detected</AlertTitle>
-            <AlertDescription className="mt-2 space-y-4">
-                <p>
-                    Your account is 'orphaned'. This means your profile data exists, but we can't find a matching secure login. This can happen if an account is partially deleted.
-                </p>
-                <p className="font-semibold">
-                    To fix this, you must permanently delete this orphaned profile data. After that, your next login will create a new, healthy profile.
-                </p>
-                <div className="text-right">
-                     <Button
-                        variant="destructive"
-                        onClick={handleDelete}
-                        disabled={isDeletePending}
-                    >
-                        {isDeletePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                        Delete My Orphaned Profile
-                    </Button>
-                </div>
-            </AlertDescription>
-        </Alert>
-    )
-}
-
 function ClaimProfileAlert({ orphanedProfile, newUserId }: { orphanedProfile: UserProfile; newUserId: string; }) {
     const { toast } = useToast();
     const router = useRouter();
@@ -119,10 +68,10 @@ function ClaimProfileAlert({ orphanedProfile, newUserId }: { orphanedProfile: Us
             <AlertTitle className="text-blue-800 dark:text-blue-300">Claim Your Profile Data?</AlertTitle>
             <AlertDescription className="mt-2 space-y-4 text-blue-700 dark:text-blue-400">
                 <p>
-                    We found this orphaned profile that matches your email address. You can migrate its data (bio, photos, etc.) to your currently logged-in account.
+                    We found this profile that matches your email address, but it isn't linked to a secure login. You can migrate its data (bio, photos, etc.) to your currently logged-in account.
                 </p>
                 <p className="text-xs">
-                    This will copy the data to your new profile (<span className="font-mono text-xs">{newUserId}</span>) and then permanently delete this old profile (<span className="font-mono text-xs">{orphanedProfile.userId}</span>). This action cannot be undone.
+                    This will copy the data to your new profile (<span className="font-mono text-xs">{newUserId}</span>) and then permanently delete this old unlinked profile (<span className="font-mono text-xs">{orphanedProfile.userId}</span>). This action cannot be undone.
                 </p>
                 <div className="text-right">
                     <Button
@@ -370,15 +319,9 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE) || 1;
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
-    // Determines if the "Delete this orphaned profile" alert should be shown.
-    // This happens when the user is viewing their OWN profile, but it has no Auth record.
-    const showOrphanedSelfAlert = isOwner && profile.authStatus === 'notFound';
+    // Show the migration alert if the user is viewing a profile that is orphaned AND they are logged in
+    const showClaimProfileAlert = user && profile.authStatus === 'notFound' && user.email === profile.email;
 
-    // Determines if the "Claim this profile" alert should be shown.
-    // This happens when a logged-in user is viewing a DIFFERENT profile that is orphaned
-    // but has a matching email address.
-    const showClaimProfileAlert = user && user.email === profile.email && !isOwner && profile.authStatus === 'notFound';
-    
     return (
         <>
             <input type="file" accept="image/*" className="sr-only" ref={headerFileInputRef} onChange={handleHeaderUpload} disabled={isDeletePending}/>
@@ -404,14 +347,13 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             <div className="flex gap-2">
                                 {isOwner && (<Button onClick={() => setIsSheetOpen(true)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>)}
                                 {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link></Button>)}
-                                {isOwner && !showOrphanedSelfAlert && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
+                                {isOwner && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
                             </div>
                         </div>
                     </div>
 
                     <div className="mt-12">
-                        {showOrphanedSelfAlert && (<AccountSyncAlert profileId={profile.userId} />) }
-                        {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
+                         {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
