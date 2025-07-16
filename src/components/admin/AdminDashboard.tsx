@@ -4,9 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EventTable } from '@/components/admin/EventTable';
 import { ScraperForm } from '@/components/admin/ScraperForm';
 import { VenueManager } from '@/components/admin/VenueManager';
-import type { Event, Venue, UserProfile } from '@/lib/types';
+import type { Event, Venue } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TroubleshootAccountCard } from './TroubleshootAccountCard';
 import { useAuth } from '../auth/AuthProvider';
 
 type EventWithVenue = Event & { venue?: Venue };
@@ -42,11 +41,10 @@ export default function AdminDashboard({ initialEvents, venues }: { initialEvent
   
   return (
     <Tabs defaultValue="reviews" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="reviews">Event Reviews</TabsTrigger>
         <TabsTrigger value="venues">Venues</TabsTrigger>
         <TabsTrigger value="scraper">Web Scraper</TabsTrigger>
-        <TabsTrigger value="troubleshoot">Troubleshoot</TabsTrigger>
       </TabsList>
       <TabsContent value="reviews">
         <EventReviewTabs events={initialEvents} venues={venues} />
@@ -67,11 +65,6 @@ export default function AdminDashboard({ initialEvents, venues }: { initialEvent
               <ScraperForm venues={venues} />
             </CardContent>
           </Card>
-        </div>
-      </TabsContent>
-      <TabsContent value="troubleshoot">
-        <div className="pt-4">
-            {user && <TroubleshootAccountCard userId={user.uid} />}
         </div>
       </TabsContent>
     </Tabs>

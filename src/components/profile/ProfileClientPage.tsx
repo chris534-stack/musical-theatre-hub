@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -15,14 +13,13 @@ import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
 import { GalleryViewer } from './GalleryViewer';
 import { useToast } from '@/hooks/use-toast';
-import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction } from '@/lib/actions';
+import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction, deleteMyProfileAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import ProfileLoading from '@/app/profile/[userId]/loading';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
 import { PhotoUploader } from './PhotoUploader';
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
@@ -38,30 +35,56 @@ function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, la
     );
 }
 
-function AdminAuthStatusAlert({ profile, isAdmin }: { profile: UserProfile, isAdmin: boolean }) {
-    if (!isAdmin || profile.authStatus !== 'notFound') return null;
+function AccountSyncAlert() {
+    const { toast } = useToast();
+    const router = useRouter();
+    const [isDeletePending, startDeleteTransition] = useTransition();
+
+    const handleDelete = () => {
+        startDeleteTransition(async () => {
+            const result = await deleteMyProfileAction();
+            if (result.success) {
+                toast({
+                    title: 'Profile Deleted',
+                    description: 'Your orphaned profile data has been cleared. Please sign in again to create a new, synced profile.',
+                });
+                await signOut(auth);
+                router.push('/login');
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Deletion Failed',
+                    description: result.message || 'An unexpected error occurred.',
+                });
+            }
+        });
+    };
 
     return (
         <Alert variant="destructive" className="mb-8">
             <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>Admin Alert: Ghost User</AlertTitle>
-            <AlertDescription>
-                This user profile exists in the database, but their authentication record could not be found. This account may be orphaned and could be a candidate for deletion.
-            </AlertDescription>
-        </Alert>
-    );
-};
-
-function ReAuthPrompt() {
-    return (
-        <Alert variant="destructive" className="mb-8">
-            <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>Account Sync Required</AlertTitle>
-            <AlertDescription className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <p>There is an issue with your account session. For a fix, please go to the Admin page and see the Troubleshooting section.</p>
-                <Button asChild>
-                    <Link href="/admin">Go to Admin Page</Link>
-                </Button>
+            <AlertTitle>Account Sync Issue Detected</AlertTitle>
+            <AlertDescription className="mt-2 space-y-4">
+                <p>
+                    Your account is 'orphaned'. This means your profile data exists in our database, but your authentication record does not. This can happen if an account is partially deleted.
+                </p>
+                <p>
+                    To fix this, you must permanently delete your current orphaned profile data. After that, you can sign in again to create a new, healthy profile.
+                </p>
+                <p className="font-semibold">
+                    Warning: This action is permanent and will delete your profile bio, photos, and links. Your reviews will remain but will be attributed to "Anonymous".
+                </p>
+                <div className="text-right">
+                    <Button
+                        variant="destructive"
+                        onClick={handleDelete}
+                        disabled={isDeletePending}
+                        className="bg-white text-destructive-foreground hover:bg-white/90"
+                    >
+                        {isDeletePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        Delete My Orphaned Profile
+                    </Button>
+                </div>
             </AlertDescription>
         </Alert>
     )
@@ -216,7 +239,6 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const handleReorderClick = (targetUrl: string, targetIndexOnPage: number) => {
         if (!isReordering) return;
 
-        // Calculate the actual index in the full orderedGalleryUrls array
         const pageStartIndex = (galleryPage - 1) * PHOTOS_PER_PAGE;
         const targetIndex = pageStartIndex + targetIndexOnPage;
 
@@ -293,7 +315,6 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const roleIcons = { Performer: Drama, Technician: Wrench, Designer: Wrench, Director: Drama, Audience: Users, Other: Users };
     const RoleIcon = profile.roleInCommunity ? roleIcons[profile.roleInCommunity] : Users;
     
-    // Determine the source of URLs based on the current mode (reordering or viewing)
     const gallerySourceUrls = isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || []);
     const currentPhotoCount = gallerySourceUrls.length;
     const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
@@ -301,7 +322,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE);
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
-    const showReAuthPrompt = isOwner && profile.authStatus === 'notFound';
+    const showAccountSyncAlert = isOwner && profile.authStatus === 'notFound';
     
     return (
         <>
@@ -328,13 +349,13 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             <div className="flex gap-2">
                                 {isOwner && (<Button onClick={() => setIsSheetOpen(true)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>)}
                                 {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link></Button>)}
-                                {isOwner && !showReAuthPrompt && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
+                                {isOwner && !showAccountSyncAlert && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
                             </div>
                         </div>
                     </div>
 
                     <div className="mt-12">
-                        {showReAuthPrompt ? <ReAuthPrompt /> : <AdminAuthStatusAlert profile={profile} isAdmin={isAdmin} />}
+                         {showAccountSyncAlert && <AccountSyncAlert />}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -364,9 +385,12 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                                 </div>
                                             );
                                         })}
-                                        {paginatedUrls.length === 0 && !isDeleting && canUpload && (
-                                            <div className="col-span-full">
-                                                <PhotoUploader userId={userId} onUploadComplete={fetchProfileData} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
+                                        {isOwner && canUpload && !isDeleting && (
+                                            <PhotoUploader userId={userId} onUploadComplete={fetchProfileData} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} isGridItem={true} />
+                                        )}
+                                        {paginatedUrls.length === 0 && !isOwner && !canUpload && (
+                                            <div className="col-span-full text-center text-muted-foreground py-10">
+                                                This user hasn't uploaded any photos yet.
                                             </div>
                                         )}
                                     </div>
