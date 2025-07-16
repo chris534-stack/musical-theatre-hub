@@ -368,7 +368,12 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 
 export async function generateUploadUrlAction(userId: string, fileName: string, fileType: string) {
     try {
-        const bucket = admin.storage().bucket();
+        const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+        if (!bucketName) {
+            return { success: false, message: 'Storage destination not found. The server configuration for the storage bucket is missing or incorrect.' };
+        }
+
+        const bucket = admin.storage().bucket(bucketName);
         const filePath = `${userId}/${Date.now()}-${fileName}`;
         const file = bucket.file(filePath);
         

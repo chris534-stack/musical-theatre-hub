@@ -2,23 +2,33 @@
 
 import admin from 'firebase-admin';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { config } from 'dotenv';
+
+config();
 
 if (!getApps().length) {
-    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
     const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-    
-    // Hardcoding the correct project ID to resolve the persistent permission error.
-    // This is the most direct way to ensure the SDK initializes with the correct project context.
-    const projectId = 'our-stage-eugene-w930'; 
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
     const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
-    const config: admin.AppOptions = { projectId, storageBucket };
+    if (!privateKey || !clientEmail || !projectId) {
+        throw new Error('Missing required Firebase Admin SDK credentials in environment variables. Please check FIREBASE_ADMIN_PRIVATE_KEY, FIREBASE_ADMIN_CLIENT_EMAIL, and FIREBASE_ADMIN_PROJECT_ID.');
+    }
 
-    if (privateKey && clientEmail) {
-        config.credential = cert({ projectId, clientEmail, privateKey });
+    if (!storageBucket) {
+        throw new Error('Missing required Firebase Storage Bucket name. Please set FIREBASE_STORAGE_BUCKET in your environment variables.');
     }
     
-    initializeApp(config);
+    initializeApp({
+        credential: cert({
+            projectId,
+            clientEmail,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
+        }),
+        projectId, // Explicitly setting projectId again
+        storageBucket
+    });
 }
 
 export const adminDb = admin.firestore();
