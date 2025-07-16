@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { UserProfile, Review } from '@/lib/types';
@@ -21,7 +22,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import ProfileLoading from '@/app/profile/[userId]/loading';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { PhotoUploader } from './PhotoUploader';
 import { useRouter } from 'next/navigation';
 
 
@@ -438,10 +438,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                                 </div>
                                             );
                                         })}
-                                        {isOwner && canUpload && !isDeleting && (
-                                            <PhotoUploader userId={userId} onUploadComplete={fetchProfileData} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} isGridItem={true} />
-                                        )}
-                                        {paginatedUrls.length === 0 && !isOwner && !canUpload && (
+                                        {(paginatedUrls.length === 0 && !isOwner && !canUpload) && (
                                             <div className="col-span-full text-center text-muted-foreground py-10">
                                                 This user hasn't uploaded any photos yet.
                                             </div>
