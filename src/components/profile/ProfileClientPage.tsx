@@ -75,11 +75,10 @@ function AccountSyncAlert({ profileId }: { profileId: string }) {
                     To fix this, you must permanently delete this orphaned profile data. After that, your next login will create a new, healthy profile.
                 </p>
                 <div className="text-right">
-                    <Button
+                     <Button
                         variant="destructive"
                         onClick={handleDelete}
                         disabled={isDeletePending}
-                        className="bg-white text-destructive-foreground hover:bg-white/90"
                     >
                         {isDeletePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                         Delete My Orphaned Profile
@@ -153,7 +152,6 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
 
-    const GALLERY_PHOTO_LIMIT = 50;
     const PHOTOS_PER_PAGE = 4;
     const [galleryPage, setGalleryPage] = useState(1);
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
@@ -289,10 +287,10 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
 
     const handleReorderClick = (targetUrl: string, targetIndexOnPage: number) => {
         if (!isReordering) return;
-
+    
         const pageStartIndex = (galleryPage - 1) * PHOTOS_PER_PAGE;
-        const targetIndex = pageStartIndex + targetIndexOnPage;
-
+        const absoluteTargetIndex = pageStartIndex + targetIndexOnPage;
+    
         if (!selectedPhotoToMove) {
             setSelectedPhotoToMove(targetUrl);
         } else {
@@ -302,7 +300,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
             }
             const newOrder = [...orderedGalleryUrls];
             const [itemToMove] = newOrder.splice(sourceIndex, 1);
-            newOrder.splice(targetIndex, 0, itemToMove);
+            newOrder.splice(absoluteTargetIndex, 0, itemToMove);
             setOrderedGalleryUrls(newOrder);
             setSelectedPhotoToMove(null);
         }
@@ -368,12 +366,17 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     
     const gallerySourceUrls = isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || []);
     const currentPhotoCount = gallerySourceUrls.length;
-    const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
-
+    
     const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE) || 1;
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
+    // Determines if the "Delete this orphaned profile" alert should be shown.
+    // This happens when the user is viewing their OWN profile, but it has no Auth record.
     const showOrphanedSelfAlert = isOwner && profile.authStatus === 'notFound';
+
+    // Determines if the "Claim this profile" alert should be shown.
+    // This happens when a logged-in user is viewing a DIFFERENT profile that is orphaned
+    // but has a matching email address.
     const showClaimProfileAlert = user && user.email === profile.email && !isOwner && profile.authStatus === 'notFound';
     
     return (
@@ -407,8 +410,8 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                     </div>
 
                     <div className="mt-12">
-                         {showOrphanedSelfAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
-                         {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
+                        {showOrphanedSelfAlert && (<AccountSyncAlert profileId={profile.userId} />) }
+                        {showClaimProfileAlert && user && <ClaimProfileAlert orphanedProfile={profile} newUserId={user.uid} />}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -420,8 +423,8 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                         <div className="lg:col-span-2 space-y-8">
                             <Card>
                                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div className="flex flex-col"><CardTitle>{isReordering ? "Reorder Photos" : isDeleting ? "Delete Photos" : `Gallery (${currentPhotoCount}/${GALLERY_PHOTO_LIMIT})`}</CardTitle>{isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}</div>
-                                    {(isOwner || isAdmin) && (<div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">{isReordering ? (<><Button variant="outline" size="sm" onClick={handleCancelReorder} disabled={isReorderPending}>Cancel</Button><Button size="sm" onClick={handleSaveReorder} disabled={isReorderPending}>{isReorderPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Order</Button></>) : isDeleting ? (<Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Done</span></Button>) : (<>{isOwner && canUpload && (<Button size="sm" onClick={() => headerFileInputRef.current?.click()} disabled={isDeletePending}>{isDeletePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="sm:mr-2 h-4 w-4" />}<span className="hidden sm:inline">Upload</span></Button>)}{currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Reorder</span></Button>}{currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Manage</span></Button>}</>)}</div>)}
+                                     <div className="flex flex-col"><CardTitle>{isReordering ? "Reorder Photos" : isDeleting ? "Delete Photos" : `Gallery`}</CardTitle>{isReordering && <p className="text-xs text-muted-foreground mt-1">Select a photo, then select a new position.</p>}</div>
+                                    {(isOwner || isAdmin) && (<div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">{isReordering ? (<><Button variant="outline" size="sm" onClick={handleCancelReorder} disabled={isReorderPending}>Cancel</Button><Button size="sm" onClick={handleSaveReorder} disabled={isReorderPending}>{isReorderPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Order</Button></>) : isDeleting ? (<Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Done</span></Button>) : (<>{isOwner && (<Button size="sm" onClick={() => headerFileInputRef.current?.click()} disabled={isDeletePending}>{isDeletePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="sm:mr-2 h-4 w-4" />}<span className="hidden sm:inline">Upload</span></Button>)}{currentPhotoCount > 1 && <Button variant="outline" size="sm" onClick={() => setIsReordering(true)}><Shuffle className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Reorder</span></Button>}{currentPhotoCount > 0 && <Button variant="outline" size="sm" onClick={handleManagePhotosClick}><Trash2 className="sm:mr-2 h-4 w-4" /><span className="hidden sm:inline">Manage</span></Button>}</>)}</div>)}
                                 </CardHeader>
                                 <CardContent>
                                     {isDeleting && (<Alert variant="destructive" className="mb-4"><ShieldAlert className="h-4 w-4" /><AlertTitle>Deletion Mode</AlertTitle><AlertDescription>Click the trash icon on any photo to permanently delete it. This action cannot be undone.</AlertDescription></Alert>)}
@@ -438,7 +441,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                                 </div>
                                             );
                                         })}
-                                        {(paginatedUrls.length === 0 && !isOwner && !canUpload) && (
+                                        {(paginatedUrls.length === 0 && !isOwner) && (
                                             <div className="col-span-full text-center text-muted-foreground py-10">
                                                 This user hasn't uploaded any photos yet.
                                             </div>
