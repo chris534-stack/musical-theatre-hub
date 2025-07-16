@@ -37,11 +37,7 @@ import Link from 'next/link';
 import { ReviewList } from '@/components/reviews/ReviewList';
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
-
-const AddEventButton = dynamic(
-    () => import('@/components/admin/AddEventButton').then(mod => mod.AddEventButton),
-    { ssr: false }
-);
+import { AddEventButton } from '@/components/admin/AddEventButton';
 
 
 function getContrastingTextColor(color: string): string {
@@ -284,6 +280,60 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
     setCurrentMonth(month);
   }
 
+  const FilterControls = () => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline"><FilterIcon className="mr-2 h-4 w-4" /> Filter</Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-4">
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold mb-2">Venues</h4>
+            <div className="space-y-2">
+              {venues.map(venue => (
+                <div key={venue.id} className="flex items-center space-x-2">
+                  <Checkbox id={`venue-${venue.id}`} checked={selectedVenues.includes(venue.id)} onCheckedChange={() => handleVenueToggle(venue.id)} />
+                  <Label htmlFor={`venue-${venue.id}`} className="flex items-center gap-2 cursor-pointer">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: venue.color }}></span>
+                    {venue.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Separator />
+          <div>
+            <h4 className="font-semibold mb-2">Event Types</h4>
+            <div className="space-y-2">
+              {eventTypes.map(type => (
+                <div key={type} className="flex items-center space-x-2">
+                  <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
+                  <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{toTitleCase(type.replace('-', ' '))}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          {allTags.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-semibold mb-2">Tags</h4>
+                <div className="space-y-2">
+                  {allTags.map(tag => (
+                    <div key={tag} className="flex items-center space-x-2">
+                      <Checkbox id={`tag-${tag}`} checked={selectedTags.includes(tag)} onCheckedChange={() => handleTagToggle(tag)} />
+                      <Label htmlFor={`tag-${tag}`} className="cursor-pointer capitalize">{toTitleCase(tag.replace('-', ' '))}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   if (!isClient || !currentMonth) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-full lg:max-w-none">
@@ -299,9 +349,9 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
 
   const DesktopCalendar = () => (
     <Card className="h-full flex flex-col min-h-[720px]">
-      <CardHeader className="flex flex-row items-center justify-between py-4">
-        <CardTitle className="font-headline text-2xl">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
-        <div className="flex items-center gap-2">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
+        <CardTitle className="font-headline text-2xl whitespace-nowrap">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+        <div className="flex w-full sm:w-auto items-center justify-end gap-2">
           <Button variant="outline" size="icon" onClick={() => handleMonthChange(subMonths(currentMonth, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -309,6 +359,9 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           <Button variant="outline" size="icon" onClick={() => handleMonthChange(addMonths(currentMonth, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
+          <Separator orientation="vertical" className="h-8 mx-2 hidden sm:block" />
+          <FilterControls />
+          {isAdmin && <AddEventButton venues={venues} isFloating={false} />}
         </div>
       </CardHeader>
       <div className="grid grid-cols-7 border-t border-b text-center text-sm font-semibold text-muted-foreground">
@@ -409,6 +462,10 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
           }}
           components={{ DayContent: CustomDayContent }}
         />
+        <div className="flex items-center justify-end gap-2 mt-2">
+            <FilterControls />
+            {isAdmin && <AddEventButton venues={venues} isFloating={false} />}
+        </div>
       </div>
     );
   };
@@ -423,64 +480,11 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
                 <h2 className="text-xl md:text-2xl font-headline">
                     {selectedDate ? `Events for ${format(selectedDate, 'MMMM d')}` : 'Events'}
                 </h2>
-                <div className="flex items-center gap-2">
-                    {selectedEventId && (
+                 {selectedEventId && (
                     <Button variant="outline" size="sm" onClick={() => setSelectedEventId(null)}>
                         <X className="mr-2 h-4 w-4" /> Clear Selection
                     </Button>
-                    )}
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" className="bg-accent text-accent-foreground hover:bg-accent/90"><FilterIcon className="mr-2 h-4 w-4" /> Filter</Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-4">
-                        <div className="space-y-4">
-                        <div>
-                            <h4 className="font-semibold mb-2">Venues</h4>
-                            <div className="space-y-2">
-                            {venues.map(venue => (
-                                <div key={venue.id} className="flex items-center space-x-2">
-                                <Checkbox id={`venue-${venue.id}`} checked={selectedVenues.includes(venue.id)} onCheckedChange={() => handleVenueToggle(venue.id)} />
-                                <Label htmlFor={`venue-${venue.id}`} className="flex items-center gap-2 cursor-pointer">
-                                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: venue.color }}></span>
-                                    {venue.name}
-                                </Label>
-                                </div>
-                            ))}
-                            </div>
-                        </div>
-                        <Separator />
-                        <div>
-                            <h4 className="font-semibold mb-2">Event Types</h4>
-                            <div className="space-y-2">
-                            {eventTypes.map(type => (
-                                <div key={type} className="flex items-center space-x-2">
-                                <Checkbox id={`type-${type}`} checked={selectedTypes.includes(type)} onCheckedChange={() => handleTypeToggle(type)} />
-                                <Label htmlFor={`type-${type}`} className="cursor-pointer capitalize">{toTitleCase(type.replace('-', ' '))}</Label>
-                                </div>
-                            ))}
-                            </div>
-                        </div>
-                        {allTags.length > 0 && (
-                            <>
-                                <Separator />
-                                <div>
-                                <h4 className="font-semibold mb-2">Tags</h4>
-                                <div className="space-y-2">
-                                {allTags.map(tag => (
-                                    <div key={tag} className="flex items-center space-x-2">
-                                    <Checkbox id={`tag-${tag}`} checked={selectedTags.includes(tag)} onCheckedChange={() => handleTagToggle(tag)} />
-                                    <Label htmlFor={`tag-${tag}`} className="cursor-pointer capitalize">{toTitleCase(tag.replace('-', ' '))}</Label>
-                                    </div>
-                                ))}
-                                </div>
-                            </div>
-                            </>
-                        )}
-                        </div>
-                    </PopoverContent>
-                    </Popover>
-                </div>
+                )}
             </div>
             <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {selectedDayEvents.length > 0 ? (
@@ -588,7 +592,6 @@ export function EventCalendar({ events, venues }: { events: ExpandedCalendarEven
             onClose={() => setReviewModalOpen(false)}
             event={selectedEventForReview}
         />
-        {isAdmin && <AddEventButton venues={venues} />}
     </div>
   );
 }

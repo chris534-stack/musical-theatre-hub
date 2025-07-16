@@ -14,20 +14,27 @@ import {
 import { ScraperForm } from '@/components/admin/ScraperForm';
 import { Plus } from 'lucide-react';
 import type { Venue } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
-export function AddEventButton({ venues }: { venues: Venue[] }) {
+export function AddEventButton({ venues, isFloating = true }: { venues: Venue[], isFloating?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          className="fixed bottom-20 right-6 z-50 h-14 w-14 rounded-full shadow-lg md:bottom-6 md:right-6"
-          size="icon"
-        >
-          <Plus className="h-6 w-6" />
-          <span className="sr-only">Add Event</span>
-        </Button>
+        {isFloating ? (
+            <Button
+                className="fixed bottom-20 right-6 z-50 h-14 w-14 rounded-full shadow-lg md:bottom-6 md:right-6"
+                size="icon"
+            >
+                <Plus className="h-6 w-6" />
+                <span className="sr-only">Add Event</span>
+            </Button>
+        ) : (
+             <Button>
+                <Plus className="mr-2 h-4 w-4" /> Add Event
+            </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
