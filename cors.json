@@ -2,8 +2,11 @@
 [
   {
     "origin": ["*"],
-    "method": ["PUT", "GET"],
-    "responseHeader": ["Content-Type", "x-goog-resumable"],
+    "method": ["GET", "PUT", "POST", "DELETE"],
+    "responseHeader": [
+      "Content-Type",
+      "x-goog-resumable"
+    ],
     "maxAgeSeconds": 3600
   }
 ]
