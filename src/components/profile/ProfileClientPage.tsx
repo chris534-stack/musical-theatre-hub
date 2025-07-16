@@ -339,9 +339,9 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
     // Determines if the "Claim this profile" alert should be shown.
-    // This happens when a logged-in user is viewing an orphaned profile that matches their email.
-    // This now correctly works even if they are viewing their OWN orphaned profile.
-    const showClaimProfileAlert = user && user.email === profile.email && profile.authStatus === 'notFound';
+    // This happens when a logged-in user is viewing an orphaned profile that matches their email,
+    // and it is NOT their own profile.
+    const showClaimProfileAlert = user && user.email === profile.email && profile.authStatus === 'notFound' && !isOwner;
 
     return (
         <>
@@ -368,7 +368,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                             <div className="flex gap-2">
                                 {isOwner && (<Button onClick={() => setIsSheetOpen(true)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>)}
                                 {isOwner && isAdmin && (<Button asChild variant="outline"><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link></Button>)}
-                                {isOwner && !showClaimProfileAlert && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
+                                {isOwner && (<Button variant="ghost" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/> Logout</Button>)}
                             </div>
                         </div>
                     </div>
