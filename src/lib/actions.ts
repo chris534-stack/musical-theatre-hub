@@ -451,20 +451,28 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
     try {
+        // Prevent crash if photoUrl is empty or invalid
+        if (!photoUrl || typeof photoUrl !== 'string' || !photoUrl.startsWith('http')) {
+            console.warn(`Skipping deletion for invalid photoUrl: ${photoUrl}`);
+            return { success: true, message: 'Skipped deletion for invalid URL.' };
+        }
+
         const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
         if (!bucketName) {
             throw new Error("Firebase Storage bucket name is not configured on the server.");
         }
         const bucket = admin.storage().bucket(bucketName);
         
-        const decodedUrl = decodeURIComponent(photoUrl);
-        const pathRegex = new RegExp(`/b/${bucket.name}/o/(.+)`);
-        const match = new URL(decodedUrl).pathname.match(pathRegex);
-
-        if (!match || !match[1]) {
-            throw new Error(`Could not parse file path from URL: ${decodedUrl}`);
+        // Robustly extract file path from URL
+        let filePath = '';
+        try {
+            const url = new URL(photoUrl);
+            const pathSegments = url.pathname.split('/');
+            const objectPath = pathSegments.slice(pathSegments.indexOf('o') + 1).join('/');
+            filePath = decodeURIComponent(objectPath);
+        } catch (e) {
+            throw new Error(`Could not parse file path from URL: ${photoUrl}`);
         }
-        const filePath = match[1].split('?')[0]; // Remove query params like ?alt=media
         
         if (!filePath || !filePath.startsWith(`${userId}/`)) {
             throw new Error(`Invalid file path for deletion: ${filePath}`);
@@ -473,6 +481,7 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
         const file = bucket.file(filePath);
 
         await file.delete().catch(error => {
+            // It's okay if the file is already gone (e.g., manual deletion)
             if (error.code !== 404) {
                 console.warn(`Firebase Storage deletion warning: ${error.message}`);
             }
@@ -488,11 +497,13 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
                 galleryImageUrls: admin.firestore.FieldValue.arrayRemove(photoUrl),
             };
 
+            // If the deleted photo was the cover or profile photo, clear them
             if (freshData.coverPhotoUrl === photoUrl) {
                 updates.coverPhotoUrl = '';
             }
             if (freshData.photoURL === photoUrl) {
                 try {
+                    // Try to revert to the original auth photoURL
                     const userRecord = await admin.auth().getUser(userId);
                     updates.photoURL = userRecord.photoURL || '';
                 } catch (authError) {
