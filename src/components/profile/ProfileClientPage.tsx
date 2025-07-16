@@ -8,7 +8,7 @@ import { useState, useEffect, useTransition, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck, LogOut } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { ReviewPreviewCard } from '@/components/reviews/ReviewPreviewCard';
@@ -81,6 +81,8 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const [yearsInCommunity, setYearsInCommunity] = useState<string | null>(null);
 
     const GALLERY_PHOTO_LIMIT = 50;
+    const PHOTOS_PER_PAGE = 8;
+    const [galleryPage, setGalleryPage] = useState(1);
     const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [isReordering, setIsReordering] = useState(false);
@@ -187,7 +189,8 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
 
     const handleOpenGallery = (index: number) => {
         if (isReordering || isDeleting) return;
-        setSelectedImageIndex(index);
+        const overallIndex = (galleryPage - 1) * PHOTOS_PER_PAGE + index;
+        setSelectedImageIndex(overallIndex);
         setIsGalleryViewerOpen(true);
     };
 
@@ -287,7 +290,11 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const RoleIcon = profile.roleInCommunity ? roleIcons[profile.roleInCommunity] : Users;
     const currentPhotoCount = orderedGalleryUrls.length;
     const canUpload = currentPhotoCount < GALLERY_PHOTO_LIMIT;
-    const photosInGrid = isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || []);
+    const photosToDisplay = isReordering ? orderedGalleryUrls : (profile.galleryImageUrls || []);
+    
+    const totalPages = Math.ceil(photosToDisplay.length / PHOTOS_PER_PAGE);
+    const paginatedPhotos = photosToDisplay.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
+
     const showReAuthPrompt = isOwner && profile.authStatus === 'notFound';
     
     return (
@@ -339,7 +346,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                 <CardContent>
                                     {isDeleting && (<Alert variant="destructive" className="mb-4"><ShieldAlert className="h-4 w-4" /><AlertTitle>Deletion Mode</AlertTitle><AlertDescription>Click the trash icon on any photo to permanently delete it. This action cannot be undone.</AlertDescription></Alert>)}
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {photosInGrid.map((url, index) => {
+                                        {(isReordering ? photosToDisplay : paginatedPhotos).map((url, index) => {
                                             const isSelectedForMove = selectedPhotoToMove === url;
                                             return (
                                                 <div key={url} onClick={() => isReordering ? handleReorderClick(url, index) : handleOpenGallery(index)} className={cn("aspect-square relative rounded-lg overflow-hidden group transition-all duration-200", (isReordering || !isDeleting) && "cursor-pointer", isReordering && isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg", isReordering && selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105")}>
@@ -354,7 +361,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                         {isOwner && !isReordering && !isDeleting && canUpload && (
                                             <PhotoUploader userId={profile.userId} onUploadComplete={fetchProfileData} isGridItem={true} limit={GALLERY_PHOTO_LIMIT} currentCount={currentPhotoCount} />
                                         )}
-                                        {photosInGrid.length === 0 && !isOwner && (
+                                        {paginatedPhotos.length === 0 && !isOwner && (
                                             <div className="col-span-full flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
                                                 <Camera className="h-10 w-10 mb-2" />
                                                 <p className="font-medium">No Photos Yet</p>
@@ -362,6 +369,19 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                         )}
                                     </div>
                                 </CardContent>
+                                {!isReordering && !isDeleting && totalPages > 1 && (
+                                    <CardFooter className="flex justify-between items-center">
+                                        <Button variant="outline" onClick={() => setGalleryPage(p => p - 1)} disabled={galleryPage === 1}>
+                                            Previous
+                                        </Button>
+                                        <span className="text-sm text-muted-foreground">
+                                            Page {galleryPage} of {totalPages}
+                                        </span>
+                                        <Button variant="outline" onClick={() => setGalleryPage(p => p + 1)} disabled={galleryPage === totalPages}>
+                                            Next
+                                        </Button>
+                                    </CardFooter>
+                                )}
                             </Card>
                              <section>
                                 <h2 className="text-2xl font-bold font-headline mb-4">Recent Reviews</h2>
@@ -388,5 +408,3 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
         </>
     );
 }
-
-      
