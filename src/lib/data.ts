@@ -369,23 +369,50 @@ function createMockReview(event: Event): Review {
 
 
 /**
- * [SERVER-SIDE] Fetches all reviews using the Admin SDK, sorted by creation date.
+ * [SERVER-SIDE] Fetches all reviews, hydrating missing reviewer photos.
  */
 export async function getAllReviews(): Promise<Review[]> {
-  const snapshot = await adminDb.collection('reviews').orderBy('createdAt', 'desc').get();
-  const reviews = snapshot.docs.map(sanitizeReview);
-  
-  // If no real reviews exist, create a mock one for demonstration.
-  if (reviews.length === 0) {
-      // Find a past event to attach the mock review to
-      const allEvents = await getAllEvents({ includeOccurrences: true });
-      const eventForMock = findEventForMockReview(allEvents);
-      if (eventForMock) {
-          reviews.push(createMockReview(eventForMock));
-      }
-  }
+    const reviewsSnapshot = await adminDb.collection('reviews').orderBy('createdAt', 'desc').get();
+    let reviews = reviewsSnapshot.docs.map(sanitizeReview);
+    
+    // Efficiently find all unique reviewer IDs that are missing a photoURL
+    const reviewerIdsWithMissingPhotos = new Set<string>();
+    reviews.forEach(review => {
+        if (!review.reviewerPhotoURL && review.reviewerId) {
+            reviewerIdsWithMissingPhotos.add(review.reviewerId);
+        }
+    });
 
-  return reviews;
+    // If there are reviews with missing photos, fetch the corresponding user profiles
+    if (reviewerIdsWithMissingPhotos.size > 0) {
+        const userProfilesSnapshot = await adminDb.collection('userProfiles').where(admin.firestore.FieldPath.documentId(), 'in', Array.from(reviewerIdsWithMissingPhotos)).get();
+        const userPhotos = new Map<string, string>();
+        userProfilesSnapshot.forEach(doc => {
+            const profile = doc.data() as UserProfile;
+            if (profile.photoURL) {
+                userPhotos.set(doc.id, profile.photoURL);
+            }
+        });
+
+        // Hydrate the reviews with the fetched photo URLs
+        reviews = reviews.map(review => {
+            if (!review.reviewerPhotoURL && review.reviewerId && userPhotos.has(review.reviewerId)) {
+                return { ...review, reviewerPhotoURL: userPhotos.get(review.reviewerId) };
+            }
+            return review;
+        });
+    }
+
+    // If no real reviews exist after hydration, create a mock one for demonstration.
+    if (reviews.length === 0) {
+        const allEvents = await getAllEvents({ includeOccurrences: true });
+        const eventForMock = findEventForMockReview(allEvents);
+        if (eventForMock) {
+            reviews.push(createMockReview(eventForMock));
+        }
+    }
+
+    return reviews;
 }
 
 
