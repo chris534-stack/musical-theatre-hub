@@ -494,7 +494,14 @@ export async function searchUserProfiles(displayName: string): Promise<Pick<User
     if (!displayName) {
         return [];
     }
-    const query = displayName.toLowerCase();
+    const normalizeText = (text: string) => {
+        return text
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+    };
+
+    const query = normalizeText(displayName);
 
     const snapshot = await adminDb.collection('userProfiles').get();
     
@@ -504,12 +511,14 @@ export async function searchUserProfiles(displayName: string): Promise<Pick<User
             userId: doc.id,
             displayName: data.displayName || 'Unnamed User',
             photoURL: data.photoURL || '',
-            displayName_lowercase: (data.displayName || 'Unnamed User').toLowerCase(),
         };
     });
     
     const filteredUsers = allUsers
-        .filter(user => user.displayName_lowercase.includes(query))
+        .filter(user => {
+            const normalizedName = normalizeText(user.displayName);
+            return normalizedName.includes(query);
+        })
         .slice(0, 10); // Limit results for performance
 
     return filteredUsers;
