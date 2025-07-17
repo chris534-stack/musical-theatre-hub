@@ -1,5 +1,4 @@
 
-
 import { adminDb, admin } from './firebase-admin'; // Admin SDK for server-side functions
 import type { Event, Venue, EventStatus, NewsArticle, Review, UserProfile, ReviewerRequest } from './types';
 import { startOfToday, addDays } from 'date-fns';
