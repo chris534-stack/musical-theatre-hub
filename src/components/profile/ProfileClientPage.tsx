@@ -17,7 +17,7 @@ import { GalleryViewer } from './GalleryViewer';
 import { useToast } from '@/hooks/use-toast';
 import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction, deleteMyProfileAction, migrateOrphanedProfileAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import ProfileLoading from '@/app/profile/[userId]/loading';
 import { signOut, getIdToken } from 'firebase/auth';
@@ -25,6 +25,7 @@ import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { ProfileSetup } from './ProfileSetup';
 import { RevisionNeededCard } from '@/components/reviews/RevisionNeededCard';
+import { UserSearch } from './UserSearch';
 
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
@@ -446,6 +447,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                         <div className="lg:col-span-1 space-y-8">
                             <Card><CardHeader><CardTitle>About Me</CardTitle></CardHeader><CardContent><p className="text-muted-foreground whitespace-pre-wrap">{profile.bio || (isOwner ? "Tell the community a bit about yourself!" : "This user hasn't written a bio yet.")}</p></CardContent></Card>
                             <Card><CardHeader><CardTitle>Community Details</CardTitle></CardHeader><CardContent className="space-y-4"><ProfileStat icon={RoleIcon} label="Primary Role" value={profile.roleInCommunity} /><ProfileStat icon={CalendarClock} label="In Community For" value={yearsInCommunity} /></CardContent></Card>
+                            <UserSearch />
                         </div>
 
                         <div className="lg:col-span-2 space-y-8">
