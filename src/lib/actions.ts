@@ -3,7 +3,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile as getOrCreateUserProfileData, getReviewerRequestStatusForUser } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile as getOrCreateUserProfileData, getReviewerRequestStatusForUser, searchUserProfiles, getUserProfileCount } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, ReviewerRequest } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
@@ -738,6 +738,29 @@ export async function migrateOrphanedProfileAction(orphanedProfileId: string, id
 
     } catch (error) {
         console.error('Failed to migrate orphaned profile:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}
+
+
+export async function searchUsersAction(query: string): Promise<{ success: boolean; data?: Pick<UserProfile, 'userId' | 'displayName' | 'photoURL'>[], message?: string; }> {
+    try {
+        const users = await searchUserProfiles(query);
+        return { success: true, data: users };
+    } catch (error) {
+        console.error('Failed to search users:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}
+
+export async function getUserCountAction(): Promise<{ success: boolean; data?: number, message?: string; }> {
+    try {
+        const count = await getUserProfileCount();
+        return { success: true, data: count };
+    } catch (error) {
+        console.error('Failed to get user count:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
     }

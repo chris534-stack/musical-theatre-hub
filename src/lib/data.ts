@@ -479,3 +479,37 @@ export async function getOrCreateUserProfile(userId: string): Promise<{ success:
         return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
     }
 }
+
+/**
+ * [SERVER-SIDE] Searches for user profiles by display name.
+ */
+export async function searchUserProfiles(displayName: string): Promise<Pick<UserProfile, 'userId' | 'displayName' | 'photoURL'>[]> {
+    if (!displayName) {
+        return [];
+    }
+    const query = displayName.toLowerCase();
+    const end = query + '\uf8ff';
+
+    const snapshot = await adminDb.collection('userProfiles')
+        .where('displayName', '>=', query)
+        .where('displayName', '<=', end)
+        .limit(10)
+        .get();
+        
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            userId: doc.id,
+            displayName: data.displayName || 'Unnamed User',
+            photoURL: data.photoURL || '',
+        };
+    });
+}
+
+/**
+ * [SERVER-SIDE] Gets the total number of user profiles.
+ */
+export async function getUserProfileCount(): Promise<number> {
+    const snapshot = await adminDb.collection('userProfiles').count().get();
+    return snapshot.data().count;
+}
