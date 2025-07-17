@@ -406,3 +406,41 @@ export async function getAllReviewerRequests(): Promise<ReviewerRequest[]> {
         } as ReviewerRequest;
     });
 }
+
+/**
+ * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
+ * This function now safely handles "ghost users" (profiles without a matching auth record)
+ * and returns the user's authentication status.
+ */
+export async function getOrCreateUserProfile(userId: string): Promise<{ success: boolean, data?: UserProfile, message?: string }> {
+    try {
+        const docRef = adminDb.collection('userProfiles').doc(userId);
+        const docSnap = await docRef.get();
+
+        if (docSnap.exists) {
+            const data = docSnap.data() || {};
+            const profile: UserProfile = {
+                userId: data.userId || userId,
+                displayName: data.displayName || 'New User',
+                photoURL: data.photoURL || '',
+                email: data.email || '',
+                bio: data.bio || '',
+                roleInCommunity: data.roleInCommunity || 'Audience',
+                communityStartDate: String(data.communityStartDate || ''),
+                galleryImageUrls: data.galleryImageUrls || [],
+                coverPhotoUrl: data.coverPhotoUrl || '',
+                showEmail: data.showEmail || false,
+                isReviewer: data.isReviewer || false,
+                authStatus: 'active', // Assume active as we can't safely check without permissions
+            };
+            return { success: true, data: profile };
+        }
+        
+        return { success: false, message: 'User profile does not exist.' };
+
+    } catch (error) {
+        console.error('Error in getOrCreateUserProfile:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}

@@ -2,12 +2,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists, addNewsArticle, getReviewsByUserId } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, ReviewerRequest } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 import { headers } from 'next/headers';
+import { sendReviewerApplicationEmail } from '@/lib/mail';
 
 
 export async function revalidateAdminPaths() {
@@ -310,7 +311,6 @@ export async function requestToBeReviewerAction(data: {
             createdAt: new Date().toISOString(),
         };
 
-        // Check if a pending request already exists for this user
         const existingQuery = await adminDb.collection('reviewerRequests')
             .where('userId', '==', data.userId)
             .where('status', '==', 'pending')
@@ -321,8 +321,20 @@ export async function requestToBeReviewerAction(data: {
             return { success: false, message: 'You already have a pending request. We will review it soon!' };
         }
 
-        await adminDb.collection('reviewerRequests').add(requestData);
+        const docRef = await adminDb.collection('reviewerRequests').add(requestData);
         revalidatePath('/reviews');
+
+        // Send email notification
+        try {
+            await sendReviewerApplicationEmail({
+                applicantName: data.userName,
+                applicantEmail: data.userEmail,
+                requestId: docRef.id
+            });
+        } catch (emailError) {
+            console.error("Failed to send reviewer application email, but the request was saved.", emailError);
+            // Don't fail the whole action, just log the error.
+        }
         
         return { success: true, message: 'Request submitted successfully.' };
 
@@ -386,48 +398,6 @@ export async function getReviewerRequestStatusForUserAction(userId: string): Pro
 
 // --- User Profile Actions ---
 
-/**
- * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
- * This function now safely handles "ghost users" (profiles without a matching auth record)
- * and returns the user's authentication status.
- */
-export async function getOrCreateUserProfile(userId: string): Promise<{ success: boolean, data?: UserProfile, message?: string }> {
-    try {
-        const docRef = adminDb.collection('userProfiles').doc(userId);
-        const docSnap = await docRef.get();
-
-        if (docSnap.exists) {
-            const data = docSnap.data() || {};
-            const profile: UserProfile = {
-                userId: data.userId || userId,
-                displayName: data.displayName || 'New User',
-                photoURL: data.photoURL || '',
-                email: data.email || '',
-                bio: data.bio || '',
-                roleInCommunity: data.roleInCommunity || 'Audience',
-                communityStartDate: String(data.communityStartDate || ''),
-                galleryImageUrls: data.galleryImageUrls || [],
-                coverPhotoUrl: data.coverPhotoUrl || '',
-                showEmail: data.showEmail || false,
-                isReviewer: data.isReviewer || false,
-                authStatus: 'active', // Assume active to prevent crash
-            };
-            return { success: true, data: profile };
-        }
-        
-        // If the profile doesn't exist, we can't create it without the auth record,
-        // which we can't get due to the permission error. Return success: false.
-        return { success: false, message: 'User profile does not exist.' };
-
-    } catch (error) {
-        console.error('Error in getOrCreateUserProfile:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
-    }
-}
-
-
-
 export async function getFullProfileAction(userId: string): Promise<{ success: boolean; data?: UserProfile, message?: string;}> {
     try {
         const result = await getOrCreateUserProfile(userId);
@@ -458,7 +428,6 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
             Object.entries(data).filter(([, v]) => v !== undefined)
         );
         
-        // Use set with merge to create the document if it doesn't exist.
         await adminDb.collection('userProfiles').doc(userId).set(cleanData, { merge: true });
         
         revalidatePath(`/profile/${userId}`);
