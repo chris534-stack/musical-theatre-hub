@@ -322,6 +322,7 @@ export async function requestToBeReviewerAction(data: {
         }
 
         await adminDb.collection('reviewerRequests').add(requestData);
+        revalidatePath('/reviews');
         
         return { success: true, message: 'Request submitted successfully.' };
 
@@ -350,12 +351,36 @@ export async function updateReviewerRequestStatusAction(requestId: string, userI
         await batch.commit();
 
         revalidatePath('/admin');
+        revalidatePath('/reviews');
         return { success: true, message: `Request status updated to ${status}.` };
     } catch (error) {
         console.error('Failed to update reviewer request status:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
+}
+
+export async function getReviewerRequestStatusForUserAction(userId: string): Promise<{ success: boolean; status?: ReviewerRequest['status']; message?: string }> {
+  try {
+    const requestsQuery = adminDb.collection('reviewerRequests')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(1);
+    
+    const snapshot = await requestsQuery.get();
+
+    if (snapshot.empty) {
+      return { success: true, status: undefined };
+    }
+
+    const latestRequest = snapshot.docs[0].data() as ReviewerRequest;
+    return { success: true, status: latestRequest.status };
+
+  } catch (error) {
+    console.error(`Failed to get reviewer request status for user ${userId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+  }
 }
 
 

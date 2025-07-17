@@ -6,17 +6,20 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ReviewerRequestForm } from '@/components/reviews/ReviewerRequestForm';
 import { Button } from '@/components/ui/button';
-import { CalendarSearch } from 'lucide-react';
+import { CalendarSearch, Hourglass, ShieldCheck } from 'lucide-react';
 
 export function BecomeReviewerCTA() {
-    const { isReviewer } = useAuth();
+    const { reviewerStatus } = useAuth();
 
-    if (isReviewer) {
+    if (reviewerStatus === 'approved') {
         return (
             <Card className="bg-secondary/50 border-accent/20 shadow-lg">
                 <div className="grid md:grid-cols-2 items-center">
                      <CardHeader>
-                        <CardTitle className="text-2xl font-headline text-accent">You're a Reviewer!</CardTitle>
+                        <CardTitle className="text-2xl font-headline text-accent flex items-center gap-2">
+                          <ShieldCheck className="h-7 w-7" />
+                          You're a Reviewer!
+                        </CardTitle>
                         <CardDescription className="text-muted-foreground mt-4">
                             Find a past show on the calendar to share your thoughts and contribute to the community conversation.
                         </CardDescription>
@@ -29,6 +32,20 @@ export function BecomeReviewerCTA() {
                             </Link>
                          </Button>
                     </CardContent>
+                </div>
+            </Card>
+        )
+    }
+
+    if (reviewerStatus === 'pending') {
+         return (
+            <Card className="bg-secondary/50 border-accent/20 shadow-lg">
+                <div className="text-center py-12 px-6">
+                    <Hourglass className="h-10 w-10 text-accent mx-auto mb-4" />
+                    <CardTitle className="text-2xl font-headline text-accent">Request Pending</CardTitle>
+                    <CardDescription className="text-muted-foreground mt-4 max-w-md mx-auto">
+                        Thank you for your interest! Your request to become a community reviewer is currently being reviewed by our team. We'll be in touch soon.
+                    </CardDescription>
                 </div>
             </Card>
         )

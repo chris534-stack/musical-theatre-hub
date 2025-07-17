@@ -1,16 +1,21 @@
+
 'use client';
 
 import * as React from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getOrCreateUserProfile } from '@/lib/actions';
+import { getOrCreateUserProfile, getReviewerRequestStatusForUserAction } from '@/lib/actions';
+import type { ReviewerRequest } from '@/lib/types';
+
+type ReviewerStatus = ReviewerRequest['status'] | 'none';
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
   isReviewer: boolean;
+  reviewerStatus: ReviewerStatus;
 };
 
 const AuthContext = React.createContext<AuthContextType>({
@@ -18,6 +23,7 @@ const AuthContext = React.createContext<AuthContextType>({
   loading: true,
   isAdmin: false,
   isReviewer: false,
+  reviewerStatus: 'none',
 });
 
 // --- FOR TESTING: To skip the login page, provide a mock user object here. ---
@@ -31,6 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [isReviewer, setIsReviewer] = React.useState(false);
+  const [reviewerStatus, setReviewerStatus] = React.useState<ReviewerStatus>('none');
+
 
   React.useEffect(() => {
     // --- DEVELOPMENT OVERRIDE TO SKIP LOGIN ---
@@ -39,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // For testing, the mock user is both an admin and a reviewer
         setIsAdmin(true);
         setIsReviewer(true);
+        setReviewerStatus('approved');
         setLoading(false);
         return; // Skip the real auth listener
     }
@@ -61,12 +70,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Reviewer Check - fetch from user profile
         const profileResult = await getOrCreateUserProfile(user.uid);
         if (profileResult.success && profileResult.data) {
-          setIsReviewer(profileResult.data.isReviewer || false);
+          const reviewerRole = profileResult.data.isReviewer || false;
+          setIsReviewer(reviewerRole);
+
+           if (reviewerRole) {
+              setReviewerStatus('approved');
+           } else {
+              // If not a reviewer, check for a pending or denied request
+              const requestResult = await getReviewerRequestStatusForUserAction(user.uid);
+              if (requestResult.success && requestResult.status) {
+                setReviewerStatus(requestResult.status);
+              } else {
+                setReviewerStatus('none');
+              }
+           }
         }
 
       } else {
         setIsAdmin(false);
         setIsReviewer(false);
+        setReviewerStatus('none');
       }
 
       setLoading(false);
@@ -75,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const value = { user, loading, isAdmin, isReviewer };
+  const value = { user, loading, isAdmin, isReviewer, reviewerStatus };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
