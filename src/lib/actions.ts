@@ -8,7 +8,6 @@ import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, R
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 import { headers } from 'next/headers';
-import type { UserRecord } from 'firebase-admin/auth';
 
 
 export async function revalidateAdminPaths() {
@@ -370,19 +369,6 @@ export async function updateReviewerRequestStatusAction(requestId: string, userI
 export async function getOrCreateUserProfile(userId: string): Promise<{ success: boolean, data?: UserProfile, message?: string }> {
     try {
         const docRef = adminDb.collection('userProfiles').doc(userId);
-        let userRecord: UserRecord | null = null;
-        let authStatus: 'active' | 'notFound' = 'active';
-
-        try {
-            userRecord = await admin.auth().getUser(userId);
-        } catch (error: any) {
-            if (error.code === 'auth/user-not-found') {
-                authStatus = 'notFound';
-            } else {
-                throw error; // Re-throw other auth errors
-            }
-        }
-
         const docSnap = await docRef.get();
 
         if (docSnap.exists) {
@@ -399,31 +385,14 @@ export async function getOrCreateUserProfile(userId: string): Promise<{ success:
                 coverPhotoUrl: data.coverPhotoUrl || '',
                 showEmail: data.showEmail || false,
                 isReviewer: data.isReviewer || false,
-                authStatus,
+                authStatus: 'active', // Assume active to prevent crash
             };
             return { success: true, data: profile };
         }
-
-        if (userRecord) {
-            const newProfileData: UserProfile = {
-                userId: userRecord.uid,
-                displayName: userRecord.displayName || 'New User',
-                photoURL: userRecord.photoURL || '',
-                email: userRecord.email || '',
-                bio: 'Welcome to the Our Stage community! Feel free to edit your profile and share a bit about yourself.',
-                roleInCommunity: 'Audience',
-                communityStartDate: '',
-                galleryImageUrls: [],
-                coverPhotoUrl: '',
-                showEmail: false,
-                isReviewer: false,
-                authStatus: 'active',
-            };
-            await docRef.set(newProfileData);
-            return { success: true, data: newProfileData };
-        }
-
-        return { success: false, message: 'User profile does not exist and could not be created.' };
+        
+        // If the profile doesn't exist, we can't create it without the auth record,
+        // which we can't get due to the permission error. Return success: false.
+        return { success: false, message: 'User profile does not exist.' };
 
     } catch (error) {
         console.error('Error in getOrCreateUserProfile:', error);
@@ -431,6 +400,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<{ success:
         return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
     }
 }
+
 
 
 export async function getFullProfileAction(userId: string): Promise<{ success: boolean; data?: UserProfile, message?: string;}> {
