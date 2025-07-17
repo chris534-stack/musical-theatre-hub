@@ -23,6 +23,7 @@ import ProfileLoading from '@/app/profile/[userId]/loading';
 import { signOut, getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { ProfileSetup } from './ProfileSetup';
 
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
@@ -317,6 +318,12 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
         return <ProfileLoading />;
     }
 
+    // New User Setup Flow
+    if (!profile && isOwner) {
+        return <ProfileSetup onProfileCreate={fetchProfileData} />;
+    }
+    
+    // Non-owner viewing a non-existent profile
     if (error || !profile) {
         return (
             <div className="flex flex-1 items-center justify-center text-center">
@@ -407,6 +414,13 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                         {(paginatedUrls.length === 0 && !isOwner) && (
                                             <div className="col-span-full text-center text-muted-foreground py-10">
                                                 This user hasn't uploaded any photos yet.
+                                            </div>
+                                        )}
+                                         {(paginatedUrls.length === 0 && isOwner) && (
+                                            <div className="col-span-full text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg flex flex-col items-center justify-center">
+                                                <Camera className="h-10 w-10 mb-4" />
+                                                <p className="font-semibold">Your gallery is empty.</p>
+                                                <p className="text-sm mt-1">Click the "Upload" button to add your first photo.</p>
                                             </div>
                                         )}
                                     </div>

@@ -355,7 +355,8 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
             Object.entries(data).filter(([, v]) => v !== undefined)
         );
         
-        await adminDb.collection('userProfiles').doc(userId).update(cleanData);
+        // Use set with merge to create the document if it doesn't exist.
+        await adminDb.collection('userProfiles').doc(userId).set(cleanData, { merge: true });
         
         revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Profile updated successfully.' };
@@ -368,7 +369,7 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
 
 export async function generateUploadUrlAction(userId: string, fileName: string, fileType: string) {
     try {
-        const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!bucketName) {
             return { success: false, message: 'Storage destination not found. The server configuration for the storage bucket is missing or incorrect.' };
         }
@@ -409,7 +410,7 @@ export async function savePhotoUrlAction(userId: string, filePath: string) {
             }
         }
 
-        const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!bucketName) {
             throw new Error("Firebase Storage bucket name is not configured on the server.");
         }
@@ -456,7 +457,7 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
             return { success: true, message: 'Skipped deletion for invalid URL.' };
         }
 
-        const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
         if (!bucketName) {
             throw new Error("Firebase Storage bucket name is not configured on the server.");
         }
