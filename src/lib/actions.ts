@@ -2,7 +2,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile, getReviewerRequestStatusForUser } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile as getOrCreateUserProfileData, getReviewerRequestStatusForUser } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, ReviewerRequest } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
@@ -322,6 +322,10 @@ export async function requestToBeReviewerAction(data: {
         }
 
         await adminDb.collection('reviewerRequests').add(requestData);
+        
+        // Send email notification
+        await sendReviewerApplicationEmail(requestData);
+
         revalidatePath('/reviews');
 
         return { success: true, message: 'Request submitted successfully.' };
@@ -374,9 +378,13 @@ export async function getReviewerRequestStatusForUserAction(userId: string): Pro
 
 // --- User Profile Actions ---
 
+export async function getOrCreateUserProfile(userId: string): Promise<{ success: boolean, data?: UserProfile, message?: string }> {
+    return getOrCreateUserProfileData(userId);
+}
+
 export async function getFullProfileAction(userId: string): Promise<{ success: boolean; data?: UserProfile, message?: string;}> {
     try {
-        const result = await getOrCreateUserProfile(userId);
+        const result = await getOrCreateUserProfileData(userId);
         if (!result.success || !result.data) {
             return { success: false, message: result.message || 'Profile not found.' };
         }

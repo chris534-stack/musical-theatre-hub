@@ -408,6 +408,28 @@ export async function getAllReviewerRequests(): Promise<ReviewerRequest[]> {
 }
 
 /**
+ * [SERVER-SIDE] Fetches a user's most recent reviewer request status.
+ */
+export async function getReviewerRequestStatusForUser(userId: string): Promise<Pick<ReviewerRequest, 'id' | 'status'> | null> {
+    const snapshot = await adminDb.collection('reviewerRequests')
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) {
+        return null;
+    }
+
+    const request = snapshot.docs[0].data();
+    return {
+        id: snapshot.docs[0].id,
+        status: request.status as ReviewerRequest['status'],
+    };
+}
+
+
+/**
  * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
  * This function now safely handles "ghost users" (profiles without a matching auth record)
  * and returns the user's authentication status.
