@@ -318,12 +318,10 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
         return <ProfileLoading />;
     }
 
-    // New User Setup Flow
     if (!profile && isOwner) {
         return <ProfileSetup onProfileCreate={fetchProfileData} />;
     }
     
-    // Non-owner viewing a non-existent profile
     if (error || !profile) {
         return (
             <div className="flex flex-1 items-center justify-center text-center">
@@ -345,9 +343,6 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
     const totalPages = Math.ceil(currentPhotoCount / PHOTOS_PER_PAGE) || 1;
     const paginatedUrls = gallerySourceUrls.slice((galleryPage - 1) * PHOTOS_PER_PAGE, galleryPage * PHOTOS_PER_PAGE);
 
-    // Determines if the "Claim this profile" alert should be shown.
-    // This happens when a logged-in user is viewing an orphaned profile that matches their email,
-    // and it is NOT their own profile.
     const showClaimProfileAlert = user && user.email === profile.email && profile.authStatus === 'notFound' && !isOwner;
 
     return (
@@ -355,7 +350,18 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
             <input type="file" accept="image/*" className="sr-only" ref={headerFileInputRef} onChange={handleHeaderUpload} disabled={isDeletePending}/>
             <div className="w-full pb-16">
                 <div className="h-48 md:h-64 bg-secondary relative">
-                    <Image src={profile.coverPhotoUrl || "https://placehold.co/1600x400.png"} alt="Cover photo" fill className="object-cover" data-ai-hint="theatre background" unoptimized/>
+                    {profile.coverPhotoUrl ? (
+                        <Image src={profile.coverPhotoUrl} alt="Cover photo" fill className="object-cover" unoptimized/>
+                    ) : (
+                         <div className="w-full h-full bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 flex flex-col items-center justify-center">
+                            {isOwner && (
+                                <Button variant="outline" size="sm" className="bg-background/80" onClick={() => headerFileInputRef.current?.click()} disabled={isDeletePending}>
+                                    <Camera className="mr-2 h-4 w-4" />
+                                    Upload a cover photo
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="container mx-auto -mt-20 px-4 sm:px-6 lg:px-8">
