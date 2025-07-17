@@ -111,8 +111,11 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
                             <CardTitle className="text-base text-accent">A Note on Community Feedback</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                            Hey there! Our Stage, Eugene, is intended to foster a vibrant and supportive theatre community. Your impartial perspective as an audience member is vital for supporting our local artists and enriching the entire Eugene theatre community. Please offer your insights with encouragement, honesty, and a constructive spirit.
+                            <p className="text-sm text-muted-foreground space-y-3">
+                                <span>
+                                Hey there! Our Stage, Eugene, is intended to foster a vibrant and supportive theatre community. Your impartial perspective as an audience member is vital for supporting our local artists and enriching the entire Eugene theatre community. Please offer your insights with encouragement, honesty, and a constructive spirit.
+                                </span>
+                                <span className="block font-semibold">By submitting this review, you agree to uphold these principles.</span>
                             </p>
                         </CardContent>
                     </Card>
