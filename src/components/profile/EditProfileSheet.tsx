@@ -69,13 +69,13 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent side="right" className="w-full max-w-2xl">
+            <SheetContent side="right" className="w-full max-w-2xl flex flex-col">
                 <SheetHeader>
                     <SheetTitle>Edit Your Profile</SheetTitle>
                     <SheetDescription>Make your profile your own. Share your story with the community.</SheetDescription>
                 </SheetHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-6 h-full flex flex-col">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 flex-grow flex flex-col min-h-0">
                         <div className="space-y-4 overflow-y-auto pr-6 flex-grow">
                             <FormField control={form.control} name="displayName" render={({ field }) => (
                                 <FormItem><FormLabel>Display Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -140,7 +140,7 @@ export function EditProfileSheet({ isOpen, onClose, profile, onProfileUpdate }: 
                                 />
                             </div>
                         </div>
-                        <SheetFooter>
+                        <SheetFooter className="pt-6 pr-6">
                              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
                             <Button type="submit" disabled={isPending}>
                                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
