@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useState, useEffect, useTransition, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck, LogOut, GitMerge } from 'lucide-react';
+import { Edit, Mail, Shield, Drama, Wrench, Users, Camera, CalendarClock, GalleryVerticalEnd, Upload, Loader2, Shuffle, Trash2, ShieldAlert, ShieldCheck, LogOut, GitMerge, ImageOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -109,6 +109,54 @@ function ClaimProfileAlert({ orphanedProfile, newUserId }: { orphanedProfile: Us
     );
 }
 
+
+function GalleryImage({ url, index, onOpen, onReorder, onDelete, isReordering, isDeleting, selectedPhotoToMove }: {
+    url: string;
+    index: number;
+    onOpen: (index: number) => void;
+    onReorder: (url: string, index: number) => void;
+    onDelete: (url: string) => void;
+    isReordering: boolean;
+    isDeleting: boolean;
+    selectedPhotoToMove: string | null;
+}) {
+    const [isError, setIsError] = useState(false);
+    
+    const isSelectedForMove = selectedPhotoToMove === url;
+
+    const handleClick = () => {
+        if (isError) return;
+        if (isReordering) {
+            onReorder(url, index);
+        } else {
+            onOpen(index);
+        }
+    };
+
+    if (isError) {
+        return (
+            <div className="aspect-square relative rounded-lg overflow-hidden group transition-all duration-200 bg-muted flex flex-col items-center justify-center text-center p-2">
+                 <ImageOff className="h-8 w-8 text-muted-foreground" />
+                 <p className="text-xs text-muted-foreground mt-2">Image failed to load</p>
+                 {isDeleting && (
+                    <Button variant="destructive" size="sm" className="absolute bottom-2 h-7" onClick={(e) => { e.stopPropagation(); onDelete(url); }}>
+                        <Trash2 className="h-3 w-3 mr-1"/> Remove
+                    </Button>
+                 )}
+            </div>
+        )
+    }
+
+    return (
+        <div onClick={handleClick} className={cn("aspect-square relative rounded-lg overflow-hidden group transition-all duration-200", (isReordering || !isDeleting) && "cursor-pointer", isReordering && isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg", isReordering && selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105")}>
+            <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized onError={() => setIsError(true)} />
+            <div className={cn("absolute inset-0 bg-black/0 transition-colors flex items-center justify-center", !isDeleting && !isReordering && "group-hover:bg-black/20", isReordering && "group-hover:bg-black/40", isDeleting && "group-hover:bg-black/50")} >
+                {isReordering && selectedPhotoToMove && !isSelectedForMove && (<p className="text-white font-bold text-sm bg-black/50 p-2 rounded-md opacity-0 group-hover:opacity-100">Place Here</p>)}
+            </div>
+            {isDeleting && (<Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); onDelete(url); }}><Trash2 className="h-4 w-4" /></Button>)}
+        </div>
+    );
+}
 
 export default function ProfileClientPage({ userId }: { userId: string }) {
     const { user, isAdmin } = useAuth();
@@ -409,18 +457,19 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                 <CardContent>
                                     {isDeleting && (<Alert variant="destructive" className="mb-4"><ShieldAlert className="h-4 w-4" /><AlertTitle>Deletion Mode</AlertTitle><AlertDescription>Click the trash icon on any photo to permanently delete it. This action cannot be undone.</AlertDescription></Alert>)}
                                     <div className="grid grid-cols-2 gap-4">
-                                        {paginatedUrls.map((url, index) => {
-                                            const isSelectedForMove = selectedPhotoToMove === url;
-                                            return (
-                                                <div key={url} onClick={() => isReordering ? handleReorderClick(url, index) : handleOpenGallery(index)} className={cn("aspect-square relative rounded-lg overflow-hidden group transition-all duration-200", (isReordering || !isDeleting) && "cursor-pointer", isReordering && isSelectedForMove && "ring-4 ring-offset-2 ring-primary z-10 scale-105 shadow-lg", isReordering && selectedPhotoToMove && !isSelectedForMove && "opacity-60 hover:opacity-100 hover:scale-105")}>
-                                                    <Image src={url} alt={`Gallery image ${index + 1}`} fill className="object-cover" data-ai-hint="production photo" unoptimized />
-                                                    <div className={cn("absolute inset-0 bg-black/0 transition-colors flex items-center justify-center", !isDeleting && !isReordering && "group-hover:bg-black/20", isReordering && "group-hover:bg-black/40", isDeleting && "group-hover:bg-black/50")} >
-                                                        {isReordering && selectedPhotoToMove && !isSelectedForMove && (<p className="text-white font-bold text-sm bg-black/50 p-2 rounded-md opacity-0 group-hover:opacity-100">Place Here</p>)}
-                                                    </div>
-                                                    {isDeleting && (<Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); handleDeleteClick(url); }} disabled={isDeletePending}><Trash2 className="h-4 w-4" /></Button>)}
-                                                </div>
-                                            );
-                                        })}
+                                        {paginatedUrls.map((url, index) => (
+                                             <GalleryImage
+                                                key={`${url}-${index}`}
+                                                url={url}
+                                                index={index}
+                                                onOpen={handleOpenGallery}
+                                                onReorder={handleReorderClick}
+                                                onDelete={handleDeleteClick}
+                                                isReordering={isReordering}
+                                                isDeleting={isDeleting}
+                                                selectedPhotoToMove={selectedPhotoToMove}
+                                            />
+                                        ))}
                                         {(paginatedUrls.length === 0 && !isOwner) && (
                                             <div className="col-span-full text-center text-muted-foreground py-10">
                                                 This user hasn't uploaded any photos yet.

@@ -566,40 +566,14 @@ export async function updateGalleryOrderAction(userId: string, orderedUrls: stri
 
 export async function deleteProfilePhotoAction(userId: string, photoUrl: string) {
     try {
-        if (!photoUrl || typeof photoUrl !== 'string' || !photoUrl.startsWith('http')) {
-            console.warn(`Skipping deletion for invalid photoUrl: ${photoUrl}`);
-            return { success: true, message: 'Skipped deletion for invalid URL.' };
+        if (!photoUrl || typeof photoUrl !== 'string') {
+            return { success: false, message: 'Invalid photo URL provided for deletion.' };
         }
-
-        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        if (!bucketName) {
-            throw new Error("Firebase Storage bucket name is not configured on the server.");
-        }
-        const bucket = admin.storage().bucket(bucketName);
-        
-        let filePath = '';
-        try {
-            const url = new URL(photoUrl);
-            const pathSegments = url.pathname.split('/');
-            const objectPath = pathSegments.slice(pathSegments.indexOf('o') + 1).join('/');
-            filePath = decodeURIComponent(objectPath);
-        } catch (e) {
-            throw new Error(`Could not parse file path from URL: ${photoUrl}`);
-        }
-        
-        if (!filePath || !filePath.startsWith(`${userId}/`)) {
-            throw new Error(`Invalid file path for deletion: ${filePath}`);
-        }
-
-        const file = bucket.file(filePath);
-
-        await file.delete().catch(error => {
-            if (error.code !== 404) {
-                console.warn(`Firebase Storage deletion warning: ${error.message}`);
-            }
-        });
 
         const profileRef = adminDb.collection('userProfiles').doc(userId);
+
+        // Always try to remove the URL from Firestore arrays first.
+        // This handles cases where the link is broken and the file doesn't exist in storage.
         await adminDb.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(profileRef);
             if (!freshDoc.exists) return; 
@@ -617,13 +591,40 @@ export async function deleteProfilePhotoAction(userId: string, photoUrl: string)
                     const userRecord = await admin.auth().getUser(userId);
                     updates.photoURL = userRecord.photoURL || '';
                 } catch (authError) {
-                    console.warn(`Could not find auth user ${userId} when deleting photo. Setting photoURL to empty.`)
+                    console.warn(`Could not find auth user ${userId} when deleting photo. Setting photoURL to empty.`);
                     updates.photoURL = '';
                 }
             }
             transaction.update(profileRef, updates);
         });
 
+        // If the URL looks like a Firebase Storage URL, attempt to delete the file.
+        // This will now gracefully fail if the file is already gone.
+        if (photoUrl.startsWith('https://firebasestorage.googleapis.com')) {
+            const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+            if (bucketName) {
+                try {
+                    const bucket = admin.storage().bucket(bucketName);
+                    const url = new URL(photoUrl);
+                    const pathSegments = url.pathname.split('/');
+                    const objectPath = pathSegments.slice(pathSegments.indexOf('o') + 1).join('/');
+                    const filePath = decodeURIComponent(objectPath);
+                    
+                    if (filePath) {
+                        const file = bucket.file(filePath);
+                        await file.delete().catch(error => {
+                            // Log non-404 errors, but don't fail the whole action if the file is just not found.
+                            if (error.code !== 404) {
+                                console.warn(`Firebase Storage deletion warning for ${filePath}: ${error.message}`);
+                            }
+                        });
+                    }
+                } catch (e) {
+                     console.warn(`Could not parse or delete file from storage for URL ${photoUrl}:`, e);
+                }
+            }
+        }
+        
         revalidatePath(`/profile/${userId}`);
         return { success: true, message: 'Photo deleted successfully.' };
 

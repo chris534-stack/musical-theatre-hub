@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -96,7 +97,7 @@ export function ArticleEditorForm({ initialData, onSuccess }: ArticleEditorFormP
             <FormItem>
               <FormLabel>Summary</FormLabel>
               <FormControl>
-                <Textarea {...field} rows={5} />
+                <Textarea rows={5} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -132,7 +133,7 @@ export function ArticleEditorForm({ initialData, onSuccess }: ArticleEditorFormP
                         />
                     ) : (
                         <p className="text-muted-foreground text-sm px-4 text-center">
-                            Image preview not available. Please check the URL.
+                            Image preview not available. Check the URL or save without it.
                         </p>
                     )}
                 </div>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -21,6 +22,34 @@ interface GalleryViewerProps {
     userId: string;
     isOwner: boolean;
 }
+
+function CarouselImage({ url, index }: { url: string; index: number }) {
+    const [isError, setIsError] = useState(false);
+
+    if (isError) {
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-black">
+                <div className="text-center text-white/70">
+                    <p>Could not load image.</p>
+                    <p className="text-xs break-all px-4">{url}</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+         <Image
+            src={url}
+            alt={`Gallery image ${index + 1}`}
+            fill
+            className="object-contain"
+            data-ai-hint="gallery photo"
+            unoptimized
+            onError={() => setIsError(true)}
+        />
+    )
+}
+
 
 export function GalleryViewer({ isOpen, onClose, onUpdate, images, startIndex = 0, userName, userId, isOwner }: GalleryViewerProps) {
     const [isPending, startTransition] = useTransition();
@@ -119,14 +148,7 @@ export function GalleryViewer({ isOpen, onClose, onUpdate, images, startIndex = 
                         {images.map((url, index) => (
                             <CarouselItem key={index}>
                                 <div className="relative w-full h-screen">
-                                    <Image
-                                        src={url}
-                                        alt={`Gallery image ${index + 1}`}
-                                        fill
-                                        className="object-contain"
-                                        data-ai-hint="gallery photo"
-                                        unoptimized
-                                    />
+                                    <CarouselImage url={url} index={index} />
                                 </div>
                             </CarouselItem>
                         ))}

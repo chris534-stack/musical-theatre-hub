@@ -1,17 +1,23 @@
 
+
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { NewsArticle } from '@/lib/types';
 import { ArrowRight, GripVertical } from 'lucide-react';
+import { useState } from 'react';
 
 export function NewsArticleCard({ article, dragHandleProps }: { article: NewsArticle, dragHandleProps?: any }) {
+  const [isImageError, setIsImageError] = useState(false);
+
   return (
     <Card className="flex flex-col transition-shadow hover:shadow-lg h-full">
         <div className="relative group">
             <a href={article.url} target="_blank" rel="noopener noreferrer" className="block">
-                {article.imageUrl ? (
+                {article.imageUrl && !isImageError ? (
                     <div className="aspect-video relative overflow-hidden rounded-t-lg">
                         <Image
                             src={article.imageUrl}
@@ -21,6 +27,7 @@ export function NewsArticleCard({ article, dragHandleProps }: { article: NewsArt
                             data-ai-hint="news article"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             unoptimized
+                            onError={() => setIsImageError(true)}
                         />
                     </div>
                 ) : (
