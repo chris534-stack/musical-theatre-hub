@@ -1,14 +1,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getFeaturedEventsFirestore, getAllVenues } from '@/lib/data';
-import type { Event, Venue, EventOccurrence } from '@/lib/types';
-import { format } from 'date-fns';
-import { toTitleCase } from '@/lib/utils';
+import type { Event, Venue, Review } from '@/lib/types';
+import { FeaturedEventCard } from '@/components/home/FeaturedEventCard';
 
-type EventWithVenue = Event & { venue?: Venue };
+type EventWithVenueAndReviews = Event & { venue?: Venue, reviews: Review[] };
 
-async function getFeaturedEvents(): Promise<EventWithVenue[]> {
+async function getFeaturedEvents(): Promise<EventWithVenueAndReviews[]> {
   const [featured, allVenues] = await Promise.all([
     getFeaturedEventsFirestore(3),
     getAllVenues()
@@ -18,26 +16,9 @@ async function getFeaturedEvents(): Promise<EventWithVenue[]> {
   
   return featured.map(event => ({
     ...event,
-    venue: venuesMap.get(event.venueId)
+    venue: venuesMap.get(event.venueId),
+    // reviews are now included from getFeaturedEventsFirestore
   }));
-}
-
-function formatOccurrence(occurrence: EventOccurrence) {
-    try {
-        // Manually parse date components to avoid timezone shift issues.
-        // new Date('YYYY-MM-DD') can be interpreted as UTC midnight.
-        const [year, month, day] = occurrence.date.split('-').map(Number);
-        const date = new Date(year, month - 1, day);
-
-        if (occurrence.time) {
-            const [hour, minute] = occurrence.time.split(':').map(Number);
-            date.setHours(hour, minute);
-            return format(date, "MMMM d, yyyy 'at' h:mm a");
-        }
-        return format(date, "MMMM d, yyyy");
-    } catch (e) {
-        return `${occurrence.date} at ${occurrence.time}`;
-    }
 }
 
 export default async function Home() {
@@ -71,24 +52,7 @@ export default async function Home() {
           </div>
           <div className="flex flex-wrap justify-center gap-8">
             {featuredEvents.map(event => (
-              <Card key={event.id} className="w-80 flex flex-col text-center shadow-lg hover:shadow-xl transition-shadow duration-300 min-h-[220px]">
-                <CardHeader>
-                  <CardTitle className="font-headline font-bold text-primary">{toTitleCase(event.title)}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow flex flex-col justify-center">
-                  <CardDescription>
-                    {event.venue?.name}
-                    {event.occurrences && event.occurrences.length > 0 && (
-                      <p className="mt-2">{formatOccurrence(event.occurrences[0])}</p>
-                    )}
-                  </CardDescription>
-                </CardContent>
-                <CardFooter className="justify-center">
-                  <Button variant="link" asChild>
-                    <Link href={event.url || '#'}>Details</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
+              <FeaturedEventCard key={event.id} event={event} />
             ))}
           </div>
         </div>

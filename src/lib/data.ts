@@ -147,8 +147,19 @@ export async function getEventsByStatus(status: EventStatus): Promise<Event[]> {
 /**
  * [SERVER-SIDE] Fetches featured events for the homepage.
  */
-export async function getFeaturedEventsFirestore(count: number): Promise<Event[]> {
-    const approvedEvents = await getEventsByStatus("approved");
+export async function getFeaturedEventsFirestore(count: number): Promise<(Event & { reviews: Review[] })[]> {
+    const [approvedEvents, allReviews] = await Promise.all([
+        getEventsByStatus("approved"),
+        getAllReviews(),
+    ]);
+
+    const reviewsByShowId = new Map<string, Review[]>();
+    allReviews.forEach(review => {
+        if (!reviewsByShowId.has(review.showId)) {
+            reviewsByShowId.set(review.showId, []);
+        }
+        reviewsByShowId.get(review.showId)!.push(review);
+    });
 
     const today = startOfToday();
     const thirtyDaysFromNow = addDays(today, 30);
@@ -169,7 +180,6 @@ export async function getFeaturedEventsFirestore(count: number): Promise<Event[]
             });
 
             if (upcomingOccurrences.length > 0) {
-                // Sort the occurrences for this event to find the soonest one
                 upcomingOccurrences.sort((a, b) => {
                     const timeA = parseDateString(a.date).getTime();
                     const timeB = parseDateString(b.date).getTime();
@@ -178,16 +188,15 @@ export async function getFeaturedEventsFirestore(count: number): Promise<Event[]
                     }
                     return timeA - timeB;
                 });
-                // Return a new event object with only the upcoming occurrences
-                return { ...event, occurrences: upcomingOccurrences };
+                
+                const eventReviews = reviewsByShowId.get(event.id) || [];
+                return { ...event, occurrences: upcomingOccurrences, reviews: eventReviews };
             }
             return null;
         })
-        .filter((event): event is Event => event !== null);
+        .filter((event): event is (Event & { reviews: Review[] }) => event !== null);
 
-    // Sort the events themselves by their soonest upcoming occurrence
     eventsWithUpcomingOccurrences.sort((a, b) => {
-        // We know occurrences exist and are sorted from the step above.
         const firstDateA = parseDateString(a.occurrences[0].date);
         const firstDateB = parseDateString(b.occurrences[0].date);
         return firstDateA.getTime() - firstDateB.getTime();
