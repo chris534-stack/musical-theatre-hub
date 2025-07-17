@@ -32,7 +32,7 @@ export function UserSearch() {
   }, []);
 
   useEffect(() => {
-    if (debouncedQuery.trim().length > 1) {
+    if (debouncedQuery.trim().length > 0) {
       startSearchTransition(async () => {
         const result = await searchUsersAction(debouncedQuery);
         if (result.success && result.data) {
