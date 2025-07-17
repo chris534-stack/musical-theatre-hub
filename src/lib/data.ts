@@ -495,22 +495,24 @@ export async function searchUserProfiles(displayName: string): Promise<Pick<User
         return [];
     }
     const query = displayName.toLowerCase();
-    const end = query + '\uf8ff';
 
-    const snapshot = await adminDb.collection('userProfiles')
-        .where('displayName_lowercase', '>=', query)
-        .where('displayName_lowercase', '<=', end)
-        .limit(10)
-        .get();
-        
-    return snapshot.docs.map(doc => {
+    const snapshot = await adminDb.collection('userProfiles').get();
+    
+    const allUsers = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
             userId: doc.id,
             displayName: data.displayName || 'Unnamed User',
             photoURL: data.photoURL || '',
+            displayName_lowercase: (data.displayName || 'Unnamed User').toLowerCase(),
         };
     });
+    
+    const filteredUsers = allUsers
+        .filter(user => user.displayName_lowercase.includes(query))
+        .slice(0, 10); // Limit results for performance
+
+    return filteredUsers;
 }
 
 /**
@@ -520,3 +522,5 @@ export async function getUserProfileCount(): Promise<number> {
     const snapshot = await adminDb.collection('userProfiles').count().get();
     return snapshot.data().count;
 }
+
+    
