@@ -42,9 +42,9 @@ export function ReviewPreviewCard({ review, displayContext = 'reviewsPage' }: Re
                                     {isUserProfileContext ? (
                                         <span>{toTitleCase(review.showTitle)}</span>
                                     ) : (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-3">
                                             <Link href={`/profile/${review.reviewerId}`} onClick={(e) => e.stopPropagation()}>
-                                                <Avatar className="h-6 w-6">
+                                                <Avatar className="h-8 w-8">
                                                     <AvatarImage src={review.reviewerPhotoURL} alt={review.reviewerName} />
                                                     <AvatarFallback>{review.reviewerName.charAt(0)}</AvatarFallback>
                                                 </Avatar>
