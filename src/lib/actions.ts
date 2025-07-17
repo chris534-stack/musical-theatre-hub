@@ -253,8 +253,14 @@ export async function submitReviewAction(data: ReviewSubmitData) {
         }
 
         // Otherwise, we're creating a new review.
+        
+        // Fetch the user's profile to get their photoURL
+        const userProfileSnap = await adminDb.collection('userProfiles').doc(data.reviewerId).get();
+        const userProfile = userProfileSnap.data() as UserProfile | undefined;
+        
         const newReviewData: Omit<Review, 'id'> = {
             ...data,
+            reviewerPhotoURL: userProfile?.photoURL || '',
             likes: 0,
             dislikes: 0,
             votedBy: [],

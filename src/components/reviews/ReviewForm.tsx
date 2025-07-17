@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -84,6 +85,7 @@ export function ReviewForm({ event, onSuccess }: ReviewFormProps) {
                 performanceDate: event.date,
                 reviewerId: user.uid,
                 reviewerName: user.displayName || 'Anonymous Reviewer',
+                reviewerPhotoURL: user.photoURL || '',
             });
 
             if (result.success) {

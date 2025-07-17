@@ -63,6 +63,7 @@ export type Review = {
     performanceDate: string; // ISO String format
     reviewerId: string;
     reviewerName: string;
+    reviewerPhotoURL?: string;
     createdAt: string;
     overallExperience: string;
     specialMomentsText: string;

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { Review } from '@/lib/types';
@@ -9,6 +10,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, Dialog
 import { ReviewCard } from '@/components/reviews/ReviewCard';
 import { toTitleCase } from '@/lib/utils';
 import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 interface ReviewPreviewCardProps {
     review: Review;
@@ -40,9 +42,17 @@ export function ReviewPreviewCard({ review, displayContext = 'reviewsPage' }: Re
                                     {isUserProfileContext ? (
                                         <span>{toTitleCase(review.showTitle)}</span>
                                     ) : (
-                                        <Link href={`/profile/${review.reviewerId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                                            {review.reviewerName}
-                                        </Link>
+                                        <div className="flex items-center gap-2">
+                                            <Link href={`/profile/${review.reviewerId}`} onClick={(e) => e.stopPropagation()}>
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={review.reviewerPhotoURL} alt={review.reviewerName} />
+                                                    <AvatarFallback>{review.reviewerName.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                            </Link>
+                                            <Link href={`/profile/${review.reviewerId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                                                {review.reviewerName}
+                                            </Link>
+                                        </div>
                                     )}
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-1">
