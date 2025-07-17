@@ -24,6 +24,7 @@ import { signOut, getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { ProfileSetup } from './ProfileSetup';
+import { RevisionNeededCard } from '@/components/reviews/RevisionNeededCard';
 
 
 function ProfileStat({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) {
@@ -345,6 +346,9 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
 
     const showClaimProfileAlert = user && user.email === profile.email && profile.authStatus === 'notFound' && !isOwner;
 
+    const reviewsNeedingRevision = reviews.filter(r => r.status === 'needsRevision');
+    const publishedReviews = reviews.filter(r => r.status === 'published');
+
     return (
         <>
             <input type="file" accept="image/*" className="sr-only" ref={headerFileInputRef} onChange={handleHeaderUpload} disabled={isDeletePending}/>
@@ -445,11 +449,27 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                     </CardFooter>
                                 )}
                             </Card>
-                             <section>
+                             
+                            {isOwner && reviewsNeedingRevision.length > 0 && (
+                                <section>
+                                    <h2 className="text-2xl font-bold font-headline mb-4">Action Required</h2>
+                                    <div className="space-y-4">
+                                        {reviewsNeedingRevision.map(review => (
+                                            <RevisionNeededCard 
+                                                key={review.id} 
+                                                review={review}
+                                                onUpdate={fetchReviewData} 
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            <section>
                                 <h2 className="text-2xl font-bold font-headline mb-4">Recent Reviews</h2>
-                                {reviews.length > 0 ? (
+                                {publishedReviews.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {reviews.map(review => (
+                                        {publishedReviews.map(review => (
                                             <ReviewPreviewCard key={review.id} review={review} />
                                         ))}
                                     </div>

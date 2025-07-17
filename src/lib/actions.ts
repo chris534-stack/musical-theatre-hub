@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -234,9 +235,25 @@ export async function addListingRequestAction(data: {
     }
 }
 
-export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' | 'likes' | 'dislikes' | 'votedBy' | 'status'>) {
+type ReviewSubmitData = Partial<Review> & Pick<Review, 'showId' | 'showTitle' | 'performanceDate' | 'reviewerId' | 'reviewerName' | 'overallExperience' | 'specialMomentsText' | 'showHeartText' | 'communityImpactText' | 'ticketInfo' | 'valueConsiderationText' | 'timeWellSpentText'>;
+
+export async function submitReviewAction(data: ReviewSubmitData) {
     try {
-        const reviewData: Omit<Review, 'id'> = {
+        // If an ID is passed, we're updating an existing review.
+        if (data.id) {
+            const reviewRef = adminDb.collection('reviews').doc(data.id);
+            const reviewToUpdate: Partial<Review> = {
+                ...data,
+                status: 'published', // Always reset to published on resubmission
+                adminNotes: '', // Clear admin notes
+            };
+            await reviewRef.update(reviewToUpdate);
+            revalidatePath(`/profile/${data.reviewerId}`);
+            return { success: true, message: 'Your review has been updated and resubmitted. Thank you!' };
+        }
+
+        // Otherwise, we're creating a new review.
+        const newReviewData: Omit<Review, 'id'> = {
             ...data,
             likes: 0,
             dislikes: 0,
@@ -245,7 +262,7 @@ export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' |
             status: 'published',
         };
 
-        await adminDb.collection('reviews').add(reviewData);
+        await adminDb.collection('reviews').add(newReviewData);
 
         revalidatePath('/calendar');
         revalidatePath('/reviews');
