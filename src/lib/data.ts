@@ -275,7 +275,7 @@ export async function getAllNewsArticles(): Promise<NewsArticle[]> {
             return 1; // b comes first
         }
         // Neither has an order, so sort by creation date (newest first)
-        return new Date(b.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     return articles;
@@ -453,6 +453,13 @@ export async function getOrCreateUserProfile(userId: string): Promise<{ success:
 
         if (docSnap.exists) {
             const data = docSnap.data() || {};
+            
+            // Self-healing: If displayName_lowercase is missing, add it.
+            if (!data.displayName_lowercase && data.displayName) {
+                await docRef.update({ displayName_lowercase: data.displayName.toLowerCase() });
+                data.displayName_lowercase = data.displayName.toLowerCase(); // Use updated value immediately
+            }
+
             const profile: UserProfile = {
                 userId: data.userId || userId,
                 displayName: data.displayName || 'New User',
