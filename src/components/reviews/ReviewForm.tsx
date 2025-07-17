@@ -20,7 +20,7 @@ import type { ExpandedCalendarEvent } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import SignInPromptModal from '@/components/SignInPromptModal';
 
-const experienceOptions = ["Exceptional & Memorable", "Thoroughly Entertaining", "Thought-Provoking & Important", "A Promising Production"];
+const experienceOptions = ["Exceptional & Memorable", "Thoroughly Entertaining", "Good for a Laugh", "Thought-Provoking & Important", "A Promising Production", "An Acquired Taste", "A Mixed Bag"];
 const categoryOptions = [
     { id: "date-night", label: "Date Night" },
     { id: "family-friendly", label: "Family-Friendly" },
