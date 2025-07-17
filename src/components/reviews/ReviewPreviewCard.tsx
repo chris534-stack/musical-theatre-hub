@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Review } from '@/lib/types';
@@ -9,7 +10,12 @@ import { ReviewCard } from '@/components/reviews/ReviewCard';
 import { toTitleCase } from '@/lib/utils';
 import Link from 'next/link';
 
-export function ReviewPreviewCard({ review }: { review: Review }) {
+interface ReviewPreviewCardProps {
+    review: Review;
+    displayContext?: 'userProfile' | 'reviewsPage';
+}
+
+export function ReviewPreviewCard({ review, displayContext = 'reviewsPage' }: ReviewPreviewCardProps) {
     const snippet = review.specialMomentsText.length > 150 
         ? review.specialMomentsText.substring(0, 150) + '...'
         : review.specialMomentsText;
@@ -20,6 +26,8 @@ export function ReviewPreviewCard({ review }: { review: Review }) {
         year: 'numeric',
         timeZone: 'UTC'
     });
+    
+    const isUserProfileContext = displayContext === 'userProfile';
 
     return (
         <Dialog>
@@ -29,9 +37,13 @@ export function ReviewPreviewCard({ review }: { review: Review }) {
                         <div className="flex justify-between items-start gap-2">
                              <div className="flex-1">
                                 <CardTitle className="text-base font-semibold">
-                                    <Link href={`/profile/${review.reviewerId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                                        {review.reviewerName}
-                                    </Link>
+                                    {isUserProfileContext ? (
+                                        <span>{toTitleCase(review.showTitle)}</span>
+                                    ) : (
+                                        <Link href={`/profile/${review.reviewerId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                                            {review.reviewerName}
+                                        </Link>
+                                    )}
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-1">
                                     Reviewed on {formattedDate}

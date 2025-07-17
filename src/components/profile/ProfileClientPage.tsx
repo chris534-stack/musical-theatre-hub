@@ -521,7 +521,7 @@ export default function ProfileClientPage({ userId }: { userId: string }) {
                                 {publishedReviews.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {publishedReviews.map(review => (
-                                            <ReviewPreviewCard key={review.id} review={review} />
+                                            <ReviewPreviewCard key={review.id} review={review} displayContext="userProfile" />
                                         ))}
                                     </div>
                                 ) : (
