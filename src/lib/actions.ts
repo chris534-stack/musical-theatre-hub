@@ -234,14 +234,15 @@ export async function addListingRequestAction(data: {
     }
 }
 
-export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' | 'likes' | 'dislikes' | 'votedBy'>) {
+export async function submitReviewAction(data: Omit<Review, 'id' | 'createdAt' | 'likes' | 'dislikes' | 'votedBy' | 'status'>) {
     try {
-        const reviewData = {
+        const reviewData: Omit<Review, 'id'> = {
             ...data,
             likes: 0,
             dislikes: 0,
             votedBy: [],
             createdAt: new Date().toISOString(),
+            status: 'published',
         };
 
         await adminDb.collection('reviews').add(reviewData);
@@ -300,17 +301,39 @@ export async function voteOnReviewAction(reviewId: string, voteType: 'like' | 'd
 }
 
 export async function deleteReviewAction(reviewId: string) {
-    // This is a sensitive action. In a real app, you'd verify admin privileges here.
-    // For this app, we trust the client to only show the button to admins.
     try {
         await adminDb.collection('reviews').doc(reviewId).delete();
         revalidatePath('/reviews');
         revalidatePath('/calendar');
-        // We don't know which profile page to revalidate, so we may need a broader revalidation or let it be stale.
-        // For now, revalidating the main pages is sufficient.
         return { success: true, message: 'Review deleted successfully.' };
     } catch (error) {
         console.error('Failed to delete review:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}
+
+export async function requestReviewRevisionAction(reviewId: string, adminNotes: string) {
+    try {
+        const reviewRef = adminDb.collection('reviews').doc(reviewId);
+        await reviewRef.update({
+            status: 'needsRevision',
+            adminNotes,
+            revisionRequestedAt: new Date().toISOString(),
+        });
+        
+        const reviewDoc = await reviewRef.get();
+        const reviewerId = reviewDoc.data()?.reviewerId;
+
+        revalidatePath('/reviews');
+        revalidatePath('/calendar');
+        if (reviewerId) {
+            revalidatePath(`/profile/${reviewerId}`);
+        }
+        
+        return { success: true, message: 'Revision requested from user.' };
+    } catch (error) {
+        console.error('Failed to request review revision:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
     }

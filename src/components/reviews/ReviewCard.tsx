@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, ThumbsDown, Trash2, Loader2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Trash2, Loader2, Edit, MoreVertical, MessageSquareWarning } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { voteOnReviewAction, deleteReviewAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { RequestRevisionDialog } from './RequestRevisionDialog';
 
 function ReviewSection({ title, content }: { title: string, content: React.ReactNode }) {
     if (!content) return null;
@@ -46,7 +48,7 @@ export function ReviewCard({ review, hideHeader = false, onReviewDeleted }: { re
     const [voted, setVoted] = useState<'like' | 'dislike' | null>(null);
     const [showSignInModal, setShowSignInModal] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
-
+    const [isRevisionOpen, setIsRevisionOpen] = useState(false);
 
     const handleVote = (voteType: 'like' | 'dislike') => {
         if (!user) {
@@ -92,30 +94,34 @@ export function ReviewCard({ review, hideHeader = false, onReviewDeleted }: { re
 
     const hasVoted = voted || (user && (review.votedBy || []).includes(user.uid));
 
+    const handleRevisionSuccess = () => {
+        setIsRevisionOpen(false);
+        if (onReviewDeleted) {
+            onReviewDeleted();
+        }
+    }
+
     return (
         <>
             <Card className="relative">
                 {isAdmin && (
-                    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-10" onClick={() => setIsAlertOpen(true)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                         <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete this review.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDelete} disabled={deletePending}>
-                                    {deletePending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 z-10">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => setIsRevisionOpen(true)}>
+                                <MessageSquareWarning className="mr-2 h-4 w-4" />
+                                <span>Request Revision</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setIsAlertOpen(true)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )}
 
                 {!hideHeader && (
@@ -178,6 +184,32 @@ export function ReviewCard({ review, hideHeader = false, onReviewDeleted }: { re
                     </Button>
                 </CardFooter>
             </Card>
+
+            <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                 <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete this review.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} disabled={deletePending}>
+                            {deletePending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Delete Permanently
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <RequestRevisionDialog 
+                isOpen={isRevisionOpen}
+                onClose={() => setIsRevisionOpen(false)}
+                onSuccess={handleRevisionSuccess}
+                review={review}
+            />
+
             <SignInPromptModal
                 isOpen={showSignInModal}
                 onClose={() => setShowSignInModal(false)}

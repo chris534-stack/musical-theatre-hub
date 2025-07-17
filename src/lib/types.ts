@@ -54,6 +54,8 @@ export type NewsArticle = {
   order: number;
 };
 
+export type ReviewStatus = 'published' | 'needsRevision' | 'archived';
+
 export type Review = {
     id: string;
     showId: string;
@@ -74,6 +76,10 @@ export type Review = {
     dislikes: number;
     votedBy: string[];
     disclosureText: string;
+    // New fields for moderation
+    status: ReviewStatus;
+    adminNotes?: string;
+    revisionRequestedAt?: string; // ISO String
 };
 
 // An "Expanded Event" is a single performance instance, derived from a parent Event

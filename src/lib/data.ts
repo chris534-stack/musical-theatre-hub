@@ -301,6 +301,9 @@ function sanitizeReview(doc: admin.firestore.DocumentSnapshot): Review {
         dislikes: data.dislikes || 0,
         votedBy: data.votedBy || [],
         disclosureText: data.disclosureText || '',
+        status: data.status || 'published',
+        adminNotes: data.adminNotes || '',
+        revisionRequestedAt: data.revisionRequestedAt ? safeToISOString(data.revisionRequestedAt) : undefined,
     };
 }
 
@@ -350,6 +353,7 @@ function createMockReview(event: Event): Review {
         dislikes: 1,
         votedBy: [],
         disclosureText: "To be fully transparent, I am good friends with the lighting designer. I've done my best to remain objective in my review of the production as a whole.",
+        status: 'published',
     };
 }
 
