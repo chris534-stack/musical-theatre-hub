@@ -469,6 +469,11 @@ export async function updateUserProfileAction(userId: string, data: Partial<User
         const cleanData = Object.fromEntries(
             Object.entries(data).filter(([, v]) => v !== undefined)
         );
+
+        // If displayName is being updated, also update the lowercase version
+        if (cleanData.displayName && typeof cleanData.displayName === 'string') {
+            cleanData.displayName_lowercase = cleanData.displayName.toLowerCase();
+        }
         
         await adminDb.collection('userProfiles').doc(userId).set(cleanData, { merge: true });
         

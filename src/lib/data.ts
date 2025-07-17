@@ -456,6 +456,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<{ success:
             const profile: UserProfile = {
                 userId: data.userId || userId,
                 displayName: data.displayName || 'New User',
+                displayName_lowercase: data.displayName_lowercase || (data.displayName || 'New User').toLowerCase(),
                 photoURL: data.photoURL || '',
                 email: data.email || '',
                 bio: data.bio || '',
@@ -490,8 +491,8 @@ export async function searchUserProfiles(displayName: string): Promise<Pick<User
     const end = query + '\uf8ff';
 
     const snapshot = await adminDb.collection('userProfiles')
-        .where('displayName', '>=', query)
-        .where('displayName', '<=', end)
+        .where('displayName_lowercase', '>=', query)
+        .where('displayName_lowercase', '<=', end)
         .limit(10)
         .get();
         

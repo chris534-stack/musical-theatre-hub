@@ -103,6 +103,7 @@ export type ReviewerRequest = {
 export type UserProfile = {
   userId: string;
   displayName: string;
+  displayName_lowercase?: string; // For case-insensitive search
   photoURL: string;
   email: string;
   bio?: string;
