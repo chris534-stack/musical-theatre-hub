@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -6,13 +7,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Trash2, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { voteOnReviewAction } from '@/lib/actions';
+import { voteOnReviewAction, deleteReviewAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import SignInPromptModal from '@/components/SignInPromptModal';
 import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 function ReviewSection({ title, content }: { title: string, content: React.ReactNode }) {
     if (!content) return null;
@@ -24,15 +35,18 @@ function ReviewSection({ title, content }: { title: string, content: React.React
     )
 }
 
-export function ReviewCard({ review, hideHeader = false }: { review: Review, hideHeader?: boolean }) {
-    const { user } = useAuth();
+export function ReviewCard({ review, hideHeader = false, onReviewDeleted }: { review: Review, hideHeader?: boolean, onReviewDeleted?: () => void }) {
+    const { user, isAdmin } = useAuth();
     const { toast } = useToast();
-    const [isPending, startTransition] = useTransition();
+    const [votePending, startVoteTransition] = useTransition();
+    const [deletePending, startDeleteTransition] = useTransition();
 
     const [localLikes, setLocalLikes] = useState(review.likes || 0);
     const [localDislikes, setLocalDislikes] = useState(review.dislikes || 0);
     const [voted, setVoted] = useState<'like' | 'dislike' | null>(null);
     const [showSignInModal, setShowSignInModal] = useState(false);
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+
 
     const handleVote = (voteType: 'like' | 'dislike') => {
         if (!user) {
@@ -55,9 +69,24 @@ export function ReviewCard({ review, hideHeader = false }: { review: Review, hid
             setLocalDislikes(p => p + 1);
         }
 
-        startTransition(async () => {
+        startVoteTransition(async () => {
             await voteOnReviewAction(review.id, voteType, user.uid);
             // No need to toast success, it's an implicit action
+        });
+    }
+
+    const handleDelete = () => {
+        startDeleteTransition(async () => {
+            const result = await deleteReviewAction(review.id);
+            if (result.success) {
+                toast({ title: "Success", description: "Review has been deleted." });
+                if (onReviewDeleted) {
+                    onReviewDeleted();
+                }
+            } else {
+                toast({ variant: 'destructive', title: "Error", description: result.message });
+            }
+            setIsAlertOpen(false);
         });
     }
 
@@ -65,7 +94,30 @@ export function ReviewCard({ review, hideHeader = false }: { review: Review, hid
 
     return (
         <>
-            <Card>
+            <Card className="relative">
+                {isAdmin && (
+                    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-10" onClick={() => setIsAlertOpen(true)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                         <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete this review.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} disabled={deletePending}>
+                                    {deletePending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+
                 {!hideHeader && (
                     <CardHeader>
                         <div className="flex justify-between items-start">
@@ -112,7 +164,7 @@ export function ReviewCard({ review, hideHeader = false }: { review: Review, hid
                         variant={voted === 'like' ? 'default' : 'outline'} 
                         size="sm" 
                         onClick={() => handleVote('like')} 
-                        disabled={isPending || !!hasVoted}
+                        disabled={votePending || !!hasVoted}
                     >
                         <ThumbsUp className="mr-2 h-4 w-4" /> {localLikes}
                     </Button>
@@ -120,7 +172,7 @@ export function ReviewCard({ review, hideHeader = false }: { review: Review, hid
                         variant={voted === 'dislike' ? 'destructive' : 'outline'} 
                         size="sm" 
                         onClick={() => handleVote('dislike')}
-                        disabled={isPending || !!hasVoted}
+                        disabled={votePending || !!hasVoted}
                     >
                         <ThumbsDown className="mr-2 h-4 w-4" /> {localDislikes}
                     </Button>
