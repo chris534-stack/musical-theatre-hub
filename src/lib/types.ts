@@ -105,5 +105,6 @@ export type UserProfile = {
   galleryImageUrls?: string[];
   coverPhotoUrl?: string;
   showEmail?: boolean;
+  isReviewer?: boolean;
   authStatus?: 'active' | 'notFound';
 };

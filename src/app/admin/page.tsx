@@ -1,14 +1,15 @@
-import { getAllEvents, getAllVenues } from '@/lib/data';
+import { getAllEvents, getAllVenues, getAllReviewerRequests } from '@/lib/data';
 import AdminDashboard from '@/components/admin/AdminDashboard';
-import type { Venue } from '@/lib/types';
+import type { Venue, ReviewerRequest } from '@/lib/types';
 import AdminAuthGuard from '@/components/auth/AdminAuthGuard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  const [allEvents, allVenues] = await Promise.all([
+  const [allEvents, allVenues, reviewerRequests] = await Promise.all([
     getAllEvents(),
-    getAllVenues()
+    getAllVenues(),
+    getAllReviewerRequests(),
   ]);
   
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
@@ -23,9 +24,13 @@ export default async function AdminPage() {
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
           <h1 className="text-4xl font-bold font-headline text-primary">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-2">Manage events and scrape new listings.</p>
+          <p className="text-muted-foreground mt-2">Manage events, venues, and user roles.</p>
         </div>
-        <AdminDashboard initialEvents={allEventsWithVenues} venues={allVenues} />
+        <AdminDashboard 
+            initialEvents={allEventsWithVenues} 
+            venues={allVenues}
+            reviewerRequests={reviewerRequests}
+        />
       </div>
     </AdminAuthGuard>
   );

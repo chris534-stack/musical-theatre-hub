@@ -4,6 +4,7 @@ import * as React from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { getOrCreateUserProfile } from '@/lib/data';
 
 type AuthContextType = {
   user: User | null;
@@ -43,28 +44,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     // --- END OVERRIDE ---
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
 
-      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-      const reviewerEmails = (process.env.NEXT_PUBLIC_REVIEWER_EMAILS || '').split(',').filter(e => e);
-
       if (user) {
+        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+        
         // Admin Check
         if (adminEmail) {
-          setIsAdmin(!!user && user.email === adminEmail);
+          setIsAdmin(user.email === adminEmail);
         } else {
           // If not configured, any signed-in user is an admin for testing.
           setIsAdmin(true); 
         }
 
-        // Reviewer Check
-        if (reviewerEmails.length > 0) {
-            setIsReviewer(reviewerEmails.includes(user.email || ''));
-        } else {
-            // For testing, if no reviewer emails are set, any logged-in user is a reviewer.
-            setIsReviewer(true);
-        }
+        // Reviewer Check - fetch from user profile
+        const userProfile = await getOrCreateUserProfile(user.uid);
+        setIsReviewer(userProfile?.isReviewer || false);
 
       } else {
         setIsAdmin(false);

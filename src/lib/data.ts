@@ -1,7 +1,7 @@
 
 
 import { adminDb, admin } from './firebase-admin'; // Admin SDK for server-side functions
-import type { Event, Venue, EventStatus, NewsArticle, Review, UserProfile } from './types';
+import type { Event, Venue, EventStatus, NewsArticle, Review, UserProfile, ReviewerRequest } from './types';
 import { startOfToday, addDays } from 'date-fns';
 import type { UserRecord } from 'firebase-admin/auth';
 
@@ -393,6 +393,21 @@ export async function getReviewsByUserId(userId: string): Promise<Review[]> {
     return reviews;
 }
 
+/**
+ * [SERVER-SIDE] Fetches all reviewer requests.
+ */
+export async function getAllReviewerRequests(): Promise<ReviewerRequest[]> {
+    const snapshot = await adminDb.collection('reviewerRequests').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: safeToISOString(data.createdAt),
+        } as ReviewerRequest;
+    });
+}
+
 
 // --- User Profile Functions ---
 
@@ -438,6 +453,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             galleryImageUrls: data.galleryImageUrls || [],
             coverPhotoUrl: data.coverPhotoUrl || '',
             showEmail: data.showEmail || false,
+            isReviewer: data.isReviewer || false,
             authStatus,
         };
     }
@@ -455,6 +471,7 @@ export async function getOrCreateUserProfile(userId: string): Promise<UserProfil
             galleryImageUrls: [],
             coverPhotoUrl: '',
             showEmail: false,
+            isReviewer: false,
             authStatus: 'active',
         };
         await docRef.set(newProfileData);

@@ -4,9 +4,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EventTable } from '@/components/admin/EventTable';
 import { ScraperForm } from '@/components/admin/ScraperForm';
 import { VenueManager } from '@/components/admin/VenueManager';
-import type { Event, Venue } from '@/lib/types';
+import type { Event, Venue, ReviewerRequest } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../auth/AuthProvider';
+import { ReviewerRequestManager } from './ReviewerRequestManager';
 
 type EventWithVenue = Event & { venue?: Venue };
 
@@ -36,14 +37,23 @@ function EventReviewTabs({ events, venues }: { events: EventWithVenue[], venues:
 }
 
 
-export default function AdminDashboard({ initialEvents, venues }: { initialEvents: EventWithVenue[], venues: Venue[] }) {
+export default function AdminDashboard({ 
+    initialEvents, 
+    venues,
+    reviewerRequests
+}: { 
+    initialEvents: EventWithVenue[], 
+    venues: Venue[],
+    reviewerRequests: ReviewerRequest[]
+}) {
   const { user } = useAuth();
   
   return (
     <Tabs defaultValue="reviews" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="reviews">Event Reviews</TabsTrigger>
         <TabsTrigger value="venues">Venues</TabsTrigger>
+        <TabsTrigger value="reviewers">Reviewer Requests</TabsTrigger>
         <TabsTrigger value="scraper">Web Scraper</TabsTrigger>
       </TabsList>
       <TabsContent value="reviews">
@@ -51,6 +61,9 @@ export default function AdminDashboard({ initialEvents, venues }: { initialEvent
       </TabsContent>
       <TabsContent value="venues">
         <VenueManager venues={venues} />
+      </TabsContent>
+      <TabsContent value="reviewers">
+        <ReviewerRequestManager initialRequests={reviewerRequests} />
       </TabsContent>
       <TabsContent value="scraper">
         <div className="pt-4">

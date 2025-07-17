@@ -1,11 +1,10 @@
 
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
-import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile } from '@/lib/types';
+import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, ReviewerRequest } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 import { headers } from 'next/headers';
@@ -305,11 +304,22 @@ export async function requestToBeReviewerAction(data: {
     userEmail: string;
 }) {
     try {
-        const requestData = {
+        const requestData: Omit<ReviewerRequest, 'id'> = {
             ...data,
             status: 'pending',
             createdAt: new Date().toISOString(),
         };
+
+        // Check if a pending request already exists for this user
+        const existingQuery = await adminDb.collection('reviewerRequests')
+            .where('userId', '==', data.userId)
+            .where('status', '==', 'pending')
+            .limit(1)
+            .get();
+        
+        if (!existingQuery.empty) {
+            return { success: false, message: 'You already have a pending request. We will review it soon!' };
+        }
 
         await adminDb.collection('reviewerRequests').add(requestData);
         
@@ -317,6 +327,32 @@ export async function requestToBeReviewerAction(data: {
 
     } catch (error) {
         console.error('Failed to submit reviewer request:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
+    }
+}
+
+export async function updateReviewerRequestStatusAction(requestId: string, userId: string, status: 'approved' | 'denied') {
+    try {
+        const requestRef = adminDb.collection('reviewerRequests').doc(requestId);
+        
+        const batch = adminDb.batch();
+        batch.update(requestRef, { status });
+
+        if (status === 'approved') {
+            const userProfileRef = adminDb.collection('userProfiles').doc(userId);
+            batch.set(userProfileRef, { isReviewer: true }, { merge: true });
+        } else if (status === 'denied') {
+             const userProfileRef = adminDb.collection('userProfiles').doc(userId);
+            batch.set(userProfileRef, { isReviewer: false }, { merge: true });
+        }
+
+        await batch.commit();
+
+        revalidatePath('/admin');
+        return { success: true, message: `Request status updated to ${status}.` };
+    } catch (error) {
+        console.error('Failed to update reviewer request status:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred. Error: ${errorMessage}` };
     }
