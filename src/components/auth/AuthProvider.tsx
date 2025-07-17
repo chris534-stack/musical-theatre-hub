@@ -4,7 +4,7 @@ import * as React from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getOrCreateUserProfile } from '@/lib/data';
+import { getOrCreateUserProfile } from '@/lib/actions';
 
 type AuthContextType = {
   user: User | null;
@@ -59,8 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Reviewer Check - fetch from user profile
-        const userProfile = await getOrCreateUserProfile(user.uid);
-        setIsReviewer(userProfile?.isReviewer || false);
+        const profileResult = await getOrCreateUserProfile(user.uid);
+        if (profileResult.success && profileResult.data) {
+          setIsReviewer(profileResult.data.isReviewer || false);
+        }
 
       } else {
         setIsAdmin(false);

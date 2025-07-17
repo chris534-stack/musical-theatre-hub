@@ -2,12 +2,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle, getReviewsByUserId } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, ReviewerRequest } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
 import { scrapeArticle } from '@/ai/flows/scrape-article';
 import { headers } from 'next/headers';
+import type { UserRecord } from 'firebase-admin/auth';
 
 
 export async function revalidateAdminPaths() {
@@ -361,13 +362,84 @@ export async function updateReviewerRequestStatusAction(requestId: string, userI
 
 // --- User Profile Actions ---
 
+/**
+ * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
+ * This function now safely handles "ghost users" (profiles without a matching auth record)
+ * and returns the user's authentication status.
+ */
+export async function getOrCreateUserProfile(userId: string): Promise<{ success: boolean, data?: UserProfile, message?: string }> {
+    try {
+        const docRef = adminDb.collection('userProfiles').doc(userId);
+        let userRecord: UserRecord | null = null;
+        let authStatus: 'active' | 'notFound' = 'active';
+
+        try {
+            userRecord = await admin.auth().getUser(userId);
+        } catch (error: any) {
+            if (error.code === 'auth/user-not-found') {
+                authStatus = 'notFound';
+            } else {
+                throw error; // Re-throw other auth errors
+            }
+        }
+
+        const docSnap = await docRef.get();
+
+        if (docSnap.exists) {
+            const data = docSnap.data() || {};
+            const profile: UserProfile = {
+                userId: data.userId || userId,
+                displayName: data.displayName || 'New User',
+                photoURL: data.photoURL || '',
+                email: data.email || '',
+                bio: data.bio || '',
+                roleInCommunity: data.roleInCommunity || 'Audience',
+                communityStartDate: String(data.communityStartDate || ''),
+                galleryImageUrls: data.galleryImageUrls || [],
+                coverPhotoUrl: data.coverPhotoUrl || '',
+                showEmail: data.showEmail || false,
+                isReviewer: data.isReviewer || false,
+                authStatus,
+            };
+            return { success: true, data: profile };
+        }
+
+        if (userRecord) {
+            const newProfileData: UserProfile = {
+                userId: userRecord.uid,
+                displayName: userRecord.displayName || 'New User',
+                photoURL: userRecord.photoURL || '',
+                email: userRecord.email || '',
+                bio: 'Welcome to the Our Stage community! Feel free to edit your profile and share a bit about yourself.',
+                roleInCommunity: 'Audience',
+                communityStartDate: '',
+                galleryImageUrls: [],
+                coverPhotoUrl: '',
+                showEmail: false,
+                isReviewer: false,
+                authStatus: 'active',
+            };
+            await docRef.set(newProfileData);
+            return { success: true, data: newProfileData };
+        }
+
+        return { success: false, message: 'User profile does not exist and could not be created.' };
+
+    } catch (error) {
+        console.error('Error in getOrCreateUserProfile:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}
+
+
 export async function getFullProfileAction(userId: string): Promise<{ success: boolean; data?: UserProfile, message?: string;}> {
     try {
-        const profile = await getOrCreateUserProfile(userId);
-        if (!profile) {
-            return { success: false, message: 'Profile not found.' };
+        const result = await getOrCreateUserProfile(userId);
+        if (!result.success || !result.data) {
+            return { success: false, message: result.message || 'Profile not found.' };
         }
-        return { success: true, data: profile };
+        return { success: true, data: result.data };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: `An unexpected error occurred: ${errorMessage}` };

@@ -3,7 +3,6 @@
 import { adminDb, admin } from './firebase-admin'; // Admin SDK for server-side functions
 import type { Event, Venue, EventStatus, NewsArticle, Review, UserProfile, ReviewerRequest } from './types';
 import { startOfToday, addDays } from 'date-fns';
-import type { UserRecord } from 'firebase-admin/auth';
 
 const parseDateString = (dateString: string): Date => {
   // Manually parse date components to avoid timezone shift issues.
@@ -406,78 +405,4 @@ export async function getAllReviewerRequests(): Promise<ReviewerRequest[]> {
             createdAt: safeToISOString(data.createdAt),
         } as ReviewerRequest;
     });
-}
-
-
-// --- User Profile Functions ---
-
-/**
- * [SERVER-SIDE] Fetches a user profile from Firestore, creating one if it doesn't exist.
- * This function now safely handles "ghost users" (profiles without a matching auth record)
- * and returns the user's authentication status.
- */
-export async function getOrCreateUserProfile(userId: string): Promise<UserProfile | null> {
-    const docRef = adminDb.collection('userProfiles').doc(userId);
-    let userRecord: UserRecord | null = null;
-    let authStatus: 'active' | 'notFound' = 'active';
-
-    try {
-        console.log(`[DATA] Attempting to fetch user from Auth: ${userId}`);
-        userRecord = await admin.auth().getUser(userId);
-        console.log(`[DATA] Successfully fetched user from Auth: ${userRecord.uid}`);
-    } catch (error: any) {
-        if (error.code === 'auth/user-not-found') {
-            console.log(`[DATA] User not found in Auth: ${userId}. This may be a 'ghost' user.`);
-            authStatus = 'notFound';
-        } else {
-            // This is the critical block for the permission error.
-            console.error(`[DATA] A non-'not-found' error occurred fetching from Firebase Auth for userId: ${userId}`, error);
-            // We will now attempt to continue without the auth record.
-            authStatus = 'notFound'; 
-        }
-    }
-
-    const docSnap = await docRef.get();
-
-    if (docSnap.exists) {
-        console.log(`[DATA] Firestore document found for user: ${userId}`);
-        const data = docSnap.data() || {};
-        return {
-            userId: data.userId || userId,
-            displayName: data.displayName || 'New User',
-            photoURL: data.photoURL || '',
-            email: data.email || '',
-            bio: data.bio || '',
-            roleInCommunity: data.roleInCommunity || 'Audience',
-            communityStartDate: String(data.communityStartDate || ''),
-            galleryImageUrls: data.galleryImageUrls || [],
-            coverPhotoUrl: data.coverPhotoUrl || '',
-            showEmail: data.showEmail || false,
-            isReviewer: data.isReviewer || false,
-            authStatus,
-        };
-    }
-
-    if (userRecord) {
-        console.log(`[DATA] Firestore document NOT found for user: ${userId}. Creating new profile.`);
-        const newProfileData: UserProfile = {
-            userId: userRecord.uid,
-            displayName: userRecord.displayName || 'New User',
-            photoURL: userRecord.photoURL || '',
-            email: userRecord.email || '',
-            bio: 'Welcome to the Our Stage community! Feel free to edit your profile and share a bit about yourself.',
-            roleInCommunity: 'Audience',
-            communityStartDate: '',
-            galleryImageUrls: [],
-            coverPhotoUrl: '',
-            showEmail: false,
-            isReviewer: false,
-            authStatus: 'active',
-        };
-        await docRef.set(newProfileData);
-        return newProfileData;
-    }
-
-    console.log(`[DATA] User not found in Auth and no Firestore document exists for: ${userId}. Returning null.`);
-    return null;
 }
