@@ -17,7 +17,7 @@ import { GalleryViewer } from './GalleryViewer';
 import { useToast } from '@/hooks/use-toast';
 import { updateGalleryOrderAction, deleteProfilePhotoAction, getFullProfileAction, getReviewsForUserAction, generateUploadUrlAction, savePhotoUrlAction, deleteMyProfileAction, migrateOrphanedProfileAction } from '@/lib/actions';
 import { cn } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import ProfileLoading from '@/app/profile/[userId]/loading';
 import { signOut, getIdToken } from 'firebase/auth';
