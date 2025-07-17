@@ -54,7 +54,8 @@ export function FeaturedEventCard({ event }: FeaturedEventCardProps) {
                     </CardTitle>
                     {firstOccurrence && (
                         <CardDescription className="text-center pt-2">
-                             {event.venue?.name} &middot; {formatOccurrence(firstOccurrence)}
+                             <div>{event.venue?.name}</div>
+                             <div>{formatOccurrence(firstOccurrence)}</div>
                         </CardDescription>
                     )}
                 </CardHeader>
