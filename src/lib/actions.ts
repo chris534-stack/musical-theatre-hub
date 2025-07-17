@@ -2,7 +2,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile, getReviewerRequestStatusForUser } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, ReviewerRequest } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
@@ -321,21 +321,9 @@ export async function requestToBeReviewerAction(data: {
             return { success: false, message: 'You already have a pending request. We will review it soon!' };
         }
 
-        const docRef = await adminDb.collection('reviewerRequests').add(requestData);
+        await adminDb.collection('reviewerRequests').add(requestData);
         revalidatePath('/reviews');
 
-        // Send email notification
-        try {
-            await sendReviewerApplicationEmail({
-                applicantName: data.userName,
-                applicantEmail: data.userEmail,
-                requestId: docRef.id
-            });
-        } catch (emailError) {
-            console.error("Failed to send reviewer application email, but the request was saved.", emailError);
-            // Don't fail the whole action, just log the error.
-        }
-        
         return { success: true, message: 'Request submitted successfully.' };
 
     } catch (error) {
@@ -374,20 +362,8 @@ export async function updateReviewerRequestStatusAction(requestId: string, userI
 
 export async function getReviewerRequestStatusForUserAction(userId: string): Promise<{ success: boolean; status?: ReviewerRequest['status']; message?: string }> {
   try {
-    const requestsQuery = adminDb.collection('reviewerRequests')
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(1);
-    
-    const snapshot = await requestsQuery.get();
-
-    if (snapshot.empty) {
-      return { success: true, status: undefined };
-    }
-
-    const latestRequest = snapshot.docs[0].data() as ReviewerRequest;
-    return { success: true, status: latestRequest.status };
-
+    const result = await getReviewerRequestStatusForUser(userId);
+    return { success: true, status: result?.status };
   } catch (error) {
     console.error(`Failed to get reviewer request status for user ${userId}:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
