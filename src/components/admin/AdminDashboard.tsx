@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,32 +12,6 @@ import { ReviewerRequestManager } from './ReviewerRequestManager';
 
 type EventWithVenue = Event & { venue?: Venue };
 
-function EventReviewTabs({ events, venues }: { events: EventWithVenue[], venues: Venue[] }) {
-  const pendingEvents = events.filter(e => e.status === 'pending');
-  const approvedEvents = events.filter(e => e.status === 'approved');
-  const deniedEvents = events.filter(e => e.status === 'denied');
-
-  return (
-    <Tabs defaultValue="pending" className="w-full pt-4">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="pending">Pending Review ({pendingEvents.length})</TabsTrigger>
-        <TabsTrigger value="approved">Approved ({approvedEvents.length})</TabsTrigger>
-        <TabsTrigger value="denied">Denied ({deniedEvents.length})</TabsTrigger>
-      </TabsList>
-      <TabsContent value="pending">
-        <EventTable events={pendingEvents} venues={venues} />
-      </TabsContent>
-      <TabsContent value="approved">
-        <EventTable events={approvedEvents} venues={venues} />
-      </TabsContent>
-      <TabsContent value="denied">
-        <EventTable events={deniedEvents} venues={venues} />
-      </TabsContent>
-    </Tabs>
-  );
-}
-
-
 export default function AdminDashboard({ 
     initialEvents, 
     venues,
@@ -49,16 +24,12 @@ export default function AdminDashboard({
   const { user } = useAuth();
   
   return (
-    <Tabs defaultValue="reviews" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="reviews">Event Reviews</TabsTrigger>
+    <Tabs defaultValue="venues" className="w-full">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="venues">Venues</TabsTrigger>
         <TabsTrigger value="reviewers">Reviewer Requests</TabsTrigger>
         <TabsTrigger value="scraper">Web Scraper</TabsTrigger>
       </TabsList>
-      <TabsContent value="reviews">
-        <EventReviewTabs events={initialEvents} venues={venues} />
-      </TabsContent>
       <TabsContent value="venues">
         <VenueManager venues={venues} />
       </TabsContent>
