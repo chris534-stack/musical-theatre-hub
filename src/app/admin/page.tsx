@@ -1,15 +1,16 @@
-import { getAllEvents, getAllVenues, getAllReviewerRequests } from '@/lib/data';
+import { getAllEvents, getAllVenues, getAllReviewerRequests, getAllUserProfiles } from '@/lib/data';
 import AdminDashboard from '@/components/admin/AdminDashboard';
-import type { Venue, ReviewerRequest } from '@/lib/types';
+import type { Venue, ReviewerRequest, UserProfile } from '@/lib/types';
 import AdminAuthGuard from '@/components/auth/AdminAuthGuard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  const [allEvents, allVenues, reviewerRequests] = await Promise.all([
+  const [allEvents, allVenues, reviewerRequests, allUsers] = await Promise.all([
     getAllEvents(),
     getAllVenues(),
     getAllReviewerRequests(),
+    getAllUserProfiles(),
   ]);
   
   const venuesMap = new Map<string, Venue>(allVenues.map(v => [v.id, v]));
@@ -18,6 +19,8 @@ export default async function AdminPage() {
     ...event,
     venue: venuesMap.get(event.venueId)
   }));
+
+  const sortedUsers = allUsers.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   return (
     <AdminAuthGuard>
@@ -30,6 +33,7 @@ export default async function AdminPage() {
             initialEvents={allEventsWithVenues} 
             venues={allVenues}
             reviewerRequests={reviewerRequests}
+            users={sortedUsers}
         />
       </div>
     </AdminAuthGuard>

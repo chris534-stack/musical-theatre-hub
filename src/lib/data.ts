@@ -517,24 +517,34 @@ export async function getOrCreateUserProfile(userId: string): Promise<{ success:
 }
 
 /**
+ * [SERVER-SIDE] Fetches all user profiles.
+ */
+export async function getAllUserProfiles(): Promise<UserProfile[]> {
+    const snapshot = await adminDb.collection('userProfiles').get();
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            userId: doc.id,
+            displayName: data.displayName || 'N/A',
+            email: data.email || 'N/A',
+            photoURL: data.photoURL || '',
+            isReviewer: data.isReviewer || false,
+            // Include any other fields you want to display in the admin dash
+        } as UserProfile;
+    });
+}
+
+/**
  * [SERVER-SIDE] Searches for user profiles by display name.
  */
-export async function searchUserProfiles(displayName: string): Promise<Pick<UserProfile, 'userId' | 'displayName' | 'photoURL'>[]> {
-    if (!displayName) {
-        return [];
-    }
-    const normalizeText = (text: string) => {
-        return text
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-    };
-
-    const query = normalizeText(displayName);
+export async function searchUserProfiles(query: string): Promise<Pick<UserProfile, 'userId' | 'displayName' | 'photoURL'>[]> {
+    if (!query || typeof query !== 'string') return [];
+    
+    const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     const snapshot = await adminDb.collection('userProfiles').get();
     
-    const allUsers = snapshot.docs.map(doc => {
+    const allUsers: Pick<UserProfile, 'userId' | 'displayName' | 'photoURL'>[] = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
             userId: doc.id,
@@ -545,8 +555,8 @@ export async function searchUserProfiles(displayName: string): Promise<Pick<User
     
     const filteredUsers = allUsers
         .filter(user => {
-            const normalizedName = normalizeText(user.displayName);
-            return normalizedName.includes(query);
+            const normalizedName = (user.displayName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return normalizedName.includes(normalizedQuery);
         })
         .slice(0, 10); // Limit results for performance
 
@@ -560,5 +570,3 @@ export async function getUserProfileCount(): Promise<number> {
     const snapshot = await adminDb.collection('userProfiles').count().get();
     return snapshot.data().count;
 }
-
-    

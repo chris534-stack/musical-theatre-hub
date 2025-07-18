@@ -3,7 +3,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile as getOrCreateUserProfileData, getReviewerRequestStatusForUser, searchUserProfiles, getUserProfileCount } from '@/lib/data';
+import { addEvent, eventExists, addNewsArticle, getReviewsByUserId, getOrCreateUserProfile as getOrCreateUserProfileData, getReviewerRequestStatusForUser, searchUserProfiles, getUserProfileCount, getAllUserProfiles } from '@/lib/data';
 import { adminDb, admin } from '@/lib/firebase-admin';
 import type { Event, EventOccurrence, NewsArticle, Review, Venue, UserProfile, ReviewerRequest } from '@/lib/types';
 import { scrapeEventDetails } from '@/ai/flows/scrape-event-details';
@@ -441,6 +441,46 @@ export async function getReviewerRequestStatusForUserAction(userId: string): Pro
 
 
 // --- User Profile Actions ---
+
+export async function getAllUserProfilesAction(): Promise<{ success: boolean; data?: UserProfile[], message?: string;}> {
+    try {
+        const users = await getAllUserProfiles();
+        return { success: true, data: users };
+    } catch (error) {
+        console.error('Failed to get all user profiles:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
+}
+
+export async function deleteUserAction(userIdToDelete: string) {
+    try {
+        const auth = headers().get('Authorization');
+        if (!auth?.startsWith('Bearer ')) {
+            return { success: false, message: 'Unauthorized: Admin user not authenticated.' };
+        }
+        const idToken = auth.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const adminUid = decodedToken.uid;
+        
+        if (adminUid === userIdToDelete) {
+            return { success: false, message: 'Admins cannot delete their own account from the dashboard.' };
+        }
+
+        // Delete Firestore document
+        await adminDb.collection('userProfiles').doc(userIdToDelete).delete();
+
+        // Delete Firebase Auth user
+        await admin.auth().deleteUser(userIdToDelete);
+
+        revalidatePath('/admin');
+        return { success: true };
+    } catch (error) {
+        console.error(`Failed to delete user ${userIdToDelete}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: `An unexpected error occurred during user deletion: ${errorMessage}` };
+    }
+}
 
 export async function getOrCreateUserProfile(userId: string): Promise<{ success: boolean, data?: UserProfile, message?: string }> {
     return getOrCreateUserProfileData(userId);
